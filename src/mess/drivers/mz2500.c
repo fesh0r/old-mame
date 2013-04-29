@@ -65,11 +65,13 @@ public:
 	mz2500_state(const machine_config &mconfig, device_type type, const char *tag)
 		: driver_device(mconfig, type, tag),
 		m_maincpu(*this, "maincpu"),
-		m_rtc(*this, RP5C15_TAG)
+		m_rtc(*this, RP5C15_TAG),
+		m_beeper(*this, "beeper")
 	{ }
 
 	required_device<cpu_device> m_maincpu;
 	required_device<rp5c15_device> m_rtc;
+	required_device<beep_device> m_beeper;
 
 	UINT8 *m_main_ram;
 	UINT8 *m_ipl_rom;
@@ -1509,17 +1511,17 @@ WRITE8_MEMBER(mz2500_state::mz2500_emm_data_w)
 
 static ADDRESS_MAP_START(mz2500_io, AS_IO, 8, mz2500_state )
 	ADDRESS_MAP_GLOBAL_MASK(0xff)
-//  AM_RANGE(0x60, 0x63) AM_WRITE_LEGACY(w3100a_w)
-//  AM_RANGE(0x63, 0x63) AM_READ_LEGACY(w3100a_r)
+//  AM_RANGE(0x60, 0x63) AM_WRITE(w3100a_w)
+//  AM_RANGE(0x63, 0x63) AM_READ(w3100a_r)
 //  AM_RANGE(0x98, 0x99) ADPCM, unknown type, custom?
 	AM_RANGE(0xa0, 0xa3) AM_DEVREADWRITE("z80sio",z80sio_device, read_alt, write_alt)
-//  AM_RANGE(0xa4, 0xa5) AM_READWRITE_LEGACY(sasi_r, sasi_w)
+//  AM_RANGE(0xa4, 0xa5) AM_READWRITE(sasi_r, sasi_w)
 	AM_RANGE(0xa8, 0xa8) AM_WRITE(mz2500_rom_w)
 	AM_RANGE(0xa9, 0xa9) AM_READ(mz2500_rom_r)
 	AM_RANGE(0xac, 0xac) AM_WRITE(mz2500_emm_addr_w)
 	AM_RANGE(0xad, 0xad) AM_READ(mz2500_emm_data_r) AM_WRITE(mz2500_emm_data_w)
 	AM_RANGE(0xae, 0xae) AM_WRITE(palette4096_io_w)
-//  AM_RANGE(0xb0, 0xb3) AM_READWRITE_LEGACY(sio_r,sio_w)
+//  AM_RANGE(0xb0, 0xb3) AM_READWRITE(sio_r,sio_w)
 	AM_RANGE(0xb4, 0xb4) AM_READWRITE(mz2500_bank_addr_r,mz2500_bank_addr_w)
 	AM_RANGE(0xb5, 0xb5) AM_READWRITE(mz2500_bank_data_r,mz2500_bank_data_w)
 	AM_RANGE(0xb7, 0xb7) AM_WRITENOP
@@ -1531,7 +1533,7 @@ static ADDRESS_MAP_START(mz2500_io, AS_IO, 8, mz2500_state )
 	AM_RANGE(0xc6, 0xc6) AM_WRITE(mz2500_irq_sel_w)
 	AM_RANGE(0xc7, 0xc7) AM_WRITE(mz2500_irq_data_w)
 	AM_RANGE(0xc8, 0xc9) AM_DEVREADWRITE_LEGACY("ym", ym2203_r, ym2203_w)
-//  AM_RANGE(0xca, 0xca) AM_READWRITE_LEGACY(voice_r,voice_w)
+//  AM_RANGE(0xca, 0xca) AM_READWRITE(voice_r,voice_w)
 	AM_RANGE(0xcc, 0xcc) AM_READWRITE(rp5c15_8_r, rp5c15_8_w)
 	AM_RANGE(0xce, 0xce) AM_WRITE(mz2500_dictionary_bank_w)
 	AM_RANGE(0xcf, 0xcf) AM_WRITE(mz2500_kanji_bank_w)
@@ -1544,7 +1546,7 @@ static ADDRESS_MAP_START(mz2500_io, AS_IO, 8, mz2500_state )
 	AM_RANGE(0xef, 0xef) AM_READWRITE(mz2500_joystick_r,mz2500_joystick_w)
 	AM_RANGE(0xf0, 0xf3) AM_WRITE(timer_w)
 	AM_RANGE(0xf4, 0xf7) AM_READ(mz2500_crtc_hvblank_r) AM_WRITE(mz2500_tv_crtc_w)
-//  AM_RANGE(0xf8, 0xf9) AM_READWRITE_LEGACY(extrom_r,extrom_w)
+//  AM_RANGE(0xf8, 0xf9) AM_READWRITE(extrom_r,extrom_w)
 ADDRESS_MAP_END
 
 /* Input ports */
@@ -1806,10 +1808,10 @@ void mz2500_state::machine_reset()
 
 	m_cg_clear_flag = 0;
 
-	machine().device<beep_device>(BEEPER_TAG)->set_frequency(4096);
-	machine().device<beep_device>(BEEPER_TAG)->set_state(0);
+	m_beeper->set_frequency(4096);
+	m_beeper->set_state(0);
 
-//  m_monitor_type = machine().root_device().ioport("DSW1")->read() & 0x40 ? 1 : 0;
+//  m_monitor_type = ioport("DSW1")->read() & 0x40 ? 1 : 0;
 }
 
 static const gfx_layout mz2500_cg_layout =
@@ -1921,7 +1923,7 @@ WRITE8_MEMBER(mz2500_state::mz2500_portc_w)
 
 	m_old_portc = data;
 
-	machine().device<beep_device>(BEEPER_TAG)->set_state(data & 0x04);
+	m_beeper->set_state(data & 0x04);
 
 	m_screen_enable = data & 1;
 
@@ -1966,16 +1968,16 @@ READ8_MEMBER(mz2500_state::mz2500_pio1_porta_r)
 
 		res = 0xff;
 		for(i=0;i<0xe;i++)
-			res &= machine().root_device().ioport(keynames[i])->read();
+			res &= ioport(keynames[i])->read();
 
 		m_pio_latchb = res;
 
 		return res;
 	}
 
-	m_pio_latchb = machine().root_device().ioport(keynames[m_key_mux & 0xf])->read();
+	m_pio_latchb = ioport(keynames[m_key_mux & 0xf])->read();
 
-	return machine().root_device().ioport(keynames[m_key_mux & 0xf])->read();
+	return ioport(keynames[m_key_mux & 0xf])->read();
 }
 
 #if 0
@@ -2157,7 +2159,7 @@ static MACHINE_CONFIG_START( mz2500, mz2500_state )
 	MCFG_SOUND_ROUTE(2, "mono", 0.50)
 	MCFG_SOUND_ROUTE(3, "mono", 0.50)
 
-	MCFG_SOUND_ADD(BEEPER_TAG, BEEP, 0)
+	MCFG_SOUND_ADD("beeper", BEEP, 0)
 	MCFG_SOUND_ROUTE(ALL_OUTPUTS,"mono",0.50)
 MACHINE_CONFIG_END
 

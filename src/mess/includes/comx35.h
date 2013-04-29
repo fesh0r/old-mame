@@ -44,7 +44,7 @@ public:
 			m_maincpu(*this, CDP1802_TAG),
 			m_vis(*this, CDP1869_TAG),
 			m_kbe(*this, CDP1871_TAG),
-			m_cassette(*this, CASSETTE_TAG),
+			m_cassette(*this, "cassette"),
 			m_ram(*this, RAM_TAG),
 			m_exp(*this, EXPANSION_TAG),
 			m_rom(*this, CDP1802_TAG),
@@ -91,6 +91,8 @@ public:
 	DECLARE_WRITE_LINE_MEMBER( int_w );
 	DECLARE_WRITE_LINE_MEMBER( prd_w );
 	DECLARE_INPUT_CHANGED_MEMBER( trigger_reset );
+	DECLARE_QUICKLOAD_LOAD_MEMBER( comx35_comx );
+	void image_fread_memory(device_image_interface &image, UINT16 addr, UINT32 count);
 
 	// processor state
 	int m_clear;                // CPU mode

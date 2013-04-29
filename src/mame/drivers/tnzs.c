@@ -706,7 +706,6 @@ READ8_MEMBER(tnzs_state::kageki_csport_r)
 
 WRITE8_MEMBER(tnzs_state::kageki_csport_w)
 {
-	device_t *device = machine().device("samples");
 	char mess[80];
 
 	if (data > 0x3f)
@@ -716,17 +715,16 @@ WRITE8_MEMBER(tnzs_state::kageki_csport_w)
 	}
 	else
 	{
-		samples_device *samples = downcast<samples_device *>(device);
 		if (data > MAX_SAMPLES)
 		{
 			// stop samples
-			samples->stop(0);
+			m_samples->stop(0);
 			sprintf(mess, "VOICE:%02X STOP", data);
 		}
 		else
 		{
 			// play samples
-			samples->start_raw(0, m_sampledata[data], m_samplesize[data], 7000);
+			m_samples->start_raw(0, m_sampledata[data], m_samplesize[data], 7000);
 			sprintf(mess, "VOICE:%02X PLAY", data);
 		}
 	//  popmessage(mess);
@@ -742,10 +740,9 @@ WRITE8_MEMBER(tnzs_state::kabukiz_sound_bank_w)
 
 WRITE8_MEMBER(tnzs_state::kabukiz_sample_w)
 {
-	dac_device *device = machine().device<dac_device>("dac");
 	// to avoid the write when the sound chip is initialized
 	if (data != 0xff)
-		device->write_unsigned8(data);
+		m_dac->write_unsigned8(data);
 }
 
 static ADDRESS_MAP_START( main_map, AS_PROGRAM, 8, tnzs_state )

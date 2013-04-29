@@ -62,9 +62,10 @@ public:
 	binbug_state(const machine_config &mconfig, device_type type, const char *tag)
 		: driver_device(mconfig, type, tag),
 	m_keyboard(*this, KEYBOARD_TAG),
-	m_cass(*this, CASSETTE_TAG),
+	m_cass(*this, "cassette"),
 	m_p_videoram(*this, "videoram"),
-	m_p_attribram(*this, "attribram") { }
+	m_p_attribram(*this, "attribram") ,
+		m_maincpu(*this, "maincpu") { }
 
 	DECLARE_WRITE8_MEMBER(binbug_ctrl_w);
 	DECLARE_READ8_MEMBER(binbug_serial_r);
@@ -77,6 +78,8 @@ public:
 	required_device<cassette_image_device> m_cass;
 	required_shared_ptr<const UINT8> m_p_videoram;
 	required_shared_ptr<const UINT8> m_p_attribram;
+	required_device<cpu_device> m_maincpu;
+	DECLARE_QUICKLOAD_LOAD_MEMBER( binbug );
 };
 
 WRITE8_MEMBER( binbug_state::binbug_ctrl_w )
@@ -215,74 +218,78 @@ static GFXDECODE_START( dg640 )
 	GFXDECODE_ENTRY( "chargen", 0x0000, dg640_charlayout, 0, 1 )
 GFXDECODE_END
 
-QUICKLOAD_LOAD( binbug )
+QUICKLOAD_LOAD_MEMBER( binbug_state, binbug )
 {
-	address_space &space = image.device().machine().device("maincpu")->memory().space(AS_PROGRAM);
+	address_space &space = m_maincpu->space(AS_PROGRAM);
 	int i;
-	int quick_addr = 0x0440;
+	int quick_addr = 0x440;
 	int exec_addr;
 	int quick_length;
 	UINT8 *quick_data;
 	int read_;
+	int result = IMAGE_INIT_FAIL;
 
 	quick_length = image.length();
-	quick_data = (UINT8*)malloc(quick_length);
-	if (!quick_data)
-	{
-		image.seterror(IMAGE_ERROR_INVALIDIMAGE, "Cannot open file");
-		image.message(" Cannot open file");
-		return IMAGE_INIT_FAIL;
-	}
-
-	read_ = image.fread( quick_data, quick_length);
-	if (read_ != quick_length)
-	{
-		image.seterror(IMAGE_ERROR_INVALIDIMAGE, "Cannot read the file");
-		image.message(" Cannot read the file");
-		return IMAGE_INIT_FAIL;
-	}
-
-	if (quick_data[0] != 0xc4)
-	{
-		image.seterror(IMAGE_ERROR_INVALIDIMAGE, "Invalid header");
-		image.message(" Invalid header");
-		return IMAGE_INIT_FAIL;
-	}
-
-	exec_addr = quick_data[1] * 256 + quick_data[2];
-
-	if (exec_addr >= quick_length)
-	{
-		image.seterror(IMAGE_ERROR_INVALIDIMAGE, "Exec address beyond end of file");
-		image.message(" Exec address beyond end of file");
-		return IMAGE_INIT_FAIL;
-	}
-
-	if (quick_length < 0x444)
+	if (quick_length < 0x0444)
 	{
 		image.seterror(IMAGE_ERROR_INVALIDIMAGE, "File too short");
 		image.message(" File too short");
-		return IMAGE_INIT_FAIL;
 	}
-
-	if (quick_length > 0x8000)
+	else if (quick_length > 0x8000)
 	{
 		image.seterror(IMAGE_ERROR_INVALIDIMAGE, "File too long");
 		image.message(" File too long");
-		return IMAGE_INIT_FAIL;
 	}
-
-	for (i = quick_addr; i < quick_length; i++)
+	else
 	{
-		space.write_byte(i, quick_data[i]);
+		quick_data = (UINT8*)malloc(quick_length);
+		if (!quick_data)
+		{
+			image.seterror(IMAGE_ERROR_INVALIDIMAGE, "Cannot open file");
+			image.message(" Cannot open file");
+		}
+		else
+		{
+			read_ = image.fread( quick_data, quick_length);
+			if (read_ != quick_length)
+			{
+				image.seterror(IMAGE_ERROR_INVALIDIMAGE, "Cannot read the file");
+				image.message(" Cannot read the file");
+			}
+			else if (quick_data[0] != 0xc4)
+			{
+				image.seterror(IMAGE_ERROR_INVALIDIMAGE, "Invalid header");
+				image.message(" Invalid header");
+			}
+			else
+			{
+				exec_addr = quick_data[1] * 256 + quick_data[2];
+
+				if (exec_addr >= quick_length)
+				{
+					image.seterror(IMAGE_ERROR_INVALIDIMAGE, "Exec address beyond end of file");
+					image.message(" Exec address beyond end of file");
+				}
+				else
+				{
+					for (i = quick_addr; i < read_; i++)
+						space.write_byte(i, quick_data[i]);
+
+					/* display a message about the loaded quickload */
+					image.message(" Quickload: size=%04X : exec=%04X",quick_length,exec_addr);
+
+					// Start the quickload
+					m_maincpu->set_pc(exec_addr);
+
+					result = IMAGE_INIT_PASS;
+				}
+			}
+		}
+
+		free( quick_data );
 	}
 
-	/* display a message about the loaded quickload */
-	image.message(" Quickload: size=%04X : exec=%04X",quick_length,exec_addr);
-
-	// Start the quickload
-	image.device().machine().device("maincpu")->state().set_pc(exec_addr);
-	return IMAGE_INIT_PASS;
+	return result;
 }
 
 static MACHINE_CONFIG_START( binbug, binbug_state )
@@ -306,13 +313,13 @@ static MACHINE_CONFIG_START( binbug, binbug_state )
 	MCFG_SERIAL_KEYBOARD_ADD(KEYBOARD_TAG, keyboard_intf, 300)
 
 	/* Cassette */
-	MCFG_CASSETTE_ADD( CASSETTE_TAG, default_cassette_interface )
+	MCFG_CASSETTE_ADD( "cassette", default_cassette_interface )
 	MCFG_SPEAKER_STANDARD_MONO("mono")
-	MCFG_SOUND_WAVE_ADD(WAVE_TAG, CASSETTE_TAG)
+	MCFG_SOUND_WAVE_ADD(WAVE_TAG, "cassette")
 	MCFG_SOUND_ROUTE(ALL_OUTPUTS, "mono", 0.25)
 
 	/* quickload */
-	MCFG_QUICKLOAD_ADD("quickload", binbug, "pgm", 1)
+	MCFG_QUICKLOAD_ADD("quickload", binbug_state, binbug, "pgm", 1)
 MACHINE_CONFIG_END
 
 
@@ -357,8 +364,7 @@ A is the code (0x08 = inhibit; 0x0B = unprotect;
 0x0C = enable; 0x0E = protect). There are 256 pages so
 each page is 256 bytes.
 
-To turn the clock on (if it was working), put a non-zero
-into D80D.
+The clock is controlled by the byte in D80D.
 
 Monitor Commands:
 C (compare)*
@@ -566,9 +572,9 @@ static MACHINE_CONFIG_START( dg680, dg680_state )
 	MCFG_ASCII_KEYBOARD_ADD("keyb", dg680_keyboard_intf)
 
 	/* Cassette */
-	MCFG_CASSETTE_ADD( CASSETTE_TAG, default_cassette_interface )
+	MCFG_CASSETTE_ADD( "cassette", default_cassette_interface )
 	MCFG_SPEAKER_STANDARD_MONO("mono")
-	MCFG_SOUND_WAVE_ADD(WAVE_TAG, CASSETTE_TAG)
+	MCFG_SOUND_WAVE_ADD(WAVE_TAG, "cassette")
 	MCFG_SOUND_ROUTE(ALL_OUTPUTS, "mono", 0.25)
 
 	/* Devices */

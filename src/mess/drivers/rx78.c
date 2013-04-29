@@ -52,8 +52,9 @@ class rx78_state : public driver_device
 public:
 	rx78_state(const machine_config &mconfig, device_type type, const char *tag)
 		: driver_device(mconfig, type, tag),
-	m_maincpu(*this, "maincpu"),
-	m_cass(*this, CASSETTE_TAG)
+		m_maincpu(*this, "maincpu"),
+		m_cass(*this, "cassette"),
+		m_ram(*this, RAM_TAG)
 	{ }
 
 	DECLARE_READ8_MEMBER( key_r );
@@ -78,6 +79,7 @@ public:
 	DECLARE_DRIVER_INIT(rx78);
 	required_device<cpu_device> m_maincpu;
 	required_device<cassette_image_device> m_cass;
+	required_device<ram_device> m_ram;
 	DECLARE_DEVICE_IMAGE_LOAD_MEMBER( rx78_cart );
 };
 
@@ -404,7 +406,7 @@ void rx78_state::machine_reset()
 
 DEVICE_IMAGE_LOAD_MEMBER( rx78_state, rx78_cart )
 {
-	UINT8 *cart = image.device().machine().root_device().memregion("cart_img")->base();
+	UINT8 *cart = memregion("cart_img")->base();
 	UINT32 size;
 
 	if (image.software_entry() == NULL)
@@ -488,10 +490,10 @@ static MACHINE_CONFIG_START( rx78, rx78_state )
 	MCFG_RAM_DEFAULT_SIZE("32k")
 	MCFG_RAM_EXTRA_OPTIONS("16k")
 
-	MCFG_CASSETTE_ADD( CASSETTE_TAG, default_cassette_interface )
+	MCFG_CASSETTE_ADD( "cassette", default_cassette_interface )
 
 	MCFG_SPEAKER_STANDARD_MONO("mono")
-	MCFG_SOUND_WAVE_ADD(WAVE_TAG, CASSETTE_TAG)
+	MCFG_SOUND_WAVE_ADD(WAVE_TAG, "cassette")
 	MCFG_SOUND_ROUTE(ALL_OUTPUTS, "mono", 0.25)
 	MCFG_SOUND_ADD("sn1", SN76489A, XTAL_28_63636MHz/8) // unknown divider
 	MCFG_SOUND_CONFIG(psg_intf)
@@ -514,8 +516,8 @@ ROM_END
 
 DRIVER_INIT_MEMBER(rx78_state,rx78)
 {
-	UINT32 ram_size = machine().device<ram_device>(RAM_TAG)->size();
-	address_space &prg = machine().device("maincpu")->memory().space(AS_PROGRAM);
+	UINT32 ram_size = m_ram->size();
+	address_space &prg = m_maincpu->space(AS_PROGRAM);
 
 	if(ram_size == 0x4000)
 		prg.unmap_readwrite(0x6000, 0xafff);

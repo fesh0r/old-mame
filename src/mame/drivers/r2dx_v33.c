@@ -29,13 +29,14 @@ class r2dx_v33_state : public driver_device
 {
 public:
 	r2dx_v33_state(const machine_config &mconfig, device_type type, const char *tag)
-		: driver_device(mconfig, type, tag) ,
+		: driver_device(mconfig, type, tag),
 		m_spriteram(*this, "spriteram"),
 		m_bg_vram(*this, "bg_vram"),
 		m_md_vram(*this, "md_vram"),
 		m_fg_vram(*this, "fg_vram"),
-		m_tx_vram(*this, "tx_vram")
-		{ }
+		m_tx_vram(*this, "tx_vram"),
+		m_maincpu(*this, "maincpu"),
+		m_eeprom(*this, "eeprom") { }
 
 	required_shared_ptr<UINT16> m_spriteram;
 	DECLARE_WRITE16_MEMBER(rdx_bg_vram_w);
@@ -73,6 +74,8 @@ public:
 	UINT32 screen_update_rdx_v33(screen_device &screen, bitmap_ind16 &bitmap, const rectangle &cliprect);
 	INTERRUPT_GEN_MEMBER(rdx_v33_interrupt);
 	void draw_sprites(bitmap_ind16 &bitmap,const rectangle &cliprect,int pri);
+	required_device<cpu_device> m_maincpu;
+	optional_device<eeprom_device> m_eeprom;
 };
 
 
@@ -232,7 +235,7 @@ UINT32 r2dx_v33_state::screen_update_rdx_v33(screen_device &screen, bitmap_ind16
 	{
 		static UINT32 src_addr = 0x100000;
 		static int frame;
-		address_space &space = machine().device("maincpu")->memory().space(AS_PROGRAM);
+		address_space &space = m_maincpu->space(AS_PROGRAM);
 
 		//if(machine().input().code_pressed_once(KEYCODE_A))
 		//  src_addr+=0x800;
@@ -269,13 +272,11 @@ UINT32 r2dx_v33_state::screen_update_rdx_v33(screen_device &screen, bitmap_ind16
 
 WRITE16_MEMBER(r2dx_v33_state::rdx_v33_eeprom_w)
 {
-	device_t *device = machine().device("eeprom");
 	if (ACCESSING_BITS_0_7)
 	{
-		eeprom_device *eeprom = downcast<eeprom_device *>(device);
-		eeprom->set_clock_line((data & 0x10) ? ASSERT_LINE : CLEAR_LINE);
-		eeprom->write_bit(data & 0x20);
-		eeprom->set_cs_line((data & 0x08) ? CLEAR_LINE : ASSERT_LINE);
+		m_eeprom->set_clock_line((data & 0x10) ? ASSERT_LINE : CLEAR_LINE);
+		m_eeprom->write_bit(data & 0x20);
+		m_eeprom->set_cs_line((data & 0x08) ? CLEAR_LINE : ASSERT_LINE);
 
 		if (data&0xc7) logerror("eeprom_w extra bits used %04x\n",data);
 	}
@@ -409,11 +410,11 @@ static ADDRESS_MAP_START( rdx_v33_map, AS_PROGRAM, 16, r2dx_v33_state )
 	AM_RANGE(0x006be, 0x006bf) AM_WRITENOP // MCU program related
 	AM_RANGE(0x006d8, 0x006d9) AM_WRITE(mcu_xval_w)
 	AM_RANGE(0x006da, 0x006db) AM_WRITE(mcu_yval_w)
-//  AM_RANGE(0x006dc, 0x006dd) AM_READ_LEGACY(rdx_v33_unknown2_r)
-//  AM_RANGE(0x006de, 0x006df) AM_WRITE_LEGACY(mcu_unkaa_w) // mcu command related?
+//  AM_RANGE(0x006dc, 0x006dd) AM_READ(rdx_v33_unknown2_r)
+//  AM_RANGE(0x006de, 0x006df) AM_WRITE(mcu_unkaa_w) // mcu command related?
 
 	AM_RANGE(0x00700, 0x00701) AM_WRITE(rdx_v33_eeprom_w)
-//  AM_RANGE(0x00740, 0x00741) AM_READ_LEGACY(rdx_v33_unknown2_r)
+//  AM_RANGE(0x00740, 0x00741) AM_READ(rdx_v33_unknown2_r)
 	AM_RANGE(0x00744, 0x00745) AM_READ_PORT("INPUT")
 	AM_RANGE(0x0074c, 0x0074d) AM_READ_PORT("SYSTEM")
 	AM_RANGE(0x00762, 0x00763) AM_READNOP
@@ -482,14 +483,14 @@ static ADDRESS_MAP_START( nzerotea_map, AS_PROGRAM, 16, r2dx_v33_state )
 //  AM_RANGE(0x006b4, 0x006b5) AM_WRITENOP
 //  AM_RANGE(0x006b6, 0x006b7) AM_WRITENOP
 	AM_RANGE(0x006bc, 0x006bd) AM_WRITE(mcu_prog_offs_w)
-//  AM_RANGE(0x006d8, 0x006d9) AM_WRITE_LEGACY(bbbbll_w) // scroll?
-//  AM_RANGE(0x006dc, 0x006dd) AM_READ_LEGACY(nzerotea_unknown_r)
-//  AM_RANGE(0x006de, 0x006df) AM_WRITE_LEGACY(mcu_unkaa_w) // mcu command related?
+//  AM_RANGE(0x006d8, 0x006d9) AM_WRITE(bbbbll_w) // scroll?
+//  AM_RANGE(0x006dc, 0x006dd) AM_READ(nzerotea_unknown_r)
+//  AM_RANGE(0x006de, 0x006df) AM_WRITE(mcu_unkaa_w) // mcu command related?
 	//AM_RANGE(0x00700, 0x00701) AM_WRITE(rdx_v33_eeprom_w)
 	AM_RANGE(0x00740, 0x00741) AM_READ_PORT("DSW")
 	AM_RANGE(0x00744, 0x00745) AM_READ_PORT("INPUT")
 	AM_RANGE(0x0074c, 0x0074d) AM_READ_PORT("SYSTEM")
-//  AM_RANGE(0x00762, 0x00763) AM_READ_LEGACY(nzerotea_unknown_r)
+//  AM_RANGE(0x00762, 0x00763) AM_READ(nzerotea_unknown_r)
 
 	AM_RANGE(0x00780, 0x0079f) AM_READWRITE(nzerotea_sound_comms_r,nzerotea_sound_comms_w)
 

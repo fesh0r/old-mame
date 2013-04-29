@@ -712,13 +712,12 @@ void vip_state::machine_reset()
 
 
 //-------------------------------------------------
-//  QUICKLOAD_LOAD( vip )
+//  QUICKLOAD_LOAD_MEMBER( vip_state, vip )
 //-------------------------------------------------
 
-static QUICKLOAD_LOAD( vip )
+QUICKLOAD_LOAD_MEMBER( vip_state, vip )
 {
-	vip_state *state = image.device().machine().driver_data<vip_state>();
-	UINT8 *ram = state->m_ram->pointer();
+	UINT8 *ram = m_ram->pointer();
 	UINT8 *chip8_ptr = NULL;
 	int chip8_size = 0;
 	int size = image.length();
@@ -726,17 +725,17 @@ static QUICKLOAD_LOAD( vip )
 	if (strcmp(image.filetype(), "c8") == 0)
 	{
 		/* CHIP-8 program */
-		chip8_ptr = state->m_chip8->base();
-		chip8_size = state->m_chip8->bytes();
+		chip8_ptr = m_chip8->base();
+		chip8_size = m_chip8->bytes();
 	}
 	else if (strcmp(image.filename(), "c8x") == 0)
 	{
 		/* CHIP-8X program */
-		chip8_ptr = state->m_chip8x->base();
-		chip8_size = state->m_chip8x->bytes();
+		chip8_ptr = m_chip8x->base();
+		chip8_size = m_chip8x->bytes();
 	}
 
-	if ((size + chip8_size) > state->m_ram->size())
+	if ((size + chip8_size) > m_ram->size())
 	{
 		return IMAGE_INIT_FAIL;
 	}
@@ -787,8 +786,8 @@ static MACHINE_CONFIG_START( vip, vip_state )
 	MCFG_VIP_EXPANSION_SLOT_ADD(VIP_EXPANSION_SLOT_TAG, XTAL_3_52128MHz/2, expansion_intf, vip_expansion_cards, NULL, NULL)
 
 	// devices
-	MCFG_QUICKLOAD_ADD("quickload", vip, "bin,c8,c8x", 0)
-	MCFG_CASSETTE_ADD(CASSETTE_TAG, vip_cassette_interface)
+	MCFG_QUICKLOAD_ADD("quickload", vip_state, vip, "bin,c8,c8x", 0)
+	MCFG_CASSETTE_ADD("cassette", vip_cassette_interface)
 
 	// software lists
 	MCFG_SOFTWARE_LIST_ADD("cass_list", "vip")

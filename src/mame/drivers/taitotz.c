@@ -69,6 +69,24 @@ IC7 Panasonic MN1020819DA E68-01
 
 
 
+Power Shovel additional I/O PCB info
+====================================
+
+TMP95C063F
+OKI 6295 x 2 each with a 1.056MHz resonator
+
+6.2MHz OSC
+18.4320MHz OSC
+
+HIN239CB (+5v Powered RS-232 Transmitter/Receiver - 120kbps)
+LC321664AM-80 (1Meg (65536 words x 16bits) DRAM)
+74HC4040A (12-Stage Binary Ripple Counter)
+
+E74-07.IC6 & E74-08.IC8 are the OKI samples and are indentical
+E74-06.IC2 is the TMP95C063 program code.
+
+
+
 Rizing Ping Pong
 Taito 2002
 
@@ -1915,38 +1933,38 @@ WRITE64_MEMBER(taitotz_state::ppc_common_w)
 		{
 			m_io_share_ram[0xfff] = 0x0000;
 			m_io_share_ram[0xe00] = 0xffff;
-			machine().device("maincpu")->execute().set_input_line(INPUT_LINE_IRQ0, ASSERT_LINE);
+			m_maincpu->set_input_line(INPUT_LINE_IRQ0, ASSERT_LINE);
 		}
 		else if (m_io_share_ram[0xfff] == 0x4004 || m_io_share_ram[0xfff] == 0x4000)
 		{
 			m_io_share_ram[0xfff] = 0x0000;
-			machine().device("maincpu")->execute().set_input_line(INPUT_LINE_IRQ0, ASSERT_LINE);
+			m_maincpu->set_input_line(INPUT_LINE_IRQ0, ASSERT_LINE);
 		}
 		else if (m_io_share_ram[0xfff] == 0x7004)
 		{
 			// this command seems to turn off interrupts on TLCS...
 			m_io_share_ram[0xfff] = 0x0000;
-			machine().device("maincpu")->execute().set_input_line(INPUT_LINE_IRQ0, ASSERT_LINE);
+			m_maincpu->set_input_line(INPUT_LINE_IRQ0, ASSERT_LINE);
 		}
 		else
 		{
 			// normally just raise INT0 on TLCS and let it handle the command
-			machine().device("iocpu")->execute().set_input_line(TLCS900_INT0, ASSERT_LINE);
-			machine().device("maincpu")->execute().set_input_line(INPUT_LINE_IRQ0, CLEAR_LINE);
+			m_iocpu->set_input_line(TLCS900_INT0, ASSERT_LINE);
+			m_maincpu->set_input_line(INPUT_LINE_IRQ0, CLEAR_LINE);
 
 			// The PPC always goes to busy loop waiting for TLCS here, so we can free up the timeslice.
 			// Only do it for HDD access and backup RAM for now...
 			if (m_io_share_ram[0xfff] == 0x1010 || m_io_share_ram[0xfff] == 0x1020 ||
 				m_io_share_ram[0xfff] == 0x6000 || m_io_share_ram[0xfff] == 0x6010)
 			{
-				//machine().device("maincpu")->execute().spin_until_trigger(PPC_TLCS_COMM_TRIGGER);
-				machine().device("maincpu")->execute().spin_until_interrupt();
+				//m_maincpu->spin_until_trigger(PPC_TLCS_COMM_TRIGGER);
+				m_maincpu->spin_until_interrupt();
 			}
 
 			// pwrshovl sometimes writes commands during command handling... make sure that doesn't happen
 			if (m_io_share_ram[0xfff] == 0x0000)
 			{
-				machine().device("maincpu")->execute().spin_until_time(attotime::from_usec(50));
+				m_maincpu->spin_until_time(attotime::from_usec(50));
 			}
 
 			machine().scheduler().trigger(TLCS_PPC_COMM_TRIGGER);
@@ -2018,22 +2036,22 @@ WRITE8_MEMBER(taitotz_state::tlcs_common_w)
 		}
 #endif
 
-		machine().device("maincpu")->execute().set_input_line(INPUT_LINE_IRQ0, ASSERT_LINE);
-		machine().device("iocpu")->execute().set_input_line(TLCS900_INT0, CLEAR_LINE);
+		m_maincpu->set_input_line(INPUT_LINE_IRQ0, ASSERT_LINE);
+		m_iocpu->set_input_line(TLCS900_INT0, CLEAR_LINE);
 
-		machine().device("iocpu")->execute().set_input_line(TLCS900_INT3, CLEAR_LINE);
+		m_iocpu->set_input_line(TLCS900_INT3, CLEAR_LINE);
 
 		// The PPC is now free to continue running
 		//machine().scheduler().trigger(PPC_TLCS_COMM_TRIGGER);
-		//machine().device("iocpu")->execute().yield();
+		//m_iocpu->yield();
 	}
 
 	if (offset == 0x1ffe)
 	{
 		if (m_io_share_ram[0xfff] == 0 && m_io_share_ram[0xffe] == 0x1012)
 		{
-			//machine().device("iocpu")->execute().spin_until_trigger(TLCS_PPC_COMM_TRIGGER);
-			machine().device("iocpu")->execute().yield();
+			//m_iocpu->spin_until_trigger(TLCS_PPC_COMM_TRIGGER);
+			m_iocpu->yield();
 			machine().scheduler().trigger(PPC_TLCS_COMM_TRIGGER);
 		}
 	}
@@ -2534,21 +2552,21 @@ void taitotz_state::machine_reset()
 void taitotz_state::machine_start()
 {
 	/* set conservative DRC options */
-	ppcdrc_set_options(machine().device("maincpu"), PPCDRC_COMPATIBLE_OPTIONS);
+	ppcdrc_set_options(m_maincpu, PPCDRC_COMPATIBLE_OPTIONS);
 
 	/* configure fast RAM regions for DRC */
-	ppcdrc_add_fastram(machine().device("maincpu"), 0x40000000, 0x40ffffff, FALSE, m_work_ram);
+	ppcdrc_add_fastram(m_maincpu, 0x40000000, 0x40ffffff, FALSE, m_work_ram);
 }
 
 
 INTERRUPT_GEN_MEMBER(taitotz_state::taitotz_vbi)
 {
-	machine().device("iocpu")->execute().set_input_line(TLCS900_INT3, ASSERT_LINE);
+	m_iocpu->set_input_line(TLCS900_INT3, ASSERT_LINE);
 }
 
 WRITE_LINE_MEMBER(taitotz_state::ide_interrupt)
 {
-	machine().device("iocpu")->execute().set_input_line(TLCS900_INT2, state);
+	m_iocpu->set_input_line(TLCS900_INT2, state);
 }
 
 static const powerpc_config ppc603e_config =
@@ -2605,7 +2623,7 @@ MACHINE_CONFIG_END
 // Init for BIOS v1.52
 void taitotz_state::init_taitotz_152()
 {
-	UINT32 *rom = (UINT32*)machine().root_device().memregion("user1")->base();
+	UINT32 *rom = (UINT32*)memregion("user1")->base();
 	rom[(0x2c87c^4)/4] = 0x38600000;    // skip sound load timeout...
 //  rom[(0x2c620^4)/4] = 0x48000014;    // ID check skip (not needed with correct serial number)
 }
@@ -2613,7 +2631,7 @@ void taitotz_state::init_taitotz_152()
 // Init for BIOS 1.11a
 void taitotz_state::init_taitotz_111a()
 {
-	UINT32 *rom = (UINT32*)machine().root_device().memregion("user1")->base();
+	UINT32 *rom = (UINT32*)memregion("user1")->base();
 	rom[(0x2b748^4)/4] = 0x480000b8;    // skip sound load timeout
 }
 
@@ -2789,11 +2807,20 @@ ROM_START( pwrshovl )
 	TAITOTZ_BIOS_V111A
 
 	ROM_REGION( 0x40000, "io_cpu", 0 )
-	ROM_LOAD16_BYTE( "e74-04.ic14",   0x000000, 0x020000, CRC(ef21a261) SHA1(7398826dbf48014b9c7e9454f978f3e419ebc64b) )
-	ROM_LOAD16_BYTE( "e74-05.ic15",   0x000001, 0x020000, CRC(2466217d) SHA1(dc814da3a1679cff001f179d3c1641af985a6490) )
+	ROM_LOAD16_BYTE( "e74-04++.ic14", 0x000000, 0x020000, CRC(ef21a261) SHA1(7398826dbf48014b9c7e9454f978f3e419ebc64b) ) // actually labeled E74-04**
+	ROM_LOAD16_BYTE( "e74-05++.ic15", 0x000001, 0x020000, CRC(2466217d) SHA1(dc814da3a1679cff001f179d3c1641af985a6490) ) // actually labeled E74-05**
 
 	ROM_REGION( 0x10000, "sound_cpu", 0 ) /* Internal ROM :( */
 	ROM_LOAD( "e68-01.ic7", 0x000000, 0x010000, NO_DUMP )
+
+	ROM_REGION( 0x20000, "io_cpu2", 0 ) // another TMP95C063F, not hooked up yet
+	ROM_LOAD( "e74-06.ic2", 0x000000, 0x020000, CRC(cd4a99d3) SHA1(ea280e05a68308c1c5f1fc0ee8a25b33923df635) ) // located on the I/O PCB
+
+	ROM_REGION( 0x20000, "oki1", 0 )
+	ROM_LOAD( "e74-07.ic6", 0x000000, 0x020000, CRC(ca5baccc) SHA1(4594b7a6232b912d698fff053f7e3f51d8e1bfb6) ) // located on the I/O PCB
+
+	ROM_REGION( 0x20000, "oki2", 0 )
+	ROM_LOAD( "e74-08.ic8", 0x000000, 0x020000, CRC(ca5baccc) SHA1(4594b7a6232b912d698fff053f7e3f51d8e1bfb6) ) // located on the I/O PCB
 
 	DISK_REGION( "drive_0" )
 	DISK_IMAGE( "pwrshovl", 0, SHA1(360f63b39f645851c513b4644fb40601b9ba1412) )

@@ -122,11 +122,10 @@ WRITE8_MEMBER(fromance_state::fromance_rombank_w)
 
 WRITE8_MEMBER(fromance_state::fromance_adpcm_reset_w)
 {
-	device_t *device = machine().device("msm");
 	m_adpcm_reset = (data & 0x01);
 	m_vclk_left = 0;
 
-	msm5205_reset_w(device, !(data & 0x01));
+	msm5205_reset_w(m_msm, !(data & 0x01));
 }
 
 
@@ -146,7 +145,7 @@ WRITE_LINE_MEMBER(fromance_state::fromance_adpcm_int)
 	/* clock the data through */
 	if (m_vclk_left)
 	{
-		msm5205_data_w(machine().device("msm"), (m_adpcm_data >> 4));
+		msm5205_data_w(m_msm, (m_adpcm_data >> 4));
 		m_adpcm_data <<= 4;
 		m_vclk_left--;
 	}
@@ -952,7 +951,6 @@ MACHINE_START_MEMBER(fromance_state,fromance)
 
 	membank("bank1")->configure_entries(0, 0x100, &ROM[0x10000], 0x4000);
 
-	m_subcpu = machine().device<cpu_device>("sub");
 
 	save_item(NAME(m_directionflag));
 	save_item(NAME(m_commanddata));

@@ -179,8 +179,10 @@ public:
 	bfm_sc2_state(const machine_config &mconfig, device_type type, const char *tag)
 		: driver_device(mconfig, type, tag),
 			m_vfd0(*this, "vfd0"),
-			m_vfd1(*this, "vfd1")
-			{ }
+			m_vfd1(*this, "vfd1"),
+			m_maincpu(*this, "maincpu"),
+			m_upd7759(*this, "upd"),
+			m_adder2(*this, "adder2") { }
 
 	optional_device<bfm_bd1_t> m_vfd0;
 	optional_device<bfm_bd1_t> m_vfd1;
@@ -315,6 +317,9 @@ public:
 	void adder2_common_init();
 	void sc2awp_common_init(int reels, int decrypt);
 	void sc2awpdmd_common_init(int reels, int decrypt);
+	required_device<cpu_device> m_maincpu;
+	required_device<upd7759_device> m_upd7759;
+	optional_device<cpu_device> m_adder2;
 };
 
 
@@ -613,7 +618,7 @@ WRITE8_MEMBER(bfm_sc2_state::mmtr_w)
 			MechMtr_update(i, data & (1 << i) );
 		}
 	}
-	if ( data & 0x1F ) machine().device("maincpu")->execute().set_input_line(M6809_FIRQ_LINE, ASSERT_LINE );
+	if ( data & 0x1F ) m_maincpu->set_input_line(M6809_FIRQ_LINE, ASSERT_LINE );
 }
 
 ///////////////////////////////////////////////////////////////////////////
@@ -690,12 +695,11 @@ WRITE8_MEMBER(bfm_sc2_state::volume_override_w)
 	if ( old != m_volume_override )
 	{
 		ym2413_device *ym = machine().device<ym2413_device>("ymsnd");
-		upd7759_device *upd = machine().device<upd7759_device>("upd");
 		float percent = m_volume_override? 1.0f : (32-m_global_volume)/32.0f;
 
 		ym->set_output_gain(0, percent);
 		ym->set_output_gain(1, percent);
-		upd->set_output_gain(0, percent);
+		m_upd7759->set_output_gain(0, percent);
 	}
 }
 
@@ -703,26 +707,24 @@ WRITE8_MEMBER(bfm_sc2_state::volume_override_w)
 
 WRITE8_MEMBER(bfm_sc2_state::nec_reset_w)
 {
-	device_t *device = machine().device("upd");
-	upd7759_start_w(device, 0);
-	upd7759_reset_w(device, data);
+	upd7759_start_w(m_upd7759, 0);
+	upd7759_reset_w(m_upd7759, data);
 }
 
 ///////////////////////////////////////////////////////////////////////////
 
 WRITE8_MEMBER(bfm_sc2_state::nec_latch_w)
 {
-	device_t *device = machine().device("upd");
 	int bank = 0;
 
 	if ( data & 0x80 )         bank |= 0x01;
 	if ( m_expansion_latch & 2 ) bank |= 0x02;
 
-	upd7759_set_bank_base(device, bank*0x20000);
+	upd7759_set_bank_base(m_upd7759, bank*0x20000);
 
-	upd7759_port_w(device, space, 0, data&0x3F);    // setup sample
-	upd7759_start_w(device, 0);
-	upd7759_start_w(device, 1);
+	upd7759_port_w(m_upd7759, space, 0, data&0x3F);    // setup sample
+	upd7759_start_w(m_upd7759, 0);
+	upd7759_start_w(m_upd7759, 1);
 }
 
 ///////////////////////////////////////////////////////////////////////////
@@ -752,7 +754,7 @@ READ8_MEMBER(bfm_sc2_state::vfd_status_hop_r)// on video games, hopper inputs ar
 		}
 	}
 
-	if ( !upd7759_busy_r(machine().device("upd")) ) result |= 0x80;           // update sound busy input
+	if ( !upd7759_busy_r(m_upd7759) ) result |= 0x80;           // update sound busy input
 
 	return result;
 }
@@ -789,12 +791,11 @@ WRITE8_MEMBER(bfm_sc2_state::expansion_latch_w)
 
 			{
 				ym2413_device *ym = machine().device<ym2413_device>("ymsnd");
-				upd7759_device *upd = machine().device<upd7759_device>("upd");
 				float percent = m_volume_override ? 1.0f : (32-m_global_volume)/32.0f;
 
 				ym->set_output_gain(0, percent);
 				ym->set_output_gain(1, percent);
-				upd->set_output_gain(0, percent);
+				m_upd7759->set_output_gain(0, percent);
 			}
 		}
 	}
@@ -1029,7 +1030,7 @@ WRITE8_MEMBER(bfm_sc2_state::uart2data_w)
 WRITE8_MEMBER(bfm_sc2_state::vid_uart_tx_w)
 {
 	adder2_send(data);
-	machine().device("adder2")->execute().set_input_line(M6809_IRQ_LINE, HOLD_LINE );
+	m_adder2->set_input_line(M6809_IRQ_LINE, HOLD_LINE );
 
 	LOG_SERIAL(("sadder  %02X  (%c)\n",data, data ));
 }
@@ -1163,7 +1164,7 @@ READ8_MEMBER(bfm_sc2_state::vfd_status_r)
 
 	int result = m_optic_pattern;
 
-	if ( !upd7759_busy_r(machine().device("upd")) ) result |= 0x80;
+	if ( !upd7759_busy_r(m_upd7759) ) result |= 0x80;
 
 	if (machine().device("matrix"))
 		if ( BFM_dm01_busy() ) result |= 0x40;
@@ -3762,7 +3763,7 @@ WRITE8_MEMBER(bfm_sc2_state::dmd_reset_w)
 MACHINE_START_MEMBER(bfm_sc2_state,sc2dmd)
 {
 	MACHINE_START_CALL_MEMBER(bfm_sc2);
-	address_space &space = machine().device("maincpu")->memory().space(AS_PROGRAM);
+	address_space &space = m_maincpu->space(AS_PROGRAM);
 	space.install_write_handler(0x2800, 0x2800, 0, 0, write8_delegate(FUNC(bfm_sc2_state::vfd1_dmd_w),this));
 	space.install_write_handler(0x2900, 0x2900, 0, 0, write8_delegate(FUNC(bfm_sc2_state::dmd_reset_w),this));
 }

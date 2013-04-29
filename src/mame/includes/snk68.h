@@ -1,11 +1,16 @@
+#include "sound/upd7759.h"
+
 class snk68_state : public driver_device
 {
 public:
 	snk68_state(const machine_config &mconfig, device_type type, const char *tag)
-		: driver_device(mconfig, type, tag) ,
+		: driver_device(mconfig, type, tag),
 		m_pow_fg_videoram(*this, "pow_fg_videoram"),
 		m_spriteram(*this, "spriteram"),
-		m_paletteram(*this, "paletteram"){ }
+		m_paletteram(*this, "paletteram"),
+		m_maincpu(*this, "maincpu"),
+		m_soundcpu(*this, "soundcpu"),
+		m_upd7759(*this, "upd") { }
 
 	int m_invert_controls;
 	int m_sound_status;
@@ -47,4 +52,7 @@ public:
 	void common_video_start();
 	void draw_sprites(bitmap_ind16 &bitmap, const rectangle &cliprect, int group);
 	DECLARE_WRITE_LINE_MEMBER(irqhandler);
+	required_device<cpu_device> m_maincpu;
+	required_device<cpu_device> m_soundcpu;
+	required_device<upd7759_device> m_upd7759;
 };

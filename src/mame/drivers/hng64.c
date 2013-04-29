@@ -1035,14 +1035,14 @@ WRITE32_MEMBER( hng64_state::hng64_soundcpu_enable_w )
 		if (cmd==0x55AA)
 		{
 			printf("soundcpu ON\n");
-			space.machine().device("audiocpu")->execute().set_input_line(INPUT_LINE_HALT, CLEAR_LINE);
-			space.machine().device("audiocpu")->execute().set_input_line(INPUT_LINE_RESET, CLEAR_LINE);
+			m_audiocpu->set_input_line(INPUT_LINE_HALT, CLEAR_LINE);
+			m_audiocpu->set_input_line(INPUT_LINE_RESET, CLEAR_LINE);
 		}
 		else if (cmd==0xAA55)
 		{
 			printf("soundcpu OFF\n");
-			space.machine().device("audiocpu")->execute().set_input_line(INPUT_LINE_HALT, ASSERT_LINE);
-			space.machine().device("audiocpu")->execute().set_input_line(INPUT_LINE_RESET, ASSERT_LINE);
+			m_audiocpu->set_input_line(INPUT_LINE_HALT, ASSERT_LINE);
+			m_audiocpu->set_input_line(INPUT_LINE_RESET, ASSERT_LINE);
 		}
 		else
 		{
@@ -1139,7 +1139,7 @@ static ADDRESS_MAP_START( hng_map, AS_PROGRAM, 32, hng64_state )
 	AM_RANGE(0x20200000, 0x20203fff) AM_RAM_WRITE(hng64_pal_w) AM_SHARE("paletteram")
 	AM_RANGE(0x20208000, 0x2020805f) AM_READWRITE(tcram_r, tcram_w) AM_SHARE("tcram")   // Transition Control
 	AM_RANGE(0x20300000, 0x203001ff) AM_RAM_WRITE(dl_w) AM_SHARE("dl")  // 3d Display List
-//  AM_RANGE(0x20300200, 0x20300213) AM_RAM_WRITE_LEGACY(xxxx) AM_SHARE("xxxxxxxx")  // 3d Display List Upload?
+//  AM_RANGE(0x20300200, 0x20300213) AM_RAM_WRITE(xxxx) AM_SHARE("xxxxxxxx")  // 3d Display List Upload?
 	AM_RANGE(0x20300214, 0x20300217) AM_WRITE(dl_control_w)
 	AM_RANGE(0x20300218, 0x2030021b) AM_READ(unk_vreg_r)
 
@@ -1754,12 +1754,12 @@ TIMER_DEVICE_CALLBACK_MEMBER(hng64_state::hng64_irq)
 void hng64_state::machine_start()
 {
 	/* set the fastest DRC options */
-	mips3drc_set_options(machine().device("maincpu"), MIPS3DRC_FASTEST_OPTIONS + MIPS3DRC_STRICT_VERIFY);
+	mips3drc_set_options(m_maincpu, MIPS3DRC_FASTEST_OPTIONS + MIPS3DRC_STRICT_VERIFY);
 
 	/* configure fast RAM regions for DRC */
-	mips3drc_add_fastram(machine().device("maincpu"), 0x00000000, 0x00ffffff, FALSE, m_mainram);
-	mips3drc_add_fastram(machine().device("maincpu"), 0x04000000, 0x05ffffff, TRUE,  m_cart);
-	mips3drc_add_fastram(machine().device("maincpu"), 0x1fc00000, 0x1fc7ffff, TRUE,  m_rombase);
+	mips3drc_add_fastram(m_maincpu, 0x00000000, 0x00ffffff, FALSE, m_mainram);
+	mips3drc_add_fastram(m_maincpu, 0x04000000, 0x05ffffff, TRUE,  m_cart);
+	mips3drc_add_fastram(m_maincpu, 0x1fc00000, 0x1fc7ffff, TRUE,  m_rombase);
 }
 
 
@@ -1772,8 +1772,8 @@ void hng64_state::machine_reset()
 	UINT8 *RAM = (UINT8*)m_soundram;
 	membank("bank1")->set_base(&RAM[0x1f0000]); // allows us to boot
 	membank("bank2")->set_base(&RAM[0x1f0000]); // seems to be the right default for most games (initial area jumps to a DI here)
-	machine().device("audiocpu")->execute().set_input_line(INPUT_LINE_HALT, ASSERT_LINE);
-	machine().device("audiocpu")->execute().set_input_line(INPUT_LINE_RESET, ASSERT_LINE);
+	m_audiocpu->set_input_line(INPUT_LINE_HALT, ASSERT_LINE);
+	m_audiocpu->set_input_line(INPUT_LINE_RESET, ASSERT_LINE);
 
 	/* Comm CPU */
 	KL5C80_init(this);
@@ -1784,11 +1784,11 @@ void hng64_state::machine_reset()
 
 	KL5C80_virtual_mem_sync(this);
 
-	address_space &space = machine().device<z80_device>("comm")->space(AS_PROGRAM);
+	address_space &space = m_comm->space(AS_PROGRAM);
 	space.set_direct_update_handler(direct_update_delegate(FUNC(hng64_state::KL5C80_direct_handler), this));
 
-	machine().device("comm")->execute().set_input_line(INPUT_LINE_RESET, PULSE_LINE);     // reset the CPU and let 'er rip
-//  machine().device("comm")->execute().set_input_line(INPUT_LINE_HALT, ASSERT_LINE);     // hold on there pardner...
+	m_comm->set_input_line(INPUT_LINE_RESET, PULSE_LINE);     // reset the CPU and let 'er rip
+//  m_comm->set_input_line(INPUT_LINE_HALT, ASSERT_LINE);     // hold on there pardner...
 
 	// "Display List" init - ugly
 	m_activeBuffer = 0;

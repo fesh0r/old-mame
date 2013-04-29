@@ -28,15 +28,14 @@ WRITE8_MEMBER(dai_state::dai_stack_interrupt_circuit_w)
 	m_tms5501->set_sensor(0);
 }
 
-static void dai_update_memory(running_machine &machine, int dai_rom_bank)
+void dai_state::dai_update_memory(int dai_rom_bank)
 {
-	dai_state *state = machine.driver_data<dai_state>();
-	state->membank("bank2")->set_entry(dai_rom_bank);
+	membank("bank2")->set_entry(dai_rom_bank);
 }
 
 TIMER_CALLBACK_MEMBER(dai_state::dai_bootstrap_callback)
 {
-	machine().device("maincpu")->state().set_pc(0xc000);
+	m_maincpu->set_pc(0xc000);
 }
 
 
@@ -61,10 +60,11 @@ WRITE8_MEMBER(dai_state::dai_keyboard_w)
 
 static TMS5501_IRQ_CALLBACK(dai_interrupt_callback)
 {
+	dai_state *drvstate = device.machine().driver_data<dai_state>();
 	if (intreq)
-		device.machine().device("maincpu")->execute().set_input_line_and_vector(0, HOLD_LINE, vector);
+		drvstate->m_maincpu->set_input_line_and_vector(0, HOLD_LINE, vector);
 	else
-		device.machine().device("maincpu")->execute().set_input_line(0, CLEAR_LINE);
+		drvstate->m_maincpu->set_input_line(0, CLEAR_LINE);
 }
 
 TMS5501_INTERFACE( dai_tms5501_interface )
@@ -116,12 +116,12 @@ void dai_state::machine_start()
 	machine().scheduler().timer_set(attotime::zero, timer_expired_delegate(FUNC(dai_state::dai_bootstrap_callback),this));
 	machine().scheduler().timer_pulse(attotime::from_hz(100), timer_expired_delegate(FUNC(dai_state::dai_timer),this)); /* timer for tms5501 */
 
-	memset(machine().device<ram_device>(RAM_TAG)->pointer(), 0, machine().device<ram_device>(RAM_TAG)->size());
+	memset(m_ram->pointer(), 0, m_ram->size());
 }
 
 void dai_state::machine_reset()
 {
-	membank("bank1")->set_base(machine().device<ram_device>(RAM_TAG)->pointer());
+	membank("bank1")->set_base(m_ram->pointer());
 }
 
 /***************************************************************************
@@ -163,7 +163,7 @@ READ8_MEMBER(dai_state::dai_io_discrete_devices_r)
 		data |= 0x08;           // serial ready
 		if (machine().rand()&0x01)
 			data |= 0x40;       // random number generator
-		if (machine().device<cassette_image_device>(CASSETTE_TAG)->input() > 0.01)
+		if (m_cassette->input() > 0.01)
 			data |= 0x80;       // tape input
 		break;
 
@@ -196,9 +196,9 @@ WRITE8_MEMBER(dai_state::dai_io_discrete_devices_w)
 		m_paddle_enable = (data&0x08)>>3;
 		m_cassette_motor[0] = (data&0x10)>>4;
 		m_cassette_motor[1] = (data&0x20)>>5;
-		machine().device<cassette_image_device>(CASSETTE_TAG)->change_state(m_cassette_motor[0]?CASSETTE_MOTOR_DISABLED:CASSETTE_MOTOR_ENABLED, CASSETTE_MASK_MOTOR);
-		machine().device<cassette_image_device>(CASSETTE_TAG)->output((data & 0x01) ? -1.0 : 1.0);
-		dai_update_memory (machine(), (data&0xc0)>>6);
+		m_cassette->change_state(m_cassette_motor[0]?CASSETTE_MOTOR_DISABLED:CASSETTE_MOTOR_ENABLED, CASSETTE_MASK_MOTOR);
+		m_cassette->output((data & 0x01) ? -1.0 : 1.0);
+		dai_update_memory ((data&0xc0)>>6);
 		LOG_DAI_PORT_W (offset, (data&0x06)>>2, "discrete devices - paddle select");
 		LOG_DAI_PORT_W (offset, (data&0x08)>>3, "discrete devices - paddle enable");
 		LOG_DAI_PORT_W (offset, (data&0x10)>>4, "discrete devices - cassette motor 1");

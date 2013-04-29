@@ -26,7 +26,7 @@ WRITE8_MEMBER(poly88_state::poly88_baud_rate_w)
 
 }
 
-static UINT8 row_number(UINT8 code) {
+UINT8 poly88_state::row_number(UINT8 code) {
 	if BIT(code,0) return 0;
 	if BIT(code,1) return 1;
 	if BIT(code,2) return 2;
@@ -140,7 +140,7 @@ TIMER_CALLBACK_MEMBER(poly88_state::poly88_cassette_timer_callback)
 	int data;
 	int current_level;
 
-//  if (!(machine().root_device().ioport("DSW0")->read() & 0x02)) /* V.24 / Tape Switch */
+//  if (!(ioport("DSW0")->read() & 0x02)) /* V.24 / Tape Switch */
 	//{
 		/* tape reading */
 		if (m_cassette->get_state()&CASSETTE_PLAY)
@@ -252,10 +252,10 @@ WRITE8_MEMBER(poly88_state::poly88_intr_w)
 	m_maincpu->set_input_line(0, CLEAR_LINE);
 }
 
-SNAPSHOT_LOAD( poly88 )
+SNAPSHOT_LOAD_MEMBER( poly88_state, poly88 )
 {
-	address_space &space = image.device().machine().device("maincpu")->memory().space(AS_PROGRAM);
-	UINT8* data= auto_alloc_array(image.device().machine(), UINT8, snapshot_size);
+	address_space &space = m_maincpu->space(AS_PROGRAM);
+	UINT8* data= auto_alloc_array(machine(), UINT8, snapshot_size);
 	UINT16 recordNum;
 	UINT16 recordLen;
 	UINT16 address;
@@ -297,7 +297,7 @@ SNAPSHOT_LOAD( poly88 )
 					break;
 			case 3 :
 					/* 03 Auto Start @ Address */
-					image.device().machine().device("maincpu")->state().set_state_int(I8085_PC, address);
+					m_maincpu->set_state_int(I8085_PC, address);
 					theend = 1;
 					break;
 			case 4 :
@@ -322,6 +322,6 @@ SNAPSHOT_LOAD( poly88 )
 		}
 		pos+=recordLen;
 	}
-	image.device().machine().device("uart")->reset();
+	machine().device("uart")->reset();
 	return IMAGE_INIT_PASS;
 }

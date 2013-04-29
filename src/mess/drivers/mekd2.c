@@ -163,13 +163,13 @@ INPUT_PORTS_END
 
 TIMER_CALLBACK_MEMBER(mekd2_state::mekd2_trace)
 {
-	machine().device("maincpu")->execute().set_input_line(INPUT_LINE_NMI, ASSERT_LINE);
+	m_maincpu->set_input_line(INPUT_LINE_NMI, ASSERT_LINE);
 }
 
 WRITE_LINE_MEMBER( mekd2_state::mekd2_nmi_w )
 {
 	if (state)
-		machine().device("maincpu")->execute().set_input_line(INPUT_LINE_NMI, CLEAR_LINE);
+		m_maincpu->set_input_line(INPUT_LINE_NMI, CLEAR_LINE);
 	else
 		machine().scheduler().timer_set(attotime::from_usec(18), timer_expired_delegate(FUNC(mekd2_state::mekd2_trace),this));
 }
@@ -301,7 +301,7 @@ DEVICE_IMAGE_LOAD_MEMBER( mekd2_state,mekd2_cart )
 	static const char magic[] = "MEK6800D2";
 	char buff[9];
 	UINT16 addr, size;
-	UINT8 ident, *RAM = image.device().machine().root_device().memregion("maincpu")->base();
+	UINT8 ident, *RAM = memregion("maincpu")->base();
 
 	image.fread( buff, sizeof (buff));
 	if (memcmp(buff, magic, sizeof (buff)))
@@ -336,10 +336,10 @@ static MACHINE_CONFIG_START( mekd2, mekd2_state )
 
 	/* sound hardware */
 	MCFG_SPEAKER_STANDARD_MONO("mono")
-	MCFG_SOUND_WAVE_ADD(WAVE_TAG, CASSETTE_TAG)
+	MCFG_SOUND_WAVE_ADD(WAVE_TAG, "cassette")
 	MCFG_SOUND_ROUTE(ALL_OUTPUTS, "mono", 0.25)
 
-	MCFG_CASSETTE_ADD( CASSETTE_TAG, default_cassette_interface )
+	MCFG_CASSETTE_ADD( "cassette", default_cassette_interface )
 
 	/* Cartslot ?? does not come with one.. */
 	MCFG_CARTSLOT_ADD("cart")

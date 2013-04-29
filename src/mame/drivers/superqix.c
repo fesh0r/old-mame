@@ -123,7 +123,6 @@ static SAMPLES_START( pbillian_sh_start )
 
 WRITE8_MEMBER(superqix_state::pbillian_sample_trigger_w)
 {
-	samples_device *samples = machine().device<samples_device>("samples");
 	UINT8 *src = memregion("samples")->base();
 	int len = memregion("samples")->bytes();
 	int start,end;
@@ -134,7 +133,7 @@ WRITE8_MEMBER(superqix_state::pbillian_sample_trigger_w)
 	while (end < len && src[end] != 0xff)
 		end++;
 
-	samples->start_raw(0, m_samplebuf + start, end - start, 5000); // 5khz ?
+	m_samples->start_raw(0, m_samplebuf + start, end - start, 5000); // 5khz ?
 }
 
 
@@ -315,7 +314,7 @@ READ8_MEMBER(superqix_state::sqixu_mcu_p3_r)
 
 READ8_MEMBER(superqix_state::nmi_ack_r)
 {
-	machine().device("maincpu")->execute().set_input_line(INPUT_LINE_NMI, CLEAR_LINE);
+	m_maincpu->set_input_line(INPUT_LINE_NMI, CLEAR_LINE);
 	return sqix_system_status_r(space, 0);
 }
 
@@ -367,7 +366,7 @@ TIMER_CALLBACK_MEMBER(superqix_state::delayed_z80_mcu_w)
 //  logerror("Z80 sends command %02x\n",param);
 	m_from_z80 = param;
 	m_from_mcu_pending = 0;
-	machine().device("mcu")->execute().set_input_line(0, HOLD_LINE);
+	m_mcu->set_input_line(0, HOLD_LINE);
 	machine().scheduler().boost_interleave(attotime::zero, attotime::from_usec(200));
 }
 

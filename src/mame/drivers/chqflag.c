@@ -31,9 +31,9 @@ TIMER_DEVICE_CALLBACK_MEMBER(chqflag_state::chqflag_scanline)
 	int scanline = param;
 
 	if(scanline == 240 && k051960_is_irq_enabled(m_k051960)) // vblank irq
-		machine().device("maincpu")->execute().set_input_line(KONAMI_IRQ_LINE, HOLD_LINE);
+		m_maincpu->set_input_line(KONAMI_IRQ_LINE, HOLD_LINE);
 	else if(((scanline % 32) == 0) && (k051960_is_nmi_enabled(m_k051960))) // timer irq
-		machine().device("maincpu")->execute().set_input_line(INPUT_LINE_NMI, PULSE_LINE);
+		m_maincpu->set_input_line(INPUT_LINE_NMI, PULSE_LINE);
 }
 
 WRITE8_MEMBER(chqflag_state::chqflag_bankswitch_w)
@@ -310,14 +310,6 @@ void chqflag_state::machine_start()
 	UINT8 *ROM = memregion("maincpu")->base();
 
 	membank("bank1")->configure_entries(0, 4, &ROM[0x10000], 0x2000);
-
-	m_maincpu = machine().device<cpu_device>("maincpu");
-	m_audiocpu = machine().device<cpu_device>("audiocpu");
-	m_k051316_1 = machine().device("k051316_1");
-	m_k051316_2 = machine().device("k051316_2");
-	m_k051960 = machine().device("k051960");
-	m_k007232_1 = machine().device("k007232_1");
-	m_k007232_2 = machine().device("k007232_2");
 
 	save_item(NAME(m_k051316_readroms));
 	save_item(NAME(m_last_vreg));

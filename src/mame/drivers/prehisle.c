@@ -20,7 +20,7 @@
 WRITE16_MEMBER(prehisle_state::prehisle_sound16_w)
 {
 	soundlatch_byte_w(space, 0, data & 0xff);
-	machine().device("audiocpu")->execute().set_input_line(INPUT_LINE_NMI, PULSE_LINE);
+	m_audiocpu->set_input_line(INPUT_LINE_NMI, PULSE_LINE);
 }
 
 /*******************************************************************************/
@@ -41,16 +41,14 @@ ADDRESS_MAP_END
 
 WRITE8_MEMBER(prehisle_state::D7759_write_port_0_w)
 {
-	device_t *device = machine().device("upd");
-	upd7759_port_w(device, space, 0, data);
-	upd7759_start_w(device, 0);
-	upd7759_start_w(device, 1);
+	upd7759_port_w(m_upd7759, space, 0, data);
+	upd7759_start_w(m_upd7759, 0);
+	upd7759_start_w(m_upd7759, 1);
 }
 
 WRITE8_MEMBER(prehisle_state::D7759_upd_reset_w)
 {
-	device_t *device = machine().device("upd");
-	upd7759_reset_w(device, data & 0x80);
+	upd7759_reset_w(m_upd7759, data & 0x80);
 }
 
 static ADDRESS_MAP_START( prehisle_sound_map, AS_PROGRAM, 8, prehisle_state )
@@ -195,7 +193,7 @@ GFXDECODE_END
 
 WRITE_LINE_MEMBER(prehisle_state::irqhandler)
 {
-	machine().device("audiocpu")->execute().set_input_line(0, state ? ASSERT_LINE : CLEAR_LINE);
+	m_audiocpu->set_input_line(0, state ? ASSERT_LINE : CLEAR_LINE);
 }
 
 static const ym3812_interface ym3812_config =

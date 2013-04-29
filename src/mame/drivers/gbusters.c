@@ -100,10 +100,9 @@ WRITE8_MEMBER(gbusters_state::gbusters_sh_irqtrigger_w)
 
 WRITE8_MEMBER(gbusters_state::gbusters_snd_bankswitch_w)
 {
-	device_t *device = machine().device("k007232");
 	int bank_B = BIT(data, 2);  /* ?? */
 	int bank_A = BIT(data, 0);      /* ?? */
-	k007232_set_bank(device, bank_A, bank_B );
+	k007232_set_bank(m_k007232, bank_A, bank_B );
 
 #if 0
 	{
@@ -267,12 +266,6 @@ void gbusters_state::machine_start()
 
 	m_generic_paletteram_8.allocate(0x800);
 
-	m_maincpu = machine().device<cpu_device>("maincpu");
-	m_audiocpu = machine().device<cpu_device>("audiocpu");
-	m_k052109 = machine().device("k052109");
-	m_k051960 = machine().device("k051960");
-	m_k007232 = machine().device("k007232");
-
 	save_item(NAME(m_palette_selected));
 	save_item(NAME(m_priority));
 }
@@ -281,7 +274,7 @@ void gbusters_state::machine_reset()
 {
 	UINT8 *RAM = memregion("maincpu")->base();
 
-	konami_configure_set_lines(machine().device("maincpu"), gbusters_banking);
+	konami_configure_set_lines(m_maincpu, gbusters_banking);
 
 	/* mirror address for banked ROM */
 	memcpy(&RAM[0x18000], &RAM[0x10000], 0x08000);

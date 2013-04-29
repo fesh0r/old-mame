@@ -45,8 +45,8 @@ public:
 			m_maincpu(*this, CDP1802_TAG),
 			m_cti(*this, CDP1864_TAG),
 			m_led(*this, DM9368_TAG),
-			m_cassette(*this, CASSETTE_TAG),
-			m_speaker(*this, SPEAKER_TAG),
+			m_cassette(*this, "cassette"),
+			m_speaker(*this, "speaker"),
 			m_ram(*this, RAM_TAG),
 			m_rom(*this, CDP1802_TAG),
 			m_y1(*this, "Y1"),
@@ -108,6 +108,8 @@ public:
 	DECLARE_INPUT_CHANGED_MEMBER( memory_protect );
 	DECLARE_INPUT_CHANGED_MEMBER( memory_disable );
 	DECLARE_DIRECT_UPDATE_MEMBER(cosmicos_direct_update_handler);
+
+	DECLARE_QUICKLOAD_LOAD_MEMBER( cosmicos );
 
 	void set_cdp1802_mode(int mode);
 	void clear_input_data();

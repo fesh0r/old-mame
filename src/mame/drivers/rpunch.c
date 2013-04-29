@@ -125,7 +125,7 @@
 WRITE_LINE_MEMBER(rpunch_state::ym2151_irq_gen)
 {
 	m_ym2151_irq = state;
-	subdevice("audiocpu")->execute().set_input_line(0, (m_ym2151_irq | m_sound_busy) ? ASSERT_LINE : CLEAR_LINE);
+	m_audiocpu->set_input_line(0, (m_ym2151_irq | m_sound_busy) ? ASSERT_LINE : CLEAR_LINE);
 }
 
 
@@ -159,7 +159,7 @@ TIMER_CALLBACK_MEMBER(rpunch_state::sound_command_w_callback)
 {
 	m_sound_busy = 1;
 	m_sound_data = param;
-	machine().device("audiocpu")->execute().set_input_line(0, (m_ym2151_irq | m_sound_busy) ? ASSERT_LINE : CLEAR_LINE);
+	m_audiocpu->set_input_line(0, (m_ym2151_irq | m_sound_busy) ? ASSERT_LINE : CLEAR_LINE);
 }
 
 
@@ -173,7 +173,7 @@ WRITE16_MEMBER(rpunch_state::sound_command_w)
 READ8_MEMBER(rpunch_state::sound_command_r)
 {
 	m_sound_busy = 0;
-	machine().device("audiocpu")->execute().set_input_line(0, (m_ym2151_irq | m_sound_busy) ? ASSERT_LINE : CLEAR_LINE);
+	m_audiocpu->set_input_line(0, (m_ym2151_irq | m_sound_busy) ? ASSERT_LINE : CLEAR_LINE);
 	return m_sound_data;
 }
 
@@ -193,23 +193,21 @@ READ16_MEMBER(rpunch_state::sound_busy_r)
 
 WRITE8_MEMBER(rpunch_state::upd_control_w)
 {
-	device_t *device = machine().device("upd");
 	if ((data & 1) != m_upd_rom_bank)
 	{
 		UINT8 *snd = memregion("upd")->base();
 		m_upd_rom_bank = data & 1;
 		memcpy(snd, snd + 0x20000 * (m_upd_rom_bank + 1), 0x20000);
 	}
-	upd7759_reset_w(device, data >> 7);
+	upd7759_reset_w(m_upd7759, data >> 7);
 }
 
 
 WRITE8_MEMBER(rpunch_state::upd_data_w)
 {
-	device_t *device = machine().device("upd");
-	upd7759_port_w(device, space, 0, data);
-	upd7759_start_w(device, 0);
-	upd7759_start_w(device, 1);
+	upd7759_port_w(m_upd7759, space, 0, data);
+	upd7759_start_w(m_upd7759, 0);
+	upd7759_start_w(m_upd7759, 1);
 }
 
 

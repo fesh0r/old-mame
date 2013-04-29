@@ -330,16 +330,6 @@ Donkey Kong Junior Notes
 
 #define COMBINE_TYPE_PC(_tyn, _pc) ((_tyn)<<16 | (_pc))
 
-/*************************************
- *
- *  Prototypes
- *
- *************************************/
-
-
-
-
-
 
 /*************************************
  *
@@ -347,16 +337,25 @@ Donkey Kong Junior Notes
  *
  *************************************/
 
-static UINT8 memory_read_byte(address_space &space, offs_t address, UINT8 mem_mask) { return space.read_byte(address); }
-static void memory_write_byte(address_space &space, offs_t address, UINT8 data, UINT8 mem_mask) { space.write_byte(address, data); }
+READ8_MEMBER(dkong_state::memory_read_byte)
+{
+	address_space& prog_space = m_maincpu->space(AS_PROGRAM);
+	return prog_space.read_byte(offset);
+}
+
+WRITE8_MEMBER(dkong_state::memory_write_byte)
+{
+	address_space& prog_space = m_maincpu->space(AS_PROGRAM);
+	return prog_space.write_byte(offset, data);
+}
 
 static Z80DMA_INTERFACE( dk3_dma )
 {
 	DEVCB_CPU_INPUT_LINE("maincpu", INPUT_LINE_HALT),
 	DEVCB_NULL,
 	DEVCB_NULL,
-	DEVCB_MEMORY_HANDLER("maincpu", PROGRAM, memory_read_byte),
-	DEVCB_MEMORY_HANDLER("maincpu", PROGRAM, memory_write_byte),
+	DEVCB_DRIVER_MEMBER(dkong_state, memory_read_byte),
+	DEVCB_DRIVER_MEMBER(dkong_state, memory_write_byte),
 	DEVCB_NULL,
 	DEVCB_NULL
 };
@@ -366,8 +365,8 @@ static I8257_INTERFACE( dk_dma )
 	DEVCB_CPU_INPUT_LINE("maincpu", INPUT_LINE_HALT),
 	DEVCB_NULL,
 	DEVCB_NULL,
-	DEVCB_MEMORY_HANDLER("maincpu", PROGRAM, memory_read_byte),
-	DEVCB_MEMORY_HANDLER("maincpu", PROGRAM, memory_write_byte),
+	DEVCB_DRIVER_MEMBER(dkong_state, memory_read_byte),
+	DEVCB_DRIVER_MEMBER(dkong_state, memory_write_byte),
 	{ DEVCB_NULL, DEVCB_DRIVER_MEMBER(dkong_state,p8257_ctl_r), DEVCB_NULL, DEVCB_NULL },
 	{ DEVCB_DRIVER_MEMBER(dkong_state,p8257_ctl_w), DEVCB_NULL, DEVCB_NULL, DEVCB_NULL }
 };
@@ -402,8 +401,6 @@ INTERRUPT_GEN_MEMBER(dkong_state::s2650_interrupt)
 
 void dkong_state::dkong_init_device_driver_data(  )
 {
-	m_dev_n2a03a = machine().device("n2a03a");
-	m_dev_n2a03b = machine().device("n2a03b");
 	m_dev_6h = machine().device("ls259.6h");
 	m_dev_vp2 = machine().device("virtual_p2");
 }
@@ -515,7 +512,7 @@ READ8_MEMBER(dkong_state::hb_dma_read_byte)
 		fatalerror("hb_dma_read_byte - unmapped access for 0x%02x - bucket 0x%02x\n", offset, bucket);
 
 	addr = ((bucket << 7) & 0x7c00) | (offset & 0x3ff);
-	address_space &prog_space = machine().device("maincpu")->memory().space(AS_PROGRAM);
+	address_space &prog_space = m_maincpu->space(AS_PROGRAM);
 	return prog_space.read_byte(addr);
 }
 
@@ -528,7 +525,7 @@ WRITE8_MEMBER(dkong_state::hb_dma_write_byte)
 		fatalerror("hb_dma_read_byte - unmapped access for 0x%02x - bucket 0x%02x\n", offset, bucket);
 
 	addr = ((bucket << 7) & 0x7c00) | (offset & 0x3ff);
-	address_space &prog_space = machine().device("maincpu")->memory().space(AS_PROGRAM);
+	address_space &prog_space = m_maincpu->space(AS_PROGRAM);
 	prog_space.write_byte(addr, data);
 }
 
@@ -697,13 +694,13 @@ WRITE8_MEMBER(dkong_state::dkong3_2a03_reset_w)
 {
 	if (data & 1)
 	{
-		m_dev_n2a03a->execute().set_input_line(INPUT_LINE_RESET, CLEAR_LINE);
-		m_dev_n2a03b->execute().set_input_line(INPUT_LINE_RESET, CLEAR_LINE);
+		m_dev_n2a03a->set_input_line(INPUT_LINE_RESET, CLEAR_LINE);
+		m_dev_n2a03b->set_input_line(INPUT_LINE_RESET, CLEAR_LINE);
 	}
 	else
 	{
-		m_dev_n2a03a->execute().set_input_line(INPUT_LINE_RESET, ASSERT_LINE);
-		m_dev_n2a03b->execute().set_input_line(INPUT_LINE_RESET, ASSERT_LINE);
+		m_dev_n2a03a->set_input_line(INPUT_LINE_RESET, ASSERT_LINE);
+		m_dev_n2a03b->set_input_line(INPUT_LINE_RESET, ASSERT_LINE);
 	}
 }
 
@@ -1586,8 +1583,7 @@ GFXDECODE_END
 
 READ8_MEMBER(dkong_state::braze_eeprom_r)
 {
-	eeprom_device *eeprom = machine().device<eeprom_device>("eeprom");
-	return eeprom->read_bit();
+	return m_eeprom->read_bit();
 }
 
 WRITE8_MEMBER(dkong_state::braze_a15_w)
@@ -1598,10 +1594,9 @@ WRITE8_MEMBER(dkong_state::braze_a15_w)
 
 WRITE8_MEMBER(dkong_state::braze_eeprom_w)
 {
-	eeprom_device *eeprom = machine().device<eeprom_device>("eeprom");
-	eeprom->write_bit(data & 0x01);
-	eeprom->set_cs_line(data & 0x04 ? CLEAR_LINE : ASSERT_LINE);
-	eeprom->set_clock_line(data & 0x02 ? ASSERT_LINE : CLEAR_LINE);
+	m_eeprom->write_bit(data & 0x01);
+	m_eeprom->set_cs_line(data & 0x04 ? CLEAR_LINE : ASSERT_LINE);
+	m_eeprom->set_clock_line(data & 0x02 ? ASSERT_LINE : CLEAR_LINE);
 }
 
 void dkong_state::braze_decrypt_rom(UINT8 *dest)
@@ -3081,7 +3076,7 @@ DRIVER_INIT_MEMBER(dkong_state,drakton)
 			{7,1,4,0,3,6,2,5},
 	};
 
-	machine().device("maincpu")->memory().space(AS_PROGRAM).install_read_bank(0x0000, 0x3fff, "bank1" );
+	m_maincpu->space(AS_PROGRAM).install_read_bank(0x0000, 0x3fff, "bank1" );
 
 	/* While the PAL supports up to 16 decryption methods, only four
 	    are actually used in the PAL.  Therefore, we'll take a little
@@ -3103,7 +3098,7 @@ DRIVER_INIT_MEMBER(dkong_state,strtheat)
 			{6,3,4,1,0,7,2,5},
 	};
 
-	machine().device("maincpu")->memory().space(AS_PROGRAM).install_read_bank(0x0000, 0x3fff, "bank1" );
+	m_maincpu->space(AS_PROGRAM).install_read_bank(0x0000, 0x3fff, "bank1" );
 
 	/* While the PAL supports up to 16 decryption methods, only four
 	    are actually used in the PAL.  Therefore, we'll take a little
@@ -3114,20 +3109,20 @@ DRIVER_INIT_MEMBER(dkong_state,strtheat)
 	drakton_decrypt_rom(0x88, 0x1c000, bs[3]);
 
 	/* custom handlers supporting Joystick or Steering Wheel */
-	machine().device("maincpu")->memory().space(AS_PROGRAM).install_read_handler(0x7c00, 0x7c00, read8_delegate(FUNC(dkong_state::strtheat_inputport_0_r),this));
-	machine().device("maincpu")->memory().space(AS_PROGRAM).install_read_handler(0x7c80, 0x7c80, read8_delegate(FUNC(dkong_state::strtheat_inputport_1_r),this));
+	m_maincpu->space(AS_PROGRAM).install_read_handler(0x7c00, 0x7c00, read8_delegate(FUNC(dkong_state::strtheat_inputport_0_r),this));
+	m_maincpu->space(AS_PROGRAM).install_read_handler(0x7c80, 0x7c80, read8_delegate(FUNC(dkong_state::strtheat_inputport_1_r),this));
 }
 
 
 DRIVER_INIT_MEMBER(dkong_state,dkongx)
 {
 	UINT8 *decrypted;
-	address_space &space = machine().device("maincpu")->memory().space(AS_PROGRAM);
+	address_space &space = m_maincpu->space(AS_PROGRAM);
 
 	decrypted = auto_alloc_array(machine(), UINT8, 0x10000);
 
-	machine().device("maincpu")->memory().space(AS_PROGRAM).install_read_bank(0x0000, 0x5fff, "bank1" );
-	machine().device("maincpu")->memory().space(AS_PROGRAM).install_read_bank(0x8000, 0xffff, "bank2" );
+	m_maincpu->space(AS_PROGRAM).install_read_bank(0x0000, 0x5fff, "bank1" );
+	m_maincpu->space(AS_PROGRAM).install_read_bank(0x8000, 0xffff, "bank2" );
 
 	space.install_write_handler(0xe000, 0xe000, write8_delegate(FUNC(dkong_state::braze_a15_w),this));
 

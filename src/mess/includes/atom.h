@@ -44,9 +44,9 @@ public:
 		: driver_device(mconfig, type, tag),
 			m_maincpu(*this, SY6502_TAG),
 			m_vdg(*this, MC6847_TAG),
-			m_cassette(*this, CASSETTE_TAG),
+			m_cassette(*this, "cassette"),
 			m_centronics(*this, CENTRONICS_TAG),
-			m_speaker(*this, SPEAKER_TAG),
+			m_speaker(*this, "speaker"),
 			m_extrom(*this, EXTROM_TAG),
 			m_y0(*this, "Y0"),
 			m_y1(*this, "Y1"),
@@ -117,6 +117,8 @@ public:
 	TIMER_DEVICE_CALLBACK_MEMBER(cassette_output_tick);
 
 	DECLARE_DEVICE_IMAGE_LOAD_MEMBER( atom_cart );
+	DECLARE_QUICKLOAD_LOAD_MEMBER(atom_atm);
+	void image_fread_memory(device_image_interface &image, UINT16 addr, UINT32 count);
 };
 
 class atomeb_state : public atom_state

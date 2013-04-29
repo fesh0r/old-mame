@@ -50,7 +50,10 @@ class discoboy_state : public driver_device
 {
 public:
 	discoboy_state(const machine_config &mconfig, device_type type, const char *tag)
-		: driver_device(mconfig, type, tag) { }
+		: driver_device(mconfig, type, tag),
+		m_audiocpu(*this, "audiocpu") ,
+		m_maincpu(*this, "maincpu"),
+		m_msm(*this, "msm") { }
 
 	/* video-related */
 	UINT8    m_ram_bank;
@@ -60,7 +63,7 @@ public:
 	UINT8    m_toggle;
 
 	/* devices */
-	cpu_device *m_audiocpu;
+	required_device<cpu_device> m_audiocpu;
 
 	/* memory */
 	UINT8    m_ram_1[0x800];
@@ -90,6 +93,8 @@ public:
 	void draw_sprites( bitmap_ind16 &bitmap, const rectangle &cliprect );
 	void discoboy_setrombank( UINT8 data );
 	DECLARE_WRITE_LINE_MEMBER(yunsung8_adpcm_int);
+	required_device<cpu_device> m_maincpu;
+	required_device<msm5205_device> m_msm;
 };
 
 
@@ -328,9 +333,8 @@ ADDRESS_MAP_END
 
 WRITE8_MEMBER(discoboy_state::yunsung8_sound_bankswitch_w)
 {
-	device_t *device = machine().device("msm");
 	/* Note: this is bit 5 on yunsung8.c */
-	msm5205_reset_w(device, (data & 0x08) >> 3);
+	msm5205_reset_w(m_msm, (data & 0x08) >> 3);
 
 	membank("sndbank")->set_entry(data & 0x07);
 
@@ -452,8 +456,6 @@ GFXDECODE_END
 
 void discoboy_state::machine_start()
 {
-	m_audiocpu = machine().device<cpu_device>("audiocpu");
-
 	save_item(NAME(m_ram_bank));
 	save_item(NAME(m_port_00));
 	save_item(NAME(m_gfxbank));
@@ -472,7 +474,7 @@ void discoboy_state::machine_reset()
 
 WRITE_LINE_MEMBER(discoboy_state::yunsung8_adpcm_int)
 {
-	msm5205_data_w(machine().device("msm"), m_adpcm >> 4);
+	msm5205_data_w(m_msm, m_adpcm >> 4);
 	m_adpcm <<= 4;
 
 	m_toggle ^= 1;

@@ -58,7 +58,7 @@ class pc88va_state : public driver_device
 {
 public:
 	pc88va_state(const machine_config &mconfig, device_type type, const char *tag)
-		: driver_device(mconfig, type, tag) ,
+		: driver_device(mconfig, type, tag),
 		m_maincpu(*this, "maincpu"),
 		m_fdc(*this, "upd765"),
 		m_dmac(*this, "dmac"),
@@ -146,6 +146,8 @@ public:
 //  void m_fdc_dma_w(running_machine &machine, UINT16 data);
 	DECLARE_WRITE_LINE_MEMBER(pc88va_hlda_w);
 	DECLARE_WRITE_LINE_MEMBER(pc88va_tc_w);
+	DECLARE_READ16_MEMBER(fdc_dma_r);
+	DECLARE_WRITE16_MEMBER(fdc_dma_w);
 
 	void fdc_irq(bool state);
 	void fdc_drq(bool state);
@@ -284,7 +286,7 @@ UINT32 pc88va_state::calc_kanji_rom_addr(UINT8 jis1,UINT8 jis2,int x,int y)
 
 void pc88va_state::draw_text(bitmap_rgb32 &bitmap, const rectangle &cliprect)
 {
-	UINT8 *tvram = machine().root_device().memregion("tvram")->base();
+	UINT8 *tvram = memregion("tvram")->base();
 	UINT8 *kanji = memregion("kanji")->base();
 	int xi,yi;
 	int x,y;
@@ -527,7 +529,7 @@ READ16_MEMBER(pc88va_state::sys_mem_r)
 			return 0xffff;
 		case 1: // TVRAM
 		{
-			UINT16 *tvram = (UINT16 *)(*machine().root_device().memregion("tvram"));
+			UINT16 *tvram = (UINT16 *)(*memregion("tvram"));
 
 			if(((offset*2) & 0x30000) == 0)
 				return tvram[offset];
@@ -536,14 +538,14 @@ READ16_MEMBER(pc88va_state::sys_mem_r)
 		}
 		case 4:
 		{
-			UINT16 *gvram = (UINT16 *)(*machine().root_device().memregion("gvram"));
+			UINT16 *gvram = (UINT16 *)(*memregion("gvram"));
 
 			return gvram[offset];
 		}
 		case 8: // kanji ROM
 		case 9:
 		{
-			UINT16 *knj_ram = (UINT16 *)(*machine().root_device().memregion("kanji"));
+			UINT16 *knj_ram = (UINT16 *)(*memregion("kanji"));
 			UINT32 knj_offset;
 
 			knj_offset = (offset + (((m_bank_reg & 0x100) >> 8)*0x20000));
@@ -559,7 +561,7 @@ READ16_MEMBER(pc88va_state::sys_mem_r)
 		case 0xc: // Dictionary ROM
 		case 0xd:
 		{
-			UINT16 *dic_rom = (UINT16 *)(*machine().root_device().memregion("dictionary"));
+			UINT16 *dic_rom = (UINT16 *)(*memregion("dictionary"));
 			UINT32 dic_offset;
 
 			dic_offset = (offset + (((m_bank_reg & 0x100) >> 8)*0x20000));
@@ -579,7 +581,7 @@ WRITE16_MEMBER(pc88va_state::sys_mem_w)
 			break;
 		case 1: // TVRAM
 		{
-			UINT16 *tvram = (UINT16 *)(*machine().root_device().memregion("tvram"));
+			UINT16 *tvram = (UINT16 *)(*memregion("tvram"));
 
 			if(((offset*2) & 0x30000) == 0)
 				COMBINE_DATA(&tvram[offset]);
@@ -587,7 +589,7 @@ WRITE16_MEMBER(pc88va_state::sys_mem_w)
 		break;
 		case 4: // TVRAM
 		{
-			UINT16 *gvram = (UINT16 *)(*machine().root_device().memregion("gvram"));
+			UINT16 *gvram = (UINT16 *)(*memregion("gvram"));
 
 			COMBINE_DATA(&gvram[offset]);
 		}
@@ -595,7 +597,7 @@ WRITE16_MEMBER(pc88va_state::sys_mem_w)
 		case 8: // kanji ROM, backup RAM at 0xb0000 - 0xb3fff
 		case 9:
 		{
-			UINT16 *knj_ram = (UINT16 *)(*machine().root_device().memregion("kanji"));
+			UINT16 *knj_ram = (UINT16 *)(*memregion("kanji"));
 			UINT32 knj_offset;
 
 			knj_offset = ((offset) + (((m_bank_reg & 0x100) >> 8)*0x20000));
@@ -710,7 +712,7 @@ WRITE8_MEMBER(pc88va_state::idp_command_w)
 
 void pc88va_state::tsp_sprite_enable(UINT32 spr_offset, UINT8 sw_bit)
 {
-	address_space &space = machine().device("maincpu")->memory().space(AS_PROGRAM);
+	address_space &space = m_maincpu->space(AS_PROGRAM);
 
 	space.write_word(spr_offset, space.read_word(spr_offset) & ~0x200);
 	space.write_word(spr_offset, space.read_word(spr_offset) | (sw_bit & 0x200));
@@ -1051,7 +1053,7 @@ WRITE8_MEMBER(pc88va_state::pc88va_fdc_w)
 		case 0x00: // FDC mode register
 			m_fdc_mode = data & 1;
 			#if TEST_SUBFDC
-			machine().device("fdccpu")->execute().set_input_line(INPUT_LINE_HALT, (m_fdc_mode) ? ASSERT_LINE : CLEAR_LINE);
+			m_fdccpu->set_input_line(INPUT_LINE_HALT, (m_fdc_mode) ? ASSERT_LINE : CLEAR_LINE);
 			#endif
 			break;
 		/*
@@ -1170,7 +1172,7 @@ WRITE16_MEMBER(pc88va_state::video_pri_w)
 
 READ8_MEMBER(pc88va_state::backupram_dsw_r)
 {
-	UINT16 *knj_ram = (UINT16 *)(*machine().root_device().memregion("kanji"));
+	UINT16 *knj_ram = (UINT16 *)(*memregion("kanji"));
 
 	if(offset == 0)
 		return knj_ram[(0x50000 + 0x1fc2) / 2] & 0xff;
@@ -1568,11 +1570,11 @@ READ8_MEMBER(pc88va_state::r232_ctrl_porta_r)
 {
 	UINT8 sw5, sw4, sw3, sw2,speed_sw;
 
-	speed_sw = (machine().root_device().ioport("SPEED_SW")->read() & 1) ? 0x20 : 0x00;
-	sw5 = (machine().root_device().ioport("DSW")->read() & 0x10);
-	sw4 = (machine().root_device().ioport("DSW")->read() & 0x08);
-	sw3 = (machine().root_device().ioport("DSW")->read() & 0x04);
-	sw2 = (machine().root_device().ioport("DSW")->read() & 0x02);
+	speed_sw = (ioport("SPEED_SW")->read() & 1) ? 0x20 : 0x00;
+	sw5 = (ioport("DSW")->read() & 0x10);
+	sw4 = (ioport("DSW")->read() & 0x08);
+	sw3 = (ioport("DSW")->read() & 0x04);
+	sw2 = (ioport("DSW")->read() & 0x02);
 
 	return 0xc1 | sw5 | sw4 | sw3 | sw2 | speed_sw;
 }
@@ -1581,7 +1583,7 @@ READ8_MEMBER(pc88va_state::r232_ctrl_portb_r)
 {
 	UINT8 xsw1;
 
-	xsw1 = (machine().root_device().ioport("DSW")->read() & 1) ? 0 : 8;
+	xsw1 = (ioport("DSW")->read() & 1) ? 0 : 8;
 
 	return 0xf7 | xsw1;
 }
@@ -1623,7 +1625,7 @@ IRQ_CALLBACK_MEMBER(pc88va_state::pc88va_irq_callback)
 
 WRITE_LINE_MEMBER(pc88va_state::pc88va_pic_irq)
 {
-	machine().device("maincpu")->execute().set_input_line(0, state ? HOLD_LINE : CLEAR_LINE);
+	m_maincpu->set_input_line(0, state ? HOLD_LINE : CLEAR_LINE);
 //  logerror("PIC#1: set IRQ line to %i\n",interrupt);
 }
 
@@ -1651,7 +1653,7 @@ static const struct pic8259_interface pc88va_pic8259_slave_config =
 
 void pc88va_state::machine_start()
 {
-	machine().device("maincpu")->execute().set_irq_acknowledge_callback(device_irq_acknowledge_delegate(FUNC(pc88va_state::pc88va_irq_callback),this));
+	m_maincpu->set_irq_acknowledge_callback(device_irq_acknowledge_delegate(FUNC(pc88va_state::pc88va_irq_callback),this));
 
 	m_t3_mouse_timer = machine().scheduler().timer_alloc(timer_expired_delegate(FUNC(pc88va_state::t3_mouse_callback),this));
 	m_t3_mouse_timer->adjust(attotime::never);
@@ -1673,7 +1675,7 @@ void pc88va_state::machine_start()
 
 void pc88va_state::machine_reset()
 {
-	UINT8 *ROM00 = machine().root_device().memregion("rom00")->base();
+	UINT8 *ROM00 = memregion("rom00")->base();
 	UINT8 *ROM10 = memregion("rom10")->base();
 
 	membank("rom10_bank")->set_base(&ROM10[0x00000]);
@@ -1695,7 +1697,7 @@ void pc88va_state::machine_reset()
 	m_fdc_irq_opcode = 0x00; //0x7f ld a,a !
 
 	#if TEST_SUBFDC
-	machine().device("fdccpu")->execute().set_input_line_vector(0, 0);
+	m_fdccpu->set_input_line_vector(0, 0);
 	#endif
 
 	m_fdc_motor_status[0] = 0;
@@ -1758,7 +1760,7 @@ void pc88va_state::fdc_irq(bool state)
 	}
 	#if TEST_SUBFDC
 	else
-		machine().device("fdccpu")->execute().set_input_line(0, HOLD_LINE);
+		m_fdccpu->set_input_line(0, HOLD_LINE);
 	#endif
 }
 
@@ -1794,18 +1796,16 @@ WRITE_LINE_MEMBER( pc88va_state::pc88va_tc_w )
 }
 
 
-static UINT16 m_fdc_dma_r(running_machine &machine)
+READ16_MEMBER(pc88va_state::fdc_dma_r)
 {
-	pc88va_state *state = machine.driver_data<pc88va_state>();
 	printf("R DMA\n");
-	return state->m_fdc->dma_r();
+	return m_fdc->dma_r();
 }
 
-static void m_fdc_dma_w(running_machine &machine, UINT16 data)
+WRITE16_MEMBER(pc88va_state::fdc_dma_w)
 {
-	pc88va_state *state = machine.driver_data<pc88va_state>();
 	printf("W DMA %08x\n",data);
-	state->m_fdc->dma_w(data);
+	m_fdc->dma_w(data);
 }
 
 
@@ -1816,8 +1816,8 @@ static const upd71071_intf pc88va_dma_config =
 	8000000,
 	DEVCB_DRIVER_LINE_MEMBER(pc88va_state, pc88va_hlda_w),
 	DEVCB_DRIVER_LINE_MEMBER(pc88va_state, pc88va_tc_w),
-	{ 0, 0, m_fdc_dma_r, 0 },
-	{ 0, 0, m_fdc_dma_w, 0 },
+	{ DEVCB_NULL, DEVCB_NULL, DEVCB_DRIVER_MEMBER16(pc88va_state, fdc_dma_r), DEVCB_NULL },
+	{ DEVCB_NULL, DEVCB_NULL, DEVCB_DRIVER_MEMBER16(pc88va_state, fdc_dma_w), DEVCB_NULL },
 	{ DEVCB_NULL, DEVCB_NULL, DEVCB_NULL, DEVCB_NULL }
 };
 

@@ -6,7 +6,8 @@
 
 #ifndef NC_H_
 #define NC_H_
-
+#include "machine/ram.h"
+#include "sound/beep.h"
 
 #define NC_NUM_COLOURS 4
 
@@ -29,7 +30,11 @@ class nc_state : public driver_device
 {
 public:
 	nc_state(const machine_config &mconfig, device_type type, const char *tag)
-		: driver_device(mconfig, type, tag) { }
+		: driver_device(mconfig, type, tag),
+		m_maincpu(*this, "maincpu"),
+		m_ram(*this, RAM_TAG),
+		m_beeper1(*this, "beep.1"),
+		m_beeper2(*this, "beep.2") { }
 
 	emu_timer *m_serial_timer;
 	char m_memory_config[4];
@@ -101,20 +106,32 @@ public:
 
 	void nc100_machine_stop();
 	void nc200_machine_stop();
+	required_device<cpu_device> m_maincpu;
+	required_device<ram_device> m_ram;
+	required_device<beep_device> m_beeper1;
+	required_device<beep_device> m_beeper2;
+
+	void nc200_video_set_backlight(int state);
+	void nc_card_save(device_image_interface &image);
+	int nc_card_calculate_mask(int size);
+	int nc_card_load(device_image_interface &image, unsigned char **ptr);
+	void nc_set_card_present_state(int state);
+	void nc_update_interrupts();
+	void nc_refresh_memory_bank_config(int bank);
+	void nc_refresh_memory_config();
+	void nc_common_restore_memory_from_stream();
+	void nc_common_store_memory_to_stream();
+	void nc_common_open_stream_for_reading();
+	void nc_common_open_stream_for_writing();
+	void nc_common_close_stream();
+	void nc_common_init_machine();
+	void nc_sound_update(int channel);
+	void nc_printer_update(UINT8 data);
+	void nc150_init_machine();
+	void nc200_refresh_uart_interrupt();
+	void nc200_floppy_drive_index_callback(int drive_id);
 };
 
 
-/*----------- defined in video/nc.c -----------*/
-
-void nc200_video_set_backlight(running_machine &machine, int state);
-
-
-/*----------- defined in drivers/nc.c -----------*/
-
-/* pointer to loaded data */
-/* mask used to stop access over end of card ram area */
-
-
-void nc_set_card_present_state(running_machine &machine, int state);
 
 #endif /* NC_H_ */

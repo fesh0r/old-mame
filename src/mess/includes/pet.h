@@ -42,7 +42,7 @@ public:
 			m_cassette2(*this, PET_DATASSETTE_PORT2_TAG),
 			m_exp(*this, PET_EXPANSION_SLOT_TAG),
 			m_user(*this, PET_USER_PORT_TAG),
-			m_speaker(*this, SPEAKER_TAG),
+			m_speaker(*this, "speaker"),
 			m_ram(*this, RAM_TAG),
 			m_rom(*this, M6502_TAG),
 			m_char_rom(*this, "charom"),
@@ -128,6 +128,8 @@ public:
 	DECLARE_WRITE_LINE_MEMBER( pia2_irqb_w );
 
 	TIMER_DEVICE_CALLBACK_MEMBER( sync_tick );
+
+	DECLARE_QUICKLOAD_LOAD_MEMBER( cbm_pet );
 
 	enum
 	{

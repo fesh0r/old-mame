@@ -31,7 +31,7 @@ public:
 	sb2m600_state(const machine_config &mconfig, device_type type, const char *tag)
 		: driver_device(mconfig, type, tag),
 	m_maincpu(*this, M6502_TAG),
-	m_cassette(*this, CASSETTE_TAG),
+	m_cassette(*this, "cassette"),
 	m_discrete(*this, DISCRETE_TAG),
 	m_ram(*this, RAM_TAG),
 	m_video_ram(*this, "video_ram"),
@@ -45,7 +45,8 @@ public:
 	m_io_row6(*this, "ROW6"),
 	m_io_row7(*this, "ROW7"),
 	m_io_sound(*this, "Sound"),
-	m_io_reset(*this, "Reset")
+	m_io_reset(*this, "Reset"),
+	m_beeper(*this, "beeper")
 	{ }
 
 	virtual void machine_start();
@@ -86,6 +87,7 @@ public:
 	required_ioport m_io_row7;
 	required_ioport m_io_sound;
 	required_ioport m_io_reset;
+	optional_device<beep_device> m_beeper;
 };
 
 class c1p_state : public sb2m600_state
@@ -93,7 +95,7 @@ class c1p_state : public sb2m600_state
 public:
 	c1p_state(const machine_config &mconfig, device_type type, const char *tag)
 		: sb2m600_state(mconfig, type, tag),
-			m_beep(*this, BEEPER_TAG)
+			m_beep(*this, "beeper")
 	{ }
 
 	required_device<beep_device> m_beep;

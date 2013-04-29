@@ -243,8 +243,6 @@ static const tc0080vco_interface parentj_intf =
 
 void taitoo_state::machine_start()
 {
-	m_maincpu = machine().device<cpu_device>("maincpu");
-	m_tc0080vco = machine().device("tc0080vco");
 }
 
 static MACHINE_CONFIG_START( parentj, taitoo_state )

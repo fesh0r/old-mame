@@ -121,6 +121,8 @@ public:
 
 	DECLARE_WRITE_LINE_MEMBER( exp_irq_w );
 
+	DECLARE_QUICKLOAD_LOAD_MEMBER( cbm_c16 );
+
 	enum
 	{
 		CS0_BASIC = 0,

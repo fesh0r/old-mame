@@ -480,38 +480,38 @@ DEVICE_IMAGE_LOAD_MEMBER( svision_state, svision_cart )
 	if (image.software_entry() == NULL)
 	{
 		size = image.length();
-		temp_copy = auto_alloc_array(image.device().machine(), UINT8, size);
+		temp_copy = auto_alloc_array(machine(), UINT8, size);
 
-		if (size > image.device().machine().root_device().memregion("user1")->bytes())
+		if (size > memregion("user1")->bytes())
 		{
 			image.seterror(IMAGE_ERROR_UNSPECIFIED, "Unsupported cartridge size");
-			auto_free(image.device().machine(), temp_copy);
+			auto_free(machine(), temp_copy);
 			return IMAGE_INIT_FAIL;
 		}
 
 		if (image.fread( temp_copy, size) != size)
 		{
 			image.seterror(IMAGE_ERROR_UNSPECIFIED, "Unable to fully read from file");
-			auto_free(image.device().machine(), temp_copy);
+			auto_free(machine(), temp_copy);
 			return IMAGE_INIT_FAIL;
 		}
 	}
 	else
 	{
 		size = image.get_software_region_length("rom");
-		temp_copy = auto_alloc_array(image.device().machine(), UINT8, size);
+		temp_copy = auto_alloc_array(machine(), UINT8, size);
 		memcpy(temp_copy, image.get_software_region("rom"), size);
 	}
 
-	mirror = image.device().machine().root_device().memregion("user1")->bytes() / size;
+	mirror = memregion("user1")->bytes() / size;
 
 	/* With the following, we mirror the cart in the whole "user1" memory region */
 	for (i = 0; i < mirror; i++)
 	{
-		memcpy(image.device().machine().root_device().memregion("user1")->base() + i * size, temp_copy, size);
+		memcpy(memregion("user1")->base() + i * size, temp_copy, size);
 	}
 
-	auto_free(image.device().machine(), temp_copy);
+	auto_free(machine(), temp_copy);
 
 	return IMAGE_INIT_PASS;
 }

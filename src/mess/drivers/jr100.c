@@ -25,25 +25,25 @@ class jr100_state : public driver_device
 {
 public:
 	jr100_state(const machine_config &mconfig, device_type type, const char *tag)
-		: driver_device(mconfig, type, tag)
-		, m_ram(*this, "ram")
-		, m_pcg(*this, "pcg")
-		, m_vram(*this, "vram")
-		, m_via(*this, "via")
-		, m_cassette(*this, CASSETTE_TAG)
-		, m_beeper(*this, BEEPER_TAG)
-		, m_speaker(*this, SPEAKER_TAG)
-		, m_region_maincpu(*this, "maincpu")
-		, m_line0(*this, "LINE0")
-		, m_line1(*this, "LINE1")
-		, m_line2(*this, "LINE2")
-		, m_line3(*this, "LINE3")
-		, m_line4(*this, "LINE4")
-		, m_line5(*this, "LINE5")
-		, m_line6(*this, "LINE6")
-		, m_line7(*this, "LINE7")
-		, m_line8(*this, "LINE8")
-	{ }
+		: driver_device(mconfig, type, tag),
+		m_ram(*this, "ram"),
+		m_pcg(*this, "pcg"),
+		m_vram(*this, "vram"),
+		m_via(*this, "via"),
+		m_cassette(*this, "cassette"),
+		m_beeper(*this, "beeper"),
+		m_speaker(*this, "speaker"),
+		m_region_maincpu(*this, "maincpu"),
+		m_line0(*this, "LINE0"),
+		m_line1(*this, "LINE1"),
+		m_line2(*this, "LINE2"),
+		m_line3(*this, "LINE3"),
+		m_line4(*this, "LINE4"),
+		m_line5(*this, "LINE5"),
+		m_line6(*this, "LINE6"),
+		m_line7(*this, "LINE7"),
+		m_line8(*this, "LINE8") ,
+		m_maincpu(*this, "maincpu") { }
 
 	required_shared_ptr<UINT8> m_ram;
 	required_shared_ptr<UINT8> m_pcg;
@@ -64,6 +64,8 @@ public:
 	DECLARE_WRITE8_MEMBER(jr100_via_write_b);
 	DECLARE_WRITE_LINE_MEMBER(jr100_via_write_cb2);
 	UINT32 readByLittleEndian(UINT8 *buf,int pos);
+	DECLARE_QUICKLOAD_LOAD_MEMBER(jr100);
+
 
 protected:
 	required_device<via6522_device> m_via;
@@ -80,6 +82,7 @@ protected:
 	required_ioport m_line6;
 	required_ioport m_line7;
 	required_ioport m_line8;
+	required_device<cpu_device> m_maincpu;
 };
 
 
@@ -335,9 +338,8 @@ UINT32 jr100_state::readByLittleEndian(UINT8 *buf,int pos)
 	return buf[pos] + (buf[pos+1] << 8) + (buf[pos+2] << 16) + (buf[pos+3] << 24);
 }
 
-static QUICKLOAD_LOAD(jr100)
+QUICKLOAD_LOAD_MEMBER( jr100_state,jr100)
 {
-	jr100_state *state = image.device().machine().driver_data<jr100_state>();
 	int quick_length;
 	UINT8 buf[0x10000];
 	int read_;
@@ -353,32 +355,32 @@ static QUICKLOAD_LOAD(jr100)
 		return IMAGE_INIT_FAIL;
 	}
 	int pos = 4;
-	if (state->readByLittleEndian(buf,pos)!=1) {
+	if (readByLittleEndian(buf,pos)!=1) {
 		// not version 1 of PRG file
 		return IMAGE_INIT_FAIL;
 	}
 	pos += 4;
-	UINT32 len =state->readByLittleEndian(buf,pos); pos+= 4;
+	UINT32 len =readByLittleEndian(buf,pos); pos+= 4;
 	pos += len; // skip name
-	UINT32 start_address = state->readByLittleEndian(buf,pos); pos+= 4;
-	UINT32 code_length   = state->readByLittleEndian(buf,pos); pos+= 4;
-	UINT32 flag          = state->readByLittleEndian(buf,pos); pos+= 4;
+	UINT32 start_address = readByLittleEndian(buf,pos); pos+= 4;
+	UINT32 code_length   = readByLittleEndian(buf,pos); pos+= 4;
+	UINT32 flag          = readByLittleEndian(buf,pos); pos+= 4;
 
 	UINT32 end_address = start_address + code_length - 1;
 	// copy code
-	memcpy(state->m_ram + start_address,buf + pos,code_length);
+	memcpy(m_ram + start_address,buf + pos,code_length);
 	if (flag == 0) {
-		state->m_ram[end_address + 1] =  0xdf;
-		state->m_ram[end_address + 2] =  0xdf;
-		state->m_ram[end_address + 3] =  0xdf;
-		state->m_ram[6 ] = (end_address >> 8 & 0xFF);
-		state->m_ram[7 ] = (end_address & 0xFF);
-		state->m_ram[8 ] = ((end_address + 1) >> 8 & 0xFF);
-		state->m_ram[9 ] = ((end_address + 1) & 0xFF);
-		state->m_ram[10] = ((end_address + 2) >> 8 & 0xFF);
-		state->m_ram[11] = ((end_address + 2) & 0xFF);
-		state->m_ram[12] = ((end_address + 3) >> 8 & 0xFF);
-		state->m_ram[13] = ((end_address + 3) & 0xFF);
+		m_ram[end_address + 1] =  0xdf;
+		m_ram[end_address + 2] =  0xdf;
+		m_ram[end_address + 3] =  0xdf;
+		m_ram[6 ] = (end_address >> 8 & 0xFF);
+		m_ram[7 ] = (end_address & 0xFF);
+		m_ram[8 ] = ((end_address + 1) >> 8 & 0xFF);
+		m_ram[9 ] = ((end_address + 1) & 0xFF);
+		m_ram[10] = ((end_address + 2) >> 8 & 0xFF);
+		m_ram[11] = ((end_address + 2) & 0xFF);
+		m_ram[12] = ((end_address + 3) >> 8 & 0xFF);
+		m_ram[13] = ((end_address + 3) & 0xFF);
 	}
 
 	return IMAGE_INIT_PASS;
@@ -406,20 +408,20 @@ static MACHINE_CONFIG_START( jr100, jr100_state )
 	MCFG_VIA6522_ADD("via", XTAL_14_31818MHz / 16, jr100_via_intf)
 
 	MCFG_SPEAKER_STANDARD_MONO("mono")
-	MCFG_SOUND_WAVE_ADD(WAVE_TAG, CASSETTE_TAG)
+	MCFG_SOUND_WAVE_ADD(WAVE_TAG, "cassette")
 	MCFG_SOUND_ROUTE(ALL_OUTPUTS, "mono", 0.25)
-	MCFG_SOUND_ADD(SPEAKER_TAG, SPEAKER_SOUND, 0)
+	MCFG_SOUND_ADD("speaker", SPEAKER_SOUND, 0)
 	MCFG_SOUND_ROUTE(ALL_OUTPUTS, "mono", 1.00)
 
-	MCFG_SOUND_ADD(BEEPER_TAG, BEEP, 0)
+	MCFG_SOUND_ADD("beeper", BEEP, 0)
 	MCFG_SOUND_ROUTE(ALL_OUTPUTS,"mono",0.50)
 
-	MCFG_CASSETTE_ADD( CASSETTE_TAG, jr100_cassette_interface )
+	MCFG_CASSETTE_ADD( "cassette", jr100_cassette_interface )
 
 	MCFG_TIMER_DRIVER_ADD_PERIODIC("sound_tick", jr100_state, sound_tick, attotime::from_hz(XTAL_14_31818MHz / 16))
 
 	/* quickload */
-	MCFG_QUICKLOAD_ADD("quickload", jr100, "prg", 2)
+	MCFG_QUICKLOAD_ADD("quickload", jr100_state, jr100, "prg", 2)
 MACHINE_CONFIG_END
 
 

@@ -68,7 +68,8 @@ class big10_state : public driver_device
 public:
 	big10_state(const machine_config &mconfig, device_type type, const char *tag)
 		: driver_device(mconfig, type, tag),
-			m_v9938(*this, "v9938") { }
+			m_v9938(*this, "v9938") ,
+		m_maincpu(*this, "maincpu") { }
 
 	required_device<v9938_device> m_v9938;
 	UINT8 m_mux_data;
@@ -77,6 +78,7 @@ public:
 	virtual void machine_reset();
 	TIMER_DEVICE_CALLBACK_MEMBER(big10_interrupt);
 	DECLARE_WRITE_LINE_MEMBER(big10_vdp_interrupt);
+	required_device<cpu_device> m_maincpu;
 };
 
 
@@ -89,7 +91,7 @@ public:
 
 WRITE_LINE_MEMBER(big10_state::big10_vdp_interrupt)
 {
-	machine().device("maincpu")->execute().set_input_line(0, (state ? ASSERT_LINE : CLEAR_LINE));
+	m_maincpu->set_input_line(0, (state ? ASSERT_LINE : CLEAR_LINE));
 }
 
 TIMER_DEVICE_CALLBACK_MEMBER(big10_state::big10_interrupt)

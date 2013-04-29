@@ -96,7 +96,7 @@ static ADDRESS_MAP_START( bking_io_map, AS_IO, 8, bking_state )
 	AM_RANGE(0x09, 0x09) AM_WRITE(bking_cont2_w)
 	AM_RANGE(0x0a, 0x0a) AM_WRITE(bking_cont3_w)
 	AM_RANGE(0x0b, 0x0b) AM_WRITE(bking_soundlatch_w)
-//  AM_RANGE(0x0c, 0x0c) AM_WRITE_LEGACY(bking_eport2_w)   this is not shown to be connected anywhere
+//  AM_RANGE(0x0c, 0x0c) AM_WRITE(bking_eport2_w)   this is not shown to be connected anywhere
 	AM_RANGE(0x0d, 0x0d) AM_WRITE(bking_hitclr_w)
 	AM_RANGE(0x07, 0x1f) AM_READ(bking_pos_r)
 ADDRESS_MAP_END
@@ -115,7 +115,7 @@ static ADDRESS_MAP_START( bking3_io_map, AS_IO, 8, bking_state )
 	AM_RANGE(0x09, 0x09) AM_WRITE(bking_cont2_w)
 	AM_RANGE(0x0a, 0x0a) AM_WRITE(bking_cont3_w)
 	AM_RANGE(0x0b, 0x0b) AM_WRITE(bking_soundlatch_w)
-//  AM_RANGE(0x0c, 0x0c) AM_WRITE_LEGACY(bking_eport2_w)   this is not shown to be connected anywhere
+//  AM_RANGE(0x0c, 0x0c) AM_WRITE(bking_eport2_w)   this is not shown to be connected anywhere
 	AM_RANGE(0x0d, 0x0d) AM_WRITE(bking_hitclr_w)
 	AM_RANGE(0x07, 0x1f) AM_READ(bking_pos_r)
 	AM_RANGE(0x2f, 0x2f) AM_DEVREADWRITE_LEGACY("bmcu", buggychl_mcu_r, buggychl_mcu_w)
@@ -169,7 +169,7 @@ WRITE8_MEMBER(bking_state::bking3_68705_port_b_w)
 	if (~data & 0x02)
 	{
 		m_port_a_in = from_main;
-		if (main_sent) machine().device("mcu")->execute().set_input_line(0, CLEAR_LINE);
+		if (main_sent) m_mcu->set_input_line(0, CLEAR_LINE);
 		main_sent = 0;
 	}
 
@@ -390,8 +390,6 @@ static const ay8910_interface ay8910_config =
 
 void bking_state::machine_start()
 {
-	m_audiocpu = machine().device<cpu_device>("audiocpu");
-
 	/* video */
 	save_item(NAME(m_pc3259_output));
 	save_item(NAME(m_pc3259_mask));
@@ -449,7 +447,7 @@ void bking_state::machine_reset()
 
 MACHINE_RESET_MEMBER(bking_state,bking3)
 {
-	machine().device("mcu")->execute().set_input_line(0, CLEAR_LINE);
+	m_mcu->set_input_line(0, CLEAR_LINE);
 
 	bking_state::machine_reset();
 

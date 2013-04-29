@@ -33,7 +33,7 @@ public:
 		: driver_device(mconfig, type, tag),
 		m_maincpu(*this, "maincpu"),
 		m_crtc(*this, "vt100_video"),
-		m_speaker(*this, BEEPER_TAG),
+		m_speaker(*this, "beeper"),
 		m_uart(*this, "i8251"),
 		m_p_ram(*this, "p_ram")
 		{ }
@@ -130,12 +130,12 @@ TIMER_DEVICE_CALLBACK_MEMBER(vt100_state::keyboard_callback)
 		for(i = 0; i < 16; i++)
 		{
 			sprintf(kbdrow,"LINE%X", i);
-			code =  machine().root_device().ioport(kbdrow)->read();
+			code =  ioport(kbdrow)->read();
 			if (code < 0xff)
 			{
 				m_keyboard_int = 1;
 				m_key_code = i | bit_sel(code);
-				machine().device("maincpu")->execute().set_input_line(0, HOLD_LINE);
+				m_maincpu->set_input_line(0, HOLD_LINE);
 				break;
 			}
 		}
@@ -364,7 +364,7 @@ void vt100_state::machine_reset()
 
 	m_key_scan = 0;
 
-	machine().device("maincpu")->execute().set_irq_acknowledge_callback(device_irq_acknowledge_delegate(FUNC(vt100_state::vt100_irq_callback),this));
+	m_maincpu->set_irq_acknowledge_callback(device_irq_acknowledge_delegate(FUNC(vt100_state::vt100_irq_callback),this));
 }
 
 READ8_MEMBER( vt100_state::vt100_read_video_ram_r )
@@ -454,7 +454,7 @@ static MACHINE_CONFIG_START( vt100, vt100_state )
 
 	/* audio hardware */
 	MCFG_SPEAKER_STANDARD_MONO("mono")
-	MCFG_SOUND_ADD(BEEPER_TAG, BEEP, 0)
+	MCFG_SOUND_ADD("beeper", BEEP, 0)
 	MCFG_SOUND_ROUTE(ALL_OUTPUTS, "mono", 0.50)
 
 	MCFG_TIMER_DRIVER_ADD_PERIODIC("keyboard_timer", vt100_state, keyboard_callback, attotime::from_hz(800))

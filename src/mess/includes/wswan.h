@@ -104,12 +104,11 @@ class wswan_state : public driver_device
 {
 public:
 	wswan_state(const machine_config &mconfig, device_type type, const char *tag)
-		: driver_device(mconfig, type, tag)
-		, m_maincpu(*this, "maincpu")
-		, m_cursx(*this, "CURSX")
-		, m_cursy(*this, "CURSY")
-		, m_buttons(*this, "BUTTONS")
-	{ }
+		: driver_device(mconfig, type, tag),
+		m_maincpu(*this, "maincpu"),
+		m_cursx(*this, "CURSX"),
+		m_cursy(*this, "CURSY"),
+		m_buttons(*this, "BUTTONS") { }
 
 	virtual void video_start();
 
@@ -175,6 +174,15 @@ protected:
 	void wswan_setup_bios();
 	void wswan_handle_irqs();
 	void wswan_set_irq_line(int irq);
+	void wswan_setup_palettes();
+	void wswan_draw_background();
+	void wswan_draw_foreground_0();
+	void wswan_draw_foreground_2();
+	void wswan_draw_foreground_3();
+	void wswan_handle_sprites( int mask );
+	void wswan_refresh_scanline( );
+	const char* wswan_determine_sram( UINT8 data );
+	const char* wswan_determine_romsize( UINT8 data );
 };
 
 

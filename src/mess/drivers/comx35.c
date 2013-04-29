@@ -37,25 +37,25 @@ enum
     image_fread_memory - read image to memory
 -------------------------------------------------*/
 
-static void image_fread_memory(device_image_interface &image, UINT16 addr, UINT32 count)
+void comx35_state::image_fread_memory(device_image_interface &image, UINT16 addr, UINT32 count)
 {
-	UINT8 *ram = image.device().machine().device<ram_device>(RAM_TAG)->pointer() + (addr - 0x4000);
+	UINT8 *ram = m_ram->pointer() + (addr - 0x4000);
 
 	image.fread(ram, count);
 }
 
 /*-------------------------------------------------
-    QUICKLOAD_LOAD( comx35_comx )
+    QUICKLOAD_LOAD_MEMBER( comx35_state, comx35_comx )
 -------------------------------------------------*/
 
-QUICKLOAD_LOAD( comx35_comx )
+QUICKLOAD_LOAD_MEMBER( comx35_state, comx35_comx )
 {
-	address_space &program = image.device().machine().firstcpu->space(AS_PROGRAM);
+	address_space &program = m_maincpu->space(AS_PROGRAM);
 
 	UINT8 header[16] = {0};
 	int size = image.length();
 
-	if (size > image.device().machine().device<ram_device>(RAM_TAG)->size())
+	if (size > m_ram->size())
 	{
 		return IMAGE_INIT_FAIL;
 	}
@@ -691,8 +691,8 @@ static MACHINE_CONFIG_START( pal, comx35_state )
 
 	// peripheral hardware
 	MCFG_CDP1871_ADD(CDP1871_TAG, kbc_intf, CDP1869_CPU_CLK_PAL / 8)
-	MCFG_QUICKLOAD_ADD("quickload", comx35_comx, "comx", 0)
-	MCFG_CASSETTE_ADD(CASSETTE_TAG, cassette_intf)
+	MCFG_QUICKLOAD_ADD("quickload", comx35_state, comx35_comx, "comx", 0)
+	MCFG_CASSETTE_ADD("cassette", cassette_intf)
 
 	// expansion bus
 	MCFG_COMX_EXPANSION_SLOT_ADD(EXPANSION_TAG, expansion_intf, comx_expansion_cards, "eb", NULL)
@@ -722,8 +722,8 @@ static MACHINE_CONFIG_START( ntsc, comx35_state )
 
 	// peripheral hardware
 	MCFG_CDP1871_ADD(CDP1871_TAG, kbc_intf, CDP1869_CPU_CLK_NTSC / 8)
-	MCFG_QUICKLOAD_ADD("quickload", comx35_comx, "comx", 0)
-	MCFG_CASSETTE_ADD(CASSETTE_TAG, cassette_intf)
+	MCFG_QUICKLOAD_ADD("quickload", comx35_state, comx35_comx, "comx", 0)
+	MCFG_CASSETTE_ADD("cassette", cassette_intf)
 
 	// expansion bus
 	MCFG_COMX_EXPANSION_SLOT_ADD(EXPANSION_TAG, expansion_intf, comx_expansion_cards, "eb", NULL)

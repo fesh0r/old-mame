@@ -298,7 +298,7 @@ TIMER_DEVICE_CALLBACK_MEMBER(model2_state::model2_timer_cb)
 	m_intreq |= (1<<bit);
 	if (m_intena & (1<<bit))
 	{
-		machine().device("maincpu")->execute().set_input_line(I960_IRQ2, ASSERT_LINE);
+		m_maincpu->set_input_line(I960_IRQ2, ASSERT_LINE);
 	}
 
 	m_timervals[tnum] = 0;
@@ -344,7 +344,7 @@ MACHINE_RESET_MEMBER(model2_state,model2o)
 	MACHINE_RESET_CALL_MEMBER(model2_common);
 
 	// hold TGP in halt until we have code
-	machine().device("tgp")->execute().set_input_line(INPUT_LINE_HALT, ASSERT_LINE);
+	m_tgp->set_input_line(INPUT_LINE_HALT, ASSERT_LINE);
 
 	m_dsp_type = DSP_TYPE_TGP;
 }
@@ -356,7 +356,7 @@ MACHINE_RESET_MEMBER(model2_state,model2_scsp)
 
 	// copy the 68k vector table into RAM
 	memcpy(m_soundram, memregion("audiocpu")->base() + 0x80000, 16);
-	machine().device("audiocpu")->reset();
+	m_audiocpu->reset();
 	scsp_set_ram_base(machine().device("scsp"), m_soundram);
 }
 
@@ -366,7 +366,7 @@ MACHINE_RESET_MEMBER(model2_state,model2)
 	MACHINE_RESET_CALL_MEMBER(model2_scsp);
 
 	// hold TGP in halt until we have code
-	machine().device("tgp")->execute().set_input_line(INPUT_LINE_HALT, ASSERT_LINE);
+	m_tgp->set_input_line(INPUT_LINE_HALT, ASSERT_LINE);
 
 	m_dsp_type = DSP_TYPE_TGP;
 }
@@ -376,12 +376,12 @@ MACHINE_RESET_MEMBER(model2_state,model2b)
 	MACHINE_RESET_CALL_MEMBER(model2_common);
 	MACHINE_RESET_CALL_MEMBER(model2_scsp);
 
-	machine().device("dsp")->execute().set_input_line(INPUT_LINE_HALT, ASSERT_LINE);
+	m_dsp->set_input_line(INPUT_LINE_HALT, ASSERT_LINE);
 
 	// set FIFOIN empty flag on SHARC
-	machine().device("dsp")->execute().set_input_line(SHARC_INPUT_FLAG0, ASSERT_LINE);
+	m_dsp->set_input_line(SHARC_INPUT_FLAG0, ASSERT_LINE);
 	// clear FIFOOUT buffer full flag on SHARC
-	machine().device("dsp")->execute().set_input_line(SHARC_INPUT_FLAG1, CLEAR_LINE);
+	m_dsp->set_input_line(SHARC_INPUT_FLAG1, CLEAR_LINE);
 
 	m_dsp_type = DSP_TYPE_SHARC;
 }
@@ -412,11 +412,10 @@ WRITE32_MEMBER(model2_state::ctrl0_w)
 {
 	if(ACCESSING_BITS_0_7)
 	{
-		eeprom_device *eeprom = machine().device<eeprom_device>("eeprom");
 		m_ctrlmode = data & 0x01;
-		eeprom->write_bit(data & 0x20);
-		eeprom->set_clock_line((data & 0x80) ? ASSERT_LINE : CLEAR_LINE);
-		eeprom->set_cs_line((data & 0x40) ? CLEAR_LINE : ASSERT_LINE);
+		m_eeprom->write_bit(data & 0x20);
+		m_eeprom->set_clock_line((data & 0x80) ? ASSERT_LINE : CLEAR_LINE);
+		m_eeprom->set_cs_line((data & 0x40) ? CLEAR_LINE : ASSERT_LINE);
 	}
 }
 
@@ -455,7 +454,7 @@ CUSTOM_INPUT_MEMBER(model2_state::_1c00000_r)
 	else
 	{
 		ret &= ~0x0030;
-		return ret | 0x00d0 | (machine().device<eeprom_device>("eeprom")->read_bit() << 5);
+		return ret | 0x00d0 | (m_eeprom->read_bit() << 5);
 	}
 }
 
@@ -570,7 +569,7 @@ WRITE32_MEMBER(model2_state::srallyc_devices_w)
 	if(mem_mask == 0x000000ff || mem_mask == 0x0000ffff)
 	{
 		m_driveio_comm_data = data & 0xff;
-		machine().device("drivecpu")->execute().set_input_line(0, HOLD_LINE);
+		m_drivecpu->set_input_line(0, HOLD_LINE);
 	}
 }
 
@@ -611,9 +610,9 @@ WRITE32_MEMBER(model2_state::copro_ctl1_w)
 			if (m_dsp_type != DSP_TYPE_TGPX4)
 			{
 				if (m_dsp_type == DSP_TYPE_SHARC)
-					machine().device("dsp")->execute().set_input_line(INPUT_LINE_HALT, CLEAR_LINE);
+					m_dsp->set_input_line(INPUT_LINE_HALT, CLEAR_LINE);
 				else
-					machine().device("tgp")->execute().set_input_line(INPUT_LINE_HALT, CLEAR_LINE);
+					m_tgp->set_input_line(INPUT_LINE_HALT, CLEAR_LINE);
 			}
 		}
 	}
@@ -737,7 +736,7 @@ WRITE32_MEMBER(model2_state::geo_sharc_ctl1_w)
 		else
 		{
 			logerror("Boot geo, %d dwords\n", m_geocnt);
-			machine().device("dsp2")->execute().set_input_line(INPUT_LINE_HALT, CLEAR_LINE);
+			m_dsp2->set_input_line(INPUT_LINE_HALT, CLEAR_LINE);
 			//space.device().execute().spin_until_time(attotime::from_usec(1000));       // Give the SHARC enough time to boot itself
 		}
 	}
@@ -963,7 +962,8 @@ WRITE32_MEMBER(model2_state::model2_irq_w)
 
 static int snd_68k_ready_r(address_space &space)
 {
-	int sr = space.machine().device("audiocpu")->state().state_int(M68K_SR);
+	model2_state *state = space.machine().driver_data<model2_state>();
+	int sr = state->m_audiocpu->state_int(M68K_SR);
 
 	if ((sr & 0x0700) > 0x0100)
 	{
@@ -984,7 +984,7 @@ static void snd_latch_to_68k_w(address_space &space, int data)
 
 	state->m_to_68k = data;
 
-	space.machine().device("audiocpu")->execute().set_input_line(2, HOLD_LINE);
+	state->m_audiocpu->set_input_line(2, HOLD_LINE);
 
 	// give the 68k time to notice
 	space.device().execute().spin_until_time(attotime::from_usec(40));
@@ -1877,10 +1877,10 @@ WRITE_LINE_MEMBER(model2_state::scsp_irq)
 	if (state > 0)
 	{
 		m_scsp_last_line = state;
-		machine().device("audiocpu")->execute().set_input_line(state, ASSERT_LINE);
+		m_audiocpu->set_input_line(state, ASSERT_LINE);
 	}
 	else
-		machine().device("audiocpu")->execute().set_input_line(-state, CLEAR_LINE);
+		m_audiocpu->set_input_line(-state, CLEAR_LINE);
 }
 
 static const scsp_interface scsp_config =
@@ -5352,7 +5352,7 @@ ROM_END
 
 DRIVER_INIT_MEMBER(model2_state,genprot)
 {
-	machine().device("maincpu")->memory().space(AS_PROGRAM).install_readwrite_handler(0x01d80000, 0x01dfffff, read32_delegate(FUNC(model2_state::model2_prot_r),this), write32_delegate(FUNC(model2_state::model2_prot_w),this));
+	m_maincpu->space(AS_PROGRAM).install_readwrite_handler(0x01d80000, 0x01dfffff, read32_delegate(FUNC(model2_state::model2_prot_r),this), write32_delegate(FUNC(model2_state::model2_prot_w),this));
 	m_protstate = m_protpos = 0;
 }
 
@@ -5360,7 +5360,7 @@ DRIVER_INIT_MEMBER(model2_state,pltkids)
 {
 	UINT32 *ROM = (UINT32 *)memregion("maincpu")->base();
 
-	machine().device("maincpu")->memory().space(AS_PROGRAM).install_readwrite_handler(0x01d80000, 0x01dfffff, read32_delegate(FUNC(model2_state::model2_prot_r),this), write32_delegate(FUNC(model2_state::model2_prot_w),this));
+	m_maincpu->space(AS_PROGRAM).install_readwrite_handler(0x01d80000, 0x01dfffff, read32_delegate(FUNC(model2_state::model2_prot_r),this), write32_delegate(FUNC(model2_state::model2_prot_w),this));
 	m_protstate = m_protpos = 0;
 
 	// fix bug in program: it destroys the interrupt table and never fixes it
@@ -5371,7 +5371,7 @@ DRIVER_INIT_MEMBER(model2_state,zerogun)
 {
 	UINT32 *ROM = (UINT32 *)memregion("maincpu")->base();
 
-	machine().device("maincpu")->memory().space(AS_PROGRAM).install_readwrite_handler(0x01d80000, 0x01dfffff, read32_delegate(FUNC(model2_state::model2_prot_r),this), write32_delegate(FUNC(model2_state::model2_prot_w),this));
+	m_maincpu->space(AS_PROGRAM).install_readwrite_handler(0x01d80000, 0x01dfffff, read32_delegate(FUNC(model2_state::model2_prot_r),this), write32_delegate(FUNC(model2_state::model2_prot_w),this));
 	m_protstate = m_protpos = 0;
 
 	// fix bug in program: it destroys the interrupt table and never fixes it
@@ -5380,7 +5380,7 @@ DRIVER_INIT_MEMBER(model2_state,zerogun)
 
 DRIVER_INIT_MEMBER(model2_state,daytonam)
 {
-	machine().device("maincpu")->memory().space(AS_PROGRAM).install_read_handler(0x240000, 0x24ffff, read32_delegate(FUNC(model2_state::maxx_r),this));
+	m_maincpu->space(AS_PROGRAM).install_read_handler(0x240000, 0x24ffff, read32_delegate(FUNC(model2_state::maxx_r),this));
 }
 
 /* very crude support for let the game set itself into stand-alone mode */
@@ -5413,8 +5413,8 @@ DRIVER_INIT_MEMBER(model2_state,sgt24h)
 {
 	UINT32 *ROM = (UINT32 *)memregion("maincpu")->base();
 
-	machine().device("maincpu")->memory().space(AS_PROGRAM).install_readwrite_handler(0x01d80000, 0x01dfffff, read32_delegate(FUNC(model2_state::model2_prot_r),this), write32_delegate(FUNC(model2_state::model2_prot_w),this));
-	machine().device("maincpu")->memory().space(AS_PROGRAM).install_readwrite_handler(0x01a10000, 0x01a1ffff, read32_delegate(FUNC(model2_state::jaleco_network_r),this), write32_delegate(FUNC(model2_state::jaleco_network_w),this));
+	m_maincpu->space(AS_PROGRAM).install_readwrite_handler(0x01d80000, 0x01dfffff, read32_delegate(FUNC(model2_state::model2_prot_r),this), write32_delegate(FUNC(model2_state::model2_prot_w),this));
+	m_maincpu->space(AS_PROGRAM).install_readwrite_handler(0x01a10000, 0x01a1ffff, read32_delegate(FUNC(model2_state::jaleco_network_r),this), write32_delegate(FUNC(model2_state::jaleco_network_w),this));
 
 	m_protstate = m_protpos = 0;
 
@@ -5424,7 +5424,7 @@ DRIVER_INIT_MEMBER(model2_state,sgt24h)
 
 DRIVER_INIT_MEMBER(model2_state,overrev)
 {
-	machine().device("maincpu")->memory().space(AS_PROGRAM).install_readwrite_handler(0x01a10000, 0x01a1ffff, read32_delegate(FUNC(model2_state::jaleco_network_r),this), write32_delegate(FUNC(model2_state::jaleco_network_w),this));
+	m_maincpu->space(AS_PROGRAM).install_readwrite_handler(0x01a10000, 0x01a1ffff, read32_delegate(FUNC(model2_state::jaleco_network_r),this), write32_delegate(FUNC(model2_state::jaleco_network_w),this));
 
 	//TODO: cache patch?
 }
@@ -5434,7 +5434,7 @@ DRIVER_INIT_MEMBER(model2_state,doa)
 {
 	UINT32 *ROM = (UINT32 *)memregion("maincpu")->base();
 
-	machine().device("maincpu")->memory().space(AS_PROGRAM).install_readwrite_handler(0x01d80000, 0x01dfffff, read32_delegate(FUNC(model2_state::model2_prot_r),this), write32_delegate(FUNC(model2_state::model2_prot_w),this));
+	m_maincpu->space(AS_PROGRAM).install_readwrite_handler(0x01d80000, 0x01dfffff, read32_delegate(FUNC(model2_state::model2_prot_r),this), write32_delegate(FUNC(model2_state::model2_prot_w),this));
 	m_protstate = m_protpos = 0;
 
 	ROM[0x630/4] = 0x08000004;
@@ -5443,12 +5443,12 @@ DRIVER_INIT_MEMBER(model2_state,doa)
 
 DRIVER_INIT_MEMBER(model2_state,rchase2)
 {
-	machine().device("maincpu")->memory().space(AS_PROGRAM).install_write_handler(0x01c00008, 0x01c0000b, write32_delegate(FUNC(model2_state::rchase2_devices_w),this));
+	m_maincpu->space(AS_PROGRAM).install_write_handler(0x01c00008, 0x01c0000b, write32_delegate(FUNC(model2_state::rchase2_devices_w),this));
 }
 
 DRIVER_INIT_MEMBER(model2_state,srallyc)
 {
-	machine().device("maincpu")->memory().space(AS_PROGRAM).install_write_handler(0x01c00008, 0x01c0000b, write32_delegate(FUNC(model2_state::srallyc_devices_w),this));
+	m_maincpu->space(AS_PROGRAM).install_write_handler(0x01c00008, 0x01c0000b, write32_delegate(FUNC(model2_state::srallyc_devices_w),this));
 }
 
 

@@ -153,7 +153,7 @@ reg: 0->1 (main->2nd) /     : (1->0) 2nd->main :
 int ::gsword_coins_in(void)
 {
 	/* emulate 8741 coin slot */
-	if (machine().root_device().ioport("IN4")->read() & 0xc0)
+	if (ioport("IN4")->read() & 0xc0)
 	{
 		logerror("Coin In\n");
 		return 0x80;
@@ -312,16 +312,15 @@ READ8_MEMBER(gsword_state::gsword_fake_1_r)
 
 WRITE8_MEMBER(gsword_state::gsword_adpcm_data_w)
 {
-	device_t *device = machine().device("msm");
-	msm5205_data_w (device,data & 0x0f); /* bit 0..3 */
-	msm5205_reset_w(device,(data>>5)&1); /* bit 5    */
-	msm5205_vclk_w(device,(data>>4)&1);  /* bit 4    */
+	msm5205_data_w (m_msm,data & 0x0f); /* bit 0..3 */
+	msm5205_reset_w(m_msm,(data>>5)&1); /* bit 5    */
+	msm5205_vclk_w(m_msm,(data>>4)&1);  /* bit 4    */
 }
 
 WRITE8_MEMBER(gsword_state::adpcm_soundcommand_w)
 {
 	soundlatch_byte_w(space, 0, data);
-	machine().device("audiocpu")->execute().set_input_line(INPUT_LINE_NMI, PULSE_LINE);
+	m_audiocpu->set_input_line(INPUT_LINE_NMI, PULSE_LINE);
 }
 
 static ADDRESS_MAP_START( cpu1_map, AS_PROGRAM , 8, gsword_state )
@@ -896,7 +895,7 @@ ROM_END
 DRIVER_INIT_MEMBER(gsword_state,gsword)
 {
 #if 0
-	UINT8 *ROM2 = machine().root_device().memregion("sub")->base();
+	UINT8 *ROM2 = memregion("sub")->base();
 	ROM2[0x1da] = 0xc3; /* patch for rom self check */
 
 	ROM2[0x71e] = 0;    /* patch for sound protection or time out function */
@@ -904,14 +903,14 @@ DRIVER_INIT_MEMBER(gsword_state,gsword)
 #endif
 #if 1
 	/* hack for sound protection or time out function */
-	machine().device("sub")->memory().space(AS_PROGRAM).install_read_handler(0x4004, 0x4005, read8_delegate(FUNC(gsword_state::gsword_hack_r),this));
+	m_subcpu->space(AS_PROGRAM).install_read_handler(0x4004, 0x4005, read8_delegate(FUNC(gsword_state::gsword_hack_r),this));
 #endif
 }
 
 DRIVER_INIT_MEMBER(gsword_state,gsword2)
 {
 #if 0
-	UINT8 *ROM2 = machine().root_device().memregion("sub")->base();
+	UINT8 *ROM2 = memregion("sub")->base();
 
 	ROM2[0x1da] = 0xc3; /* patch for rom self check */
 	ROM2[0x726] = 0;    /* patch for sound protection or time out function */
@@ -919,7 +918,7 @@ DRIVER_INIT_MEMBER(gsword_state,gsword2)
 #endif
 #if 1
 	/* hack for sound protection or time out function */
-	machine().device("sub")->memory().space(AS_PROGRAM).install_read_handler(0x4004, 0x4005, read8_delegate(FUNC(gsword_state::gsword_hack_r),this));
+	m_subcpu->space(AS_PROGRAM).install_read_handler(0x4004, 0x4005, read8_delegate(FUNC(gsword_state::gsword_hack_r),this));
 #endif
 }
 

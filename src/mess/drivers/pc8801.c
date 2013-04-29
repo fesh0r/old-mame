@@ -303,7 +303,8 @@ public:
 			m_fdccpu(*this, "fdccpu"),
 			m_pic(*this, I8214_TAG),
 			m_rtc(*this, UPD1990A_TAG),
-			m_cassette(*this, CASSETTE_TAG)
+			m_cassette(*this, "cassette"),
+			m_beeper(*this, "beeper")
 	{ }
 
 	required_device<cpu_device> m_maincpu;
@@ -311,6 +312,7 @@ public:
 	optional_device<i8214_device> m_pic;
 	required_device<upd1990a_device> m_rtc;
 	required_device<cassette_image_device> m_cassette;
+	required_device<beep_device> m_beeper;
 	UINT8 *m_work_ram;
 	UINT8 *m_hi_work_ram;
 	UINT8 *m_ext_work_ram;
@@ -1185,10 +1187,10 @@ WRITE8_MEMBER(pc8801_state::pc8801_ctrl_w)
 	m_rtc->clk_w((data & 4) >> 2);
 
 	if(((m_device_ctrl_data & 0x20) == 0x00) && ((data & 0x20) == 0x20))
-		machine().device<beep_device>(BEEPER_TAG)->set_state(1);
+		m_beeper->set_state(1);
 
 	if(((m_device_ctrl_data & 0x20) == 0x20) && ((data & 0x20) == 0x00))
-		machine().device<beep_device>(BEEPER_TAG)->set_state(0);
+		m_beeper->set_state(0);
 
 	if((m_device_ctrl_data & 0x40) != (data & 0x40))
 	{
@@ -1196,8 +1198,8 @@ WRITE8_MEMBER(pc8801_state::pc8801_ctrl_w)
 
 		if(m_mouse.phase == 0)
 		{
-			m_mouse.x = machine().root_device().ioport("MOUSEX")->read();
-			m_mouse.y = machine().root_device().ioport("MOUSEY")->read();
+			m_mouse.x = ioport("MOUSEX")->read();
+			m_mouse.y = ioport("MOUSEY")->read();
 		}
 
 		if(data & 0x40 && (new_time - m_mouse.time) > attotime::from_hz(900))
@@ -1215,7 +1217,7 @@ WRITE8_MEMBER(pc8801_state::pc8801_ctrl_w)
 
 	/* TODO: is SING a buzzer mask? Bastard Special relies on this ... */
 	if(m_device_ctrl_data & 0x80)
-		machine().device<beep_device>(BEEPER_TAG)->set_state(0);
+		m_beeper->set_state(0);
 
 	m_device_ctrl_data = data;
 }
@@ -2290,7 +2292,7 @@ void pc8801_state::pc8801_raise_irq(UINT8 irq,UINT8 state)
 
 WRITE_LINE_MEMBER(pc8801_state::pic_int_w)
 {
-	device_t *device = machine().device("maincpu");
+	device_t *device = m_maincpu;
 //  if (state == ASSERT_LINE)
 //  {
 //  }
@@ -2298,7 +2300,7 @@ WRITE_LINE_MEMBER(pc8801_state::pic_int_w)
 
 WRITE_LINE_MEMBER(pc8801_state::pic_enlg_w)
 {
-	device_t *device = machine().device("maincpu");
+	device_t *device = m_maincpu;
 	//if (state == CLEAR_LINE)
 	//{
 	//}
@@ -2379,7 +2381,7 @@ WRITE_LINE_MEMBER(pc8801_state::pc8801_sound_irq)
 			m_sound_irq_latch = 1;
 			m_sound_irq_pending = 0;
 			//IRQ_LOG(("sound\n"));
-			machine().device("maincpu")->execute().set_input_line(0,HOLD_LINE);
+			m_maincpu->set_input_line(0,HOLD_LINE);
 		}
 		else
 			m_sound_irq_pending = 1;
@@ -2454,7 +2456,7 @@ void pc8801_state::machine_reset()
 	m_fdc_irq_opcode = 0; //TODO: copied from PC-88VA, could be wrong here ... should be 0x7f ld a,a in the latter case
 	m_mouse.phase = 0;
 
-	machine().device("fdccpu")->execute().set_input_line_vector(0, 0);
+	m_fdccpu->set_input_line_vector(0, 0);
 
 	{
 		m_txt_color = 2;
@@ -2473,8 +2475,8 @@ void pc8801_state::machine_reset()
 		m_crtc.status = 0;
 	}
 
-	machine().device<beep_device>(BEEPER_TAG)->set_frequency(2400);
-	machine().device<beep_device>(BEEPER_TAG)->set_state(0);
+	m_beeper->set_frequency(2400);
+	m_beeper->set_state(0);
 
 	#ifdef USE_PROPER_I8214
 	{
@@ -2515,15 +2517,15 @@ void pc8801_state::machine_reset()
 	m_has_dictionary = 0;
 	m_has_cdrom = 0;
 
-	m_extram_size = extram_type[machine().root_device().ioport("MEM")->read() & 0x0f];
-	m_has_opna = machine().root_device().ioport("BOARD_CONFIG")->read() & 1;
+	m_extram_size = extram_type[ioport("MEM")->read() & 0x0f];
+	m_has_opna = ioport("BOARD_CONFIG")->read() & 1;
 }
 
 MACHINE_RESET_MEMBER(pc8801_state,pc8801_clock_speed)
 {
 	pc8801_state::machine_reset();
 	m_has_clock_speed = 1;
-	m_clock_setting = machine().root_device().ioport("CFG")->read() & 0x80;
+	m_clock_setting = ioport("CFG")->read() & 0x80;
 
 	m_maincpu->set_unscaled_clock(m_clock_setting ?  XTAL_4MHz : XTAL_8MHz);
 	m_fdccpu->set_unscaled_clock(m_clock_setting ?  XTAL_4MHz : XTAL_8MHz); // correct?
@@ -2568,7 +2570,7 @@ void pc8801_state::fdc_irq_w(bool state)
 
 READ8_MEMBER(pc8801_state::opn_porta_r)
 {
-	if(machine().root_device().ioport("BOARD_CONFIG")->read() & 2)
+	if(ioport("BOARD_CONFIG")->read() & 2)
 	{
 		UINT8 shift,res;
 
@@ -2580,9 +2582,9 @@ READ8_MEMBER(pc8801_state::opn_porta_r)
 		return ((res >> shift) & 0x0f) | 0xf0;
 	}
 
-	return machine().root_device().ioport("OPN_PA")->read();
+	return ioport("OPN_PA")->read();
 }
-READ8_MEMBER(pc8801_state::opn_portb_r){ return machine().root_device().ioport("OPN_PB")->read(); }
+READ8_MEMBER(pc8801_state::opn_portb_r){ return ioport("OPN_PB")->read(); }
 
 static const ym2203_interface pc88_ym2203_intf =
 {
@@ -2679,7 +2681,7 @@ static MACHINE_CONFIG_START( pc8801, pc8801_state )
 	#endif
 	MCFG_UPD1990A_ADD(UPD1990A_TAG, XTAL_32_768kHz, pc8801_upd1990a_intf)
 	//MCFG_CENTRONICS_PRINTER_ADD("centronics", standard_centronics)
-	MCFG_CASSETTE_ADD(CASSETTE_TAG, pc8801_cassette_interface)
+	MCFG_CASSETTE_ADD("cassette", pc8801_cassette_interface)
 	MCFG_SOFTWARE_LIST_ADD("tape_list","pc8801_cass")
 
 	MCFG_I8251_ADD(I8251_TAG, uart_intf)
@@ -2708,7 +2710,7 @@ static MACHINE_CONFIG_START( pc8801, pc8801_state )
 	MCFG_SOUND_CONFIG(pc88_ym2608_intf)
 	MCFG_SOUND_ROUTE(ALL_OUTPUTS, "mono", 1.00)
 
-	MCFG_SOUND_ADD(BEEPER_TAG, BEEP, 0)
+	MCFG_SOUND_ADD("beeper", BEEP, 0)
 	MCFG_SOUND_ROUTE(ALL_OUTPUTS, "mono", 0.10)
 
 	MCFG_TIMER_DRIVER_ADD_PERIODIC("rtc_timer", pc8801_state, pc8801_rtc_irq, attotime::from_hz(600))

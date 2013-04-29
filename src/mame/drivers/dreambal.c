@@ -32,14 +32,16 @@ class dreambal_state : public driver_device
 public:
 	dreambal_state(const machine_config &mconfig, device_type type, const char *tag)
 		: driver_device(mconfig, type, tag),
-			m_eeprom(*this, "eeprom")
+		m_eeprom(*this, "eeprom"),
+		m_maincpu(*this, "maincpu"),
+		m_deco_tilegen1(*this, "tilegen1")
 	{ }
 
 	required_device<eeprom_device> m_eeprom;
 
 	/* devices */
-	cpu_device *m_maincpu;
-	device_t *m_deco_tilegen1;
+	required_device<cpu_device> m_maincpu;
+	required_device<deco16ic_device> m_deco_tilegen1;
 
 	DECLARE_DRIVER_INIT(dreambal);
 	virtual void machine_start();
@@ -282,10 +284,6 @@ static const deco16ic_interface dreambal_deco16ic_tilegen1_intf =
 
 void dreambal_state::machine_start()
 {
-	m_maincpu = machine().device<cpu_device>("maincpu");
-	m_deco_tilegen1 = machine().device("tilegen1");
-
-
 }
 
 void dreambal_state::machine_reset()

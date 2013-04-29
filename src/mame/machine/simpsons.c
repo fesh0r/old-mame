@@ -51,7 +51,7 @@ READ8_MEMBER(simpsons_state::simpsons_sound_interrupt_r)
 
 READ8_MEMBER(simpsons_state::simpsons_sound_r)
 {
-	return machine().device<k053260_device>("k053260")->k053260_r(space, 2 + offset);
+	return m_k053260->k053260_r(space, 2 + offset);
 }
 
 
@@ -77,13 +77,6 @@ void simpsons_state::machine_start()
 	m_xtraram = auto_alloc_array_clear(machine(), UINT8, 0x1000);
 	m_spriteram = auto_alloc_array_clear(machine(), UINT16, 0x1000 / 2);
 
-	m_maincpu = machine().device<cpu_device>("maincpu");
-	m_audiocpu = machine().device<cpu_device>("audiocpu");
-	m_k053260 = machine().device("k053260");
-	m_k052109 = machine().device("k052109");
-	m_k053246 = machine().device("k053246");
-	m_k053251 = machine().device("k053251");
-
 	save_item(NAME(m_firq_enabled));
 	save_item(NAME(m_video_bank));
 	save_item(NAME(m_sprite_colorbase));
@@ -98,7 +91,7 @@ void simpsons_state::machine_reset()
 {
 	int i;
 
-	konami_configure_set_lines(machine().device("maincpu"), simpsons_banking);
+	konami_configure_set_lines(m_maincpu, simpsons_banking);
 
 	for (i = 0; i < 3; i++)
 	{

@@ -766,13 +766,12 @@ static const cassette_interface tmc1800_cassette_interface =
 	NULL
 };
 
-static QUICKLOAD_LOAD( tmc1800 )
+QUICKLOAD_LOAD_MEMBER( tmc1800_base_state, tmc1800 )
 {
-	tmc1800_state *state = image.device().machine().driver_data<tmc1800_state>();
-	UINT8 *ptr = state->m_rom->base();
+	UINT8 *ptr = m_rom->base();
 	int size = image.length();
 
-	if (size > state->m_ram->size())
+	if (size > m_ram->size())
 	{
 		return IMAGE_INIT_FAIL;
 	}
@@ -795,12 +794,12 @@ static MACHINE_CONFIG_START( tmc1800, tmc1800_state )
 	// sound hardware
 	MCFG_SPEAKER_STANDARD_MONO("mono")
 
-	MCFG_SOUND_ADD(BEEPER_TAG, BEEP, 0)
+	MCFG_SOUND_ADD("beeper", BEEP, 0)
 	MCFG_SOUND_ROUTE(ALL_OUTPUTS, "mono", 0.25)
 
 	// devices
-	MCFG_QUICKLOAD_ADD("quickload", tmc1800, "bin", 0)
-	MCFG_CASSETTE_ADD( CASSETTE_TAG, tmc1800_cassette_interface )
+	MCFG_QUICKLOAD_ADD("quickload", tmc1800_base_state, tmc1800, "bin", 0)
+	MCFG_CASSETTE_ADD( "cassette", tmc1800_cassette_interface )
 
 	// internal ram
 	MCFG_RAM_ADD(RAM_TAG)
@@ -821,12 +820,12 @@ static MACHINE_CONFIG_START( osc1000b, osc1000b_state )
 	// sound hardware
 	MCFG_SPEAKER_STANDARD_MONO("mono")
 
-	MCFG_SOUND_ADD(BEEPER_TAG, BEEP, 0)
+	MCFG_SOUND_ADD("beeper", BEEP, 0)
 	MCFG_SOUND_ROUTE(ALL_OUTPUTS, "mono", 0.25)
 
 	// devices
-	MCFG_QUICKLOAD_ADD("quickload", tmc1800, "bin", 0)
-	MCFG_CASSETTE_ADD( CASSETTE_TAG, tmc1800_cassette_interface )
+	MCFG_QUICKLOAD_ADD("quickload", tmc1800_base_state, tmc1800, "bin", 0)
+	MCFG_CASSETTE_ADD( "cassette", tmc1800_cassette_interface )
 
 	// internal ram
 	MCFG_RAM_ADD(RAM_TAG)
@@ -845,8 +844,8 @@ static MACHINE_CONFIG_START( tmc2000, tmc2000_state )
 	MCFG_FRAGMENT_ADD(tmc2000_video)
 
 	// devices
-	MCFG_QUICKLOAD_ADD("quickload", tmc1800, "bin", 0)
-	MCFG_CASSETTE_ADD( CASSETTE_TAG, tmc1800_cassette_interface )
+	MCFG_QUICKLOAD_ADD("quickload", tmc1800_base_state, tmc1800, "bin", 0)
+	MCFG_CASSETTE_ADD( "cassette", tmc1800_cassette_interface )
 
 	// internal ram
 	MCFG_RAM_ADD(RAM_TAG)
@@ -865,8 +864,8 @@ static MACHINE_CONFIG_START( nano, nano_state )
 	MCFG_FRAGMENT_ADD(nano_video)
 
 	// devices
-	MCFG_QUICKLOAD_ADD("quickload", tmc1800, "bin", 0)
-	MCFG_CASSETTE_ADD( CASSETTE_TAG, tmc1800_cassette_interface )
+	MCFG_QUICKLOAD_ADD("quickload", tmc1800_base_state, tmc1800, "bin", 0)
+	MCFG_CASSETTE_ADD( "cassette", tmc1800_cassette_interface )
 
 	// internal ram
 	MCFG_RAM_ADD(RAM_TAG)
@@ -908,9 +907,8 @@ ROM_END
 
 TIMER_CALLBACK_MEMBER(tmc1800_state::setup_beep)
 {
-	beep_device *speaker = machine().device<beep_device>(BEEPER_TAG);
-	speaker->set_state(0);
-	speaker->set_frequency(0);
+	m_beeper->set_state(0);
+	m_beeper->set_frequency(0);
 }
 
 DRIVER_INIT_MEMBER(tmc1800_state,tmc1800)

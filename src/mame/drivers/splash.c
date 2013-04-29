@@ -54,7 +54,7 @@ WRITE16_MEMBER(splash_state::splash_sh_irqtrigger_w)
 	if (ACCESSING_BITS_0_7)
 	{
 		soundlatch_byte_w(space, 0, data & 0xff);
-		machine().device("audiocpu")->execute().set_input_line(0, HOLD_LINE);
+		m_audiocpu->set_input_line(0, HOLD_LINE);
 	}
 }
 
@@ -63,7 +63,7 @@ WRITE16_MEMBER(splash_state::roldf_sh_irqtrigger_w)
 	if (ACCESSING_BITS_0_7)
 	{
 		soundlatch_byte_w(space, 0, data & 0xff);
-		machine().device("audiocpu")->execute().set_input_line(INPUT_LINE_NMI, PULSE_LINE);
+		m_audiocpu->set_input_line(INPUT_LINE_NMI, PULSE_LINE);
 	}
 
 	// give the z80 time to see it
@@ -112,7 +112,7 @@ WRITE8_MEMBER(splash_state::splash_adpcm_data_w)
 
 WRITE_LINE_MEMBER(splash_state::splash_msm5205_int)
 {
-	msm5205_data_w(machine().device("msm"), m_adpcm_data >> 4);
+	msm5205_data_w(m_msm, m_adpcm_data >> 4);
 	m_adpcm_data = (m_adpcm_data << 4) & 0xf0;
 }
 
@@ -143,7 +143,7 @@ WRITE8_MEMBER(splash_state::sound_bank_w)
 void splash_state::roldfrog_update_irq(  )
 {
 	int irq = (m_sound_irq ? 0x08 : 0) | ((m_vblank_irq) ? 0x18 : 0);
-	machine().device("audiocpu")->execute().set_input_line_and_vector(0, irq ? ASSERT_LINE : CLEAR_LINE, 0xc7 | irq);
+	m_audiocpu->set_input_line_and_vector(0, irq ? ASSERT_LINE : CLEAR_LINE, 0xc7 | irq);
 }
 
 WRITE8_MEMBER(splash_state::roldfrog_vblank_ack_w)
@@ -217,7 +217,7 @@ WRITE16_MEMBER(splash_state::spr_write)
 WRITE16_MEMBER(splash_state::funystrp_sh_irqtrigger_w)
 {
 	soundlatch_byte_w(space, 0, data>>8);
-	machine().device("audiocpu")->execute().set_input_line(INPUT_LINE_NMI, PULSE_LINE);
+	m_audiocpu->set_input_line(INPUT_LINE_NMI, PULSE_LINE);
 }
 
 static ADDRESS_MAP_START( funystrp_map, AS_PROGRAM, 16, splash_state )
@@ -579,13 +579,13 @@ WRITE_LINE_MEMBER(splash_state::adpcm_int1)
 {
 	if (m_snd_interrupt_enable1  || m_msm_toggle1 == 1)
 	{
-		msm5205_data_w(machine().device("msm1"), m_msm_data1 >> 4);
+		msm5205_data_w(m_msm1, m_msm_data1 >> 4);
 		m_msm_data1 <<= 4;
 		m_msm_toggle1 ^= 1;
 		if (m_msm_toggle1 == 0)
 		{
 			m_msm_source|=1;
-			machine().device("audiocpu")->execute().set_input_line_and_vector(0, HOLD_LINE, 0x38);
+			m_audiocpu->set_input_line_and_vector(0, HOLD_LINE, 0x38);
 		}
 	}
 }
@@ -594,13 +594,13 @@ WRITE_LINE_MEMBER(splash_state::adpcm_int2)
 {
 	if (m_snd_interrupt_enable2 || m_msm_toggle2 == 1)
 	{
-		msm5205_data_w(machine().device("msm2"), m_msm_data2 >> 4);
+		msm5205_data_w(m_msm2, m_msm_data2 >> 4);
 		m_msm_data2 <<= 4;
 		m_msm_toggle2 ^= 1;
 		if (m_msm_toggle2 == 0)
 		{
 			m_msm_source|=2;
-			machine().device("audiocpu")->execute().set_input_line_and_vector(0, HOLD_LINE, 0x38);
+			m_audiocpu->set_input_line_and_vector(0, HOLD_LINE, 0x38);
 		}
 	}
 }

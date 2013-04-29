@@ -5,20 +5,22 @@
 *************************************************************************/
 
 #define MASTER_CLOCK 57272700   // main oscillator frequency
-
+#include "machine/eeprom.h"
 
 class psikyo4_state : public driver_device
 {
 public:
 	psikyo4_state(const machine_config &mconfig, device_type type, const char *tag)
-		: driver_device(mconfig, type, tag) ,
+		: driver_device(mconfig, type, tag),
 		m_spriteram(*this, "spriteram"),
 		m_vidregs(*this, "vidregs"),
 		m_bgpen_1(*this, "bgpen_1"),
 		m_bgpen_2(*this, "bgpen_2"),
 		m_paletteram(*this, "paletteram"),
 		m_io_select(*this, "io_select"),
-		m_ram(*this, "ram"){ }
+		m_ram(*this, "ram"),
+		m_maincpu(*this, "maincpu"),
+		m_eeprom(*this, "eeprom"){ }
 
 	/* memory pointers */
 	required_shared_ptr<UINT32> m_spriteram;
@@ -34,7 +36,9 @@ public:
 	double         m_oldbrt2;
 
 	/* devices */
-	cpu_device *m_maincpu;
+	required_device<cpu_device> m_maincpu;
+	required_device<eeprom_device> m_eeprom;
+
 	DECLARE_WRITE32_MEMBER(ps4_paletteram32_RRRRRRRRGGGGGGGGBBBBBBBBxxxxxxxx_dword_w);
 	DECLARE_WRITE32_MEMBER(ps4_bgpen_1_dword_w);
 	DECLARE_WRITE32_MEMBER(ps4_bgpen_2_dword_w);

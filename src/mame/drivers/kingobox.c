@@ -23,12 +23,12 @@ Main CPU:
 
 WRITE8_MEMBER(kingofb_state::video_interrupt_w)
 {
-	m_video_cpu->execute().set_input_line_and_vector(0, HOLD_LINE, 0xff);
+	m_video_cpu->set_input_line_and_vector(0, HOLD_LINE, 0xff);
 }
 
 WRITE8_MEMBER(kingofb_state::sprite_interrupt_w)
 {
-	m_sprite_cpu->execute().set_input_line_and_vector(0, HOLD_LINE, 0xff);
+	m_sprite_cpu->set_input_line_and_vector(0, HOLD_LINE, 0xff);
 }
 
 WRITE8_MEMBER(kingofb_state::scroll_interrupt_w)
@@ -40,7 +40,7 @@ WRITE8_MEMBER(kingofb_state::scroll_interrupt_w)
 WRITE8_MEMBER(kingofb_state::sound_command_w)
 {
 	soundlatch_byte_w(space, 0, data);
-	m_audio_cpu->execute().set_input_line_and_vector(0, HOLD_LINE, 0xff);
+	m_audiocpu->set_input_line_and_vector(0, HOLD_LINE, 0xff);
 }
 
 
@@ -450,10 +450,6 @@ INTERRUPT_GEN_MEMBER(kingofb_state::kingofb_interrupt)
 
 void kingofb_state::machine_start()
 {
-	m_video_cpu = machine().device("video");
-	m_sprite_cpu = machine().device("sprite");
-	m_audio_cpu = machine().device("audiocpu");
-
 	save_item(NAME(m_nmi_enable));
 	save_item(NAME(m_palette_bank));
 }

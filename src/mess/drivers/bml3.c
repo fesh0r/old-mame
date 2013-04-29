@@ -48,8 +48,8 @@ public:
 		: driver_device(mconfig, type, tag),
 	m_maincpu(*this, "maincpu"),
 	m_crtc(*this, "crtc"),
-	//m_cass(*this, CASSETTE_TAG),
-	m_beep(*this, BEEPER_TAG)
+	//m_cass(*this, "cassette"),
+	m_beep(*this, "beeper")
 	{ }
 
 	required_device<cpu_device> m_maincpu;
@@ -590,12 +590,12 @@ TIMER_DEVICE_CALLBACK_MEMBER(bml3_state::keyboard_callback)
 	{
 		for(i=0;i<32;i++)
 		{
-			if((machine().root_device().ioport(portnames[port_i])->read()>>i) & 1)
+			if((ioport(portnames[port_i])->read()>>i) & 1)
 			{
 				{
 					m_keyb_press = scancode;
 					m_keyb_press_flag = 1;
-					machine().device("maincpu")->execute().set_input_line(M6809_IRQ_LINE, HOLD_LINE);
+					m_maincpu->set_input_line(M6809_IRQ_LINE, HOLD_LINE);
 					return;
 				}
 			}
@@ -608,7 +608,7 @@ TIMER_DEVICE_CALLBACK_MEMBER(bml3_state::keyboard_callback)
 #if 0
 INTERRUPT_GEN_MEMBER(bml3_state::bml3_irq)
 {
-	machine().device("maincpu")->execute().set_input_line(M6809_IRQ_LINE, HOLD_LINE);
+	m_maincpu->set_input_line(M6809_IRQ_LINE, HOLD_LINE);
 }
 #endif
 
@@ -642,8 +642,8 @@ void bml3_state::machine_reset()
 	address_space &mem = m_maincpu->space(AS_PROGRAM);
 
 	/* defaults */
-	mem.install_rom(0xa000, 0xfeff,mem.machine().root_device().memregion("maincpu")->base() + 0xa000);
-	mem.install_rom(0xfff0, 0xffff,mem.machine().root_device().memregion("maincpu")->base() + 0xfff0);
+	mem.install_rom(0xa000, 0xfeff,memregion("maincpu")->base() + 0xa000);
+	mem.install_rom(0xfff0, 0xffff,memregion("maincpu")->base() + 0xfff0);
 	mem.install_write_handler(0xa000, 0xbfff, 0, 0,write8_delegate(FUNC(bml3_state::bml3_a000_w), this),0);
 	mem.install_write_handler(0xc000, 0xdfff, 0, 0,write8_delegate(FUNC(bml3_state::bml3_c000_w), this),0);
 	mem.install_write_handler(0xe000, 0xefff, 0, 0,write8_delegate(FUNC(bml3_state::bml3_e000_w), this),0);
@@ -730,7 +730,7 @@ WRITE8_MEMBER(bml3_state::bml3_piaA_w)
 		else
 		{
 			mem.install_rom(0xa000, 0xbfff,
-				mem.machine().root_device().memregion("maincpu")->base() + 0xa000);
+				memregion("maincpu")->base() + 0xa000);
 			mem.install_write_handler(0xa000, 0xbfff, 0, 0,
 				write8_delegate(FUNC(bml3_state::bml3_a000_w), this),
 				0);
@@ -748,7 +748,7 @@ WRITE8_MEMBER(bml3_state::bml3_piaA_w)
 		else
 		{
 			mem.install_rom(0xc000, 0xdfff,
-				mem.machine().root_device().memregion("maincpu")->base() + 0xc000);
+				memregion("maincpu")->base() + 0xc000);
 			mem.install_write_handler(0xc000, 0xdfff, 0, 0,
 				write8_delegate(FUNC(bml3_state::bml3_c000_w), this),
 				0);
@@ -766,7 +766,7 @@ WRITE8_MEMBER(bml3_state::bml3_piaA_w)
 		else
 		{
 			mem.install_rom(0xe000, 0xefff,
-				mem.machine().root_device().memregion("maincpu")->base() + 0xe000);
+				memregion("maincpu")->base() + 0xe000);
 			mem.install_write_handler(0xe000, 0xefff, 0, 0,
 				write8_delegate(FUNC(bml3_state::bml3_e000_w), this),
 				0);
@@ -782,7 +782,7 @@ WRITE8_MEMBER(bml3_state::bml3_piaA_w)
 	else
 	{
 		mem.install_rom(0xf000, 0xfeff,
-			mem.machine().root_device().memregion("maincpu")->base() + 0xf000);
+			memregion("maincpu")->base() + 0xf000);
 		mem.install_write_handler(0xf000, 0xfeff, 0, 0,
 			write8_delegate(FUNC(bml3_state::bml3_f000_w), this),
 			0);
@@ -797,7 +797,7 @@ WRITE8_MEMBER(bml3_state::bml3_piaA_w)
 	else
 	{
 		mem.install_rom(0xfff0, 0xffff,
-			mem.machine().root_device().memregion("maincpu")->base() + 0xfff0);
+			memregion("maincpu")->base() + 0xfff0);
 		mem.install_write_handler(0xfff0, 0xffff, 0, 0,
 			write8_delegate(FUNC(bml3_state::bml3_fff0_w), this),
 			0);
@@ -918,7 +918,7 @@ static MACHINE_CONFIG_START( bml3, bml3_state )
 
 	/* Audio */
 	MCFG_SPEAKER_STANDARD_MONO("mono")
-	MCFG_SOUND_ADD(BEEPER_TAG, BEEP, 0)
+	MCFG_SOUND_ADD("beeper", BEEP, 0)
 	MCFG_SOUND_ROUTE(ALL_OUTPUTS,"mono",0.50)
 
 	MCFG_SOUND_ADD("ym2203", YM2203, 2000000) //unknown clock / divider

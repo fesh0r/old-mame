@@ -374,7 +374,6 @@ DRVLIBS += \
 
 $(MAMEOBJ)/shared.a: \
 	$(MACHINE)/nmk112.o \
-	$(MACHINE)/pckeybrd.o \
 	$(MACHINE)/pcshare.o \
 	$(MACHINE)/segacrpt.o \
 	$(MACHINE)/segacrp2.o \
@@ -788,6 +787,7 @@ $(MAMEOBJ)/gottlieb.a: \
 
 $(MAMEOBJ)/ibmpc.a: \
 	$(DRIVERS)/calchase.o \
+	$(DRIVERS)/fruitpc.o \
 	$(DRIVERS)/pangofun.o \
 	$(DRIVERS)/pcat_dyn.o \
 	$(DRIVERS)/pcat_nit.o \
@@ -846,6 +846,7 @@ $(MAMEOBJ)/itech.a: \
 	$(DRIVERS)/capbowl.o $(VIDEO)/capbowl.o \
 	$(DRIVERS)/itech8.o $(MACHINE)/slikshot.o $(VIDEO)/itech8.o \
 	$(DRIVERS)/itech32.o $(VIDEO)/itech32.o \
+	$(DRIVERS)/iteagle.o \
 
 $(MAMEOBJ)/jaleco.a: \
 	$(DRIVERS)/aeroboto.o $(VIDEO)/aeroboto.o \
@@ -1054,6 +1055,7 @@ $(MAMEOBJ)/midway.a: \
 	$(DRIVERS)/midyunit.o $(MACHINE)/midyunit.o $(VIDEO)/midyunit.o \
 	$(DRIVERS)/midzeus.o $(VIDEO)/midzeus.o $(VIDEO)/midzeus2.o \
 	$(DRIVERS)/omegrace.o \
+	$(DRIVERS)/pinball2k.o \
 	$(DRIVERS)/seattle.o \
 	$(DRIVERS)/tmaster.o \
 	$(DRIVERS)/vegas.o $(DRIVERS)/wmg.o \
@@ -1824,6 +1826,7 @@ $(MAMEOBJ)/misc.a: \
 	$(DRIVERS)/gei.o \
 	$(DRIVERS)/globalfr.o \
 	$(DRIVERS)/globalvr.o \
+	$(DRIVERS)/gluck2.o \
 	$(DRIVERS)/goldngam.o \
 	$(DRIVERS)/goldnpkr.o \
 	$(DRIVERS)/good.o \

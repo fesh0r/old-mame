@@ -128,18 +128,18 @@ Hardware:   PPIA 8255
     image_fread_memory - read image to memory
 -------------------------------------------------*/
 
-static void image_fread_memory(device_image_interface &image, UINT16 addr, UINT32 count)
+void atom_state::image_fread_memory(device_image_interface &image, UINT16 addr, UINT32 count)
 {
-	void *ptr = image.device().machine().firstcpu->space(AS_PROGRAM).get_write_ptr(addr);
+	void *ptr = m_maincpu->space(AS_PROGRAM).get_write_ptr(addr);
 
 	image.fread( ptr, count);
 }
 
 /*-------------------------------------------------
-    QUICKLOAD_LOAD( atom_atm )
+    QUICKLOAD_LOAD_MEMBER( atom_state, atom_atm )
 -------------------------------------------------*/
 
-QUICKLOAD_LOAD( atom_atm )
+QUICKLOAD_LOAD_MEMBER( atom_state, atom_atm )
 {
 	/*
 
@@ -174,7 +174,7 @@ QUICKLOAD_LOAD( atom_atm )
 
 	image_fread_memory(image, start_address, size);
 
-	image.device().machine().firstcpu->set_pc(run_address);
+	m_maincpu->set_pc(run_address);
 
 	return IMAGE_INIT_PASS;
 }
@@ -809,26 +809,26 @@ DEVICE_IMAGE_LOAD_MEMBER( atom_state, atom_cart )
 	if (image.software_entry() == NULL)
 	{
 		size = image.length();
-		temp_copy = auto_alloc_array(image.device().machine(), UINT8, size);
+		temp_copy = auto_alloc_array(machine(), UINT8, size);
 
 		if (size > 0x1000)
 		{
 			image.seterror(IMAGE_ERROR_UNSPECIFIED, "Unsupported cartridge size");
-			auto_free(image.device().machine(), temp_copy);
+			auto_free(machine(), temp_copy);
 			return IMAGE_INIT_FAIL;
 		}
 
 		if (image.fread(temp_copy, size) != size)
 		{
 			image.seterror(IMAGE_ERROR_UNSPECIFIED, "Unable to fully read from file");
-			auto_free(image.device().machine(), temp_copy);
+			auto_free(machine(), temp_copy);
 			return IMAGE_INIT_FAIL;
 		}
 	}
 	else
 	{
 		size = image.get_software_region_length( "rom");
-		temp_copy = auto_alloc_array(image.device().machine(), UINT8, size);
+		temp_copy = auto_alloc_array(machine(), UINT8, size);
 		memcpy(temp_copy, image.get_software_region("rom"), size);
 	}
 
@@ -836,9 +836,9 @@ DEVICE_IMAGE_LOAD_MEMBER( atom_state, atom_cart )
 
 	/* With the following, we mirror the cart in the whole memory region */
 	for (i = 0; i < mirror; i++)
-		memcpy(image.device().machine().root_device().memregion(this_cart->region)->base() + this_cart->offset + i * size, temp_copy, size);
+		memcpy(memregion(this_cart->region)->base() + this_cart->offset + i * size, temp_copy, size);
 
-	auto_free(image.device().machine(), temp_copy);
+	auto_free(machine(), temp_copy);
 
 	return IMAGE_INIT_PASS;
 }
@@ -866,7 +866,7 @@ static MACHINE_CONFIG_START( atom, atom_state )
 
 	/* sound hardware */
 	MCFG_SPEAKER_STANDARD_MONO("mono")
-	MCFG_SOUND_ADD(SPEAKER_TAG, SPEAKER_SOUND, 0)
+	MCFG_SOUND_ADD("speaker", SPEAKER_SOUND, 0)
 	MCFG_SOUND_ROUTE(ALL_OUTPUTS, "mono", 1.00)
 
 	/* devices */
@@ -876,8 +876,8 @@ static MACHINE_CONFIG_START( atom, atom_state )
 	MCFG_I8271_ADD(I8271_TAG, fdc_intf)
 	MCFG_LEGACY_FLOPPY_2_DRIVES_ADD(atom_floppy_interface)
 	MCFG_CENTRONICS_PRINTER_ADD(CENTRONICS_TAG, atom_centronics_config)
-	MCFG_CASSETTE_ADD(CASSETTE_TAG, atom_cassette_interface)
-	MCFG_QUICKLOAD_ADD("quickload", atom_atm, "atm", 0)
+	MCFG_CASSETTE_ADD("cassette", atom_cassette_interface)
+	MCFG_QUICKLOAD_ADD("quickload", atom_state, atom_atm, "atm", 0)
 
 	/* cartridge */
 	MCFG_ATOM_CARTSLOT_ADD("cart")
@@ -937,7 +937,7 @@ static MACHINE_CONFIG_START( atombb, atom_state )
 
 	/* sound hardware */
 	MCFG_SPEAKER_STANDARD_MONO("mono")
-	MCFG_SOUND_ADD(SPEAKER_TAG, SPEAKER_SOUND, 0)
+	MCFG_SOUND_ADD("speaker", SPEAKER_SOUND, 0)
 	MCFG_SOUND_ROUTE(ALL_OUTPUTS, "mono", 1.00)
 
 	/* devices */
@@ -945,7 +945,7 @@ static MACHINE_CONFIG_START( atombb, atom_state )
 	MCFG_VIA6522_ADD(R6522_TAG, X2/4, via_intf)
 	MCFG_I8255_ADD(INS8255_TAG, ppi_intf)
 	MCFG_CENTRONICS_PRINTER_ADD(CENTRONICS_TAG, atom_centronics_config)
-	MCFG_CASSETTE_ADD(CASSETTE_TAG, atom_cassette_interface)
+	MCFG_CASSETTE_ADD("cassette", atom_cassette_interface)
 
 	/* internal ram */
 	MCFG_RAM_ADD(RAM_TAG)

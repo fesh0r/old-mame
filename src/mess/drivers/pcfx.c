@@ -24,10 +24,9 @@ class pcfx_state : public driver_device
 {
 public:
 	pcfx_state(const machine_config &mconfig, device_type type, const char *tag)
-		: driver_device(mconfig, type, tag)
-		, m_maincpu(*this, "maincpu")
-		, m_huc6261(*this, "huc6261")
-	{ }
+		: driver_device(mconfig, type, tag),
+		m_maincpu(*this, "maincpu"),
+		m_huc6261(*this, "huc6261") { }
 
 	required_device<cpu_device> m_maincpu;
 	required_device<huc6261_device> m_huc6261;
@@ -122,7 +121,7 @@ TIMER_CALLBACK_MEMBER(pcfx_state::pad_func)
 {
 	const char *const padnames[] = { "P1", "P2" };
 
-	m_pad.latch[param] = machine().root_device().ioport(padnames[param])->read();
+	m_pad.latch[param] = ioport(padnames[param])->read();
 	m_pad.status[param] |= 8;
 	m_pad.ctrl[param] &= ~1; // ack TX line
 	// TODO: pad IRQ

@@ -534,7 +534,9 @@ public:
 	ksys573_state(const machine_config &mconfig, device_type type, const char *tag) :
 		driver_device(mconfig, type, tag),
 		m_psxirq(*this, ":maincpu:irq"),
-		m_cr589(*this, ":cdrom")
+		m_cr589(*this, ":cdrom"),
+		m_maincpu(*this, "maincpu"),
+		m_ram(*this, "maincpu:ram")
 	{
 	}
 
@@ -667,6 +669,8 @@ public:
 	void hyperbbc_lamp_callback( int data );
 	void mamboagg_output_callback( int offset, int data );
 	void punchmania_output_callback( int offset, int data );
+	required_device<psxcpu_device> m_maincpu;
+	required_device<ram_device> m_ram;
 };
 
 void ATTR_PRINTF(3,4)  ksys573_state::verboselog( int n_level, const char *s_fmt, ... )
@@ -829,7 +833,7 @@ TIMER_CALLBACK_MEMBER(ksys573_state::atapi_xfer_end)
 		atapi_regs[ATAPI_REG_COUNTLOW] = m_atapi_xferlen & 0xff;
 		atapi_regs[ATAPI_REG_COUNTHIGH] = (m_atapi_xferlen>>8)&0xff;
 
-		m_atapi_timer->adjust(machine().device<cpu_device>("maincpu")->cycles_to_attotime((ATAPI_CYCLES_PER_SECTOR * (m_atapi_xferlen/2048))));
+		m_atapi_timer->adjust(m_maincpu->cycles_to_attotime((ATAPI_CYCLES_PER_SECTOR * (m_atapi_xferlen/2048))));
 	}
 	else
 	{
@@ -1271,7 +1275,7 @@ void ksys573_state::cdrom_dma_write( UINT32 *ram, UINT32 n_address, INT32 n_size
 	verboselog(2, "atapi_xfer_end: %d %d\n", m_atapi_xferlen, m_atapi_xfermod );
 
 	// set a transfer complete timer (Note: CYCLES_PER_SECTOR can't be lower than 2000 or the BIOS ends up "out of order")
-	m_atapi_timer->adjust(machine().device<cpu_device>("maincpu")->cycles_to_attotime((ATAPI_CYCLES_PER_SECTOR * (m_atapi_xferlen/2048))));
+	m_atapi_timer->adjust(m_maincpu->cycles_to_attotime((ATAPI_CYCLES_PER_SECTOR * (m_atapi_xferlen/2048))));
 }
 
 WRITE32_MEMBER(ksys573_state::security_w)
@@ -1367,7 +1371,6 @@ WRITE16_MEMBER(ksys573_state::flash_w)
 }
 
 static ADDRESS_MAP_START( konami573_map, AS_PROGRAM, 32, ksys573_state )
-	AM_RANGE(0x00000000, 0x003fffff) AM_RAM AM_SHARE("share1") /* ram */
 	AM_RANGE(0x1f000000, 0x1f3fffff) AM_READWRITE16( flash_r, flash_w, 0xffffffff )
 	AM_RANGE(0x1f400000, 0x1f400003) AM_READ_PORT( "IN0" ) AM_WRITE_PORT( "OUT0" )
 	AM_RANGE(0x1f400004, 0x1f400007) AM_READ(jamma_r )
@@ -1381,9 +1384,7 @@ static ADDRESS_MAP_START( konami573_map, AS_PROGRAM, 32, ksys573_state )
 	AM_RANGE(0x1f680000, 0x1f68001f) AM_READWRITE(mb89371_r, mb89371_w)
 	AM_RANGE(0x1f6a0000, 0x1f6a0003) AM_READWRITE(security_r, security_w )
 	AM_RANGE(0x1fc00000, 0x1fc7ffff) AM_ROM AM_SHARE("share2") AM_REGION("bios", 0)
-	AM_RANGE(0x80000000, 0x803fffff) AM_RAM AM_SHARE("share1") /* ram mirror */
 	AM_RANGE(0x9fc00000, 0x9fc7ffff) AM_ROM AM_SHARE("share2") /* bios mirror */
-	AM_RANGE(0xa0000000, 0xa03fffff) AM_RAM AM_SHARE("share1") /* ram mirror */
 	AM_RANGE(0xbfc00000, 0xbfc7ffff) AM_ROM AM_SHARE("share2") /* bios mirror */
 ADDRESS_MAP_END
 
@@ -1465,7 +1466,7 @@ void ksys573_state::sys573_vblank(screen_device &screen, bool vblank_state)
 	{
 		/* patch out security-plate error */
 
-		UINT32 *p_n_psxram = (UINT32 *)memshare("share1")->ptr();
+		UINT32 *p_n_psxram = (UINT32 *) m_ram->pointer();
 
 		/* install cd */
 
@@ -1489,7 +1490,8 @@ void ksys573_state::sys573_vblank(screen_device &screen, bool vblank_state)
 	{
 		/* patch out security-plate error */
 
-		UINT32 *p_n_psxram = (UINT32 *)memshare("share1")->ptr();
+		UINT32 *p_n_psxram = (UINT32 *) m_ram->pointer();
+
 		/* 8001f850: jal $8003221c */
 		if( p_n_psxram[ 0x1f850 / 4 ] == 0x0c00c887 )
 		{
@@ -1588,7 +1590,7 @@ WRITE32_MEMBER(ksys573_state::ge765pwbba_w)
 DRIVER_INIT_MEMBER(ksys573_state,ge765pwbba)
 {
 	DRIVER_INIT_CALL(konami573);
-	machine().device("maincpu")->memory().space(AS_PROGRAM).install_readwrite_handler( 0x1f640000, 0x1f6400ff, read32_delegate(FUNC(ksys573_state::ge765pwbba_r),this), write32_delegate(FUNC(ksys573_state::ge765pwbba_w),this));
+	m_maincpu->space(AS_PROGRAM).install_readwrite_handler( 0x1f640000, 0x1f6400ff, read32_delegate(FUNC(ksys573_state::ge765pwbba_r),this), write32_delegate(FUNC(ksys573_state::ge765pwbba_w),this));
 }
 
 /*
@@ -1696,7 +1698,7 @@ void ksys573_state::gx700pwfbf_init( void (ksys573_state::*output_callback_func)
 
 	m_gx700pwfbf_output_callback = output_callback_func;
 
-	machine().device("maincpu")->memory().space(AS_PROGRAM).install_readwrite_handler( 0x1f640000, 0x1f6400ff, read32_delegate(FUNC(ksys573_state::gx700pwbf_io_r),this), write32_delegate(FUNC(ksys573_state::gx700pwbf_io_w),this));
+	m_maincpu->space(AS_PROGRAM).install_readwrite_handler( 0x1f640000, 0x1f6400ff, read32_delegate(FUNC(ksys573_state::gx700pwbf_io_r),this), write32_delegate(FUNC(ksys573_state::gx700pwbf_io_w),this));
 
 	save_item( NAME(m_gx700pwbf_output_data) );
 }
@@ -1929,7 +1931,7 @@ WRITE32_MEMBER(ksys573_state::gtrfrks_io_w)
 DRIVER_INIT_MEMBER(ksys573_state,gtrfrks)
 {
 	DRIVER_INIT_CALL(konami573);
-	machine().device("maincpu")->memory().space(AS_PROGRAM).install_readwrite_handler( 0x1f600000, 0x1f6000ff, read32_delegate(FUNC(ksys573_state::gtrfrks_io_r),this), write32_delegate(FUNC(ksys573_state::gtrfrks_io_w),this));
+	m_maincpu->space(AS_PROGRAM).install_readwrite_handler( 0x1f600000, 0x1f6000ff, read32_delegate(FUNC(ksys573_state::gtrfrks_io_r),this), write32_delegate(FUNC(ksys573_state::gtrfrks_io_w),this));
 }
 
 /* GX894 digital i/o */
@@ -2239,7 +2241,7 @@ void ksys573_state::gx894pwbba_init( void (ksys573_state::*output_callback_func)
 
 	m_gx894pwbba_output_callback = output_callback_func;
 
-	machine().device("maincpu")->memory().space(AS_PROGRAM).install_readwrite_handler( 0x1f640000, 0x1f6400ff, read32_delegate(FUNC(ksys573_state::gx894pwbba_r),this), write32_delegate(FUNC(ksys573_state::gx894pwbba_w),this));
+	m_maincpu->space(AS_PROGRAM).install_readwrite_handler( 0x1f640000, 0x1f6400ff, read32_delegate(FUNC(ksys573_state::gx894pwbba_r),this), write32_delegate(FUNC(ksys573_state::gx894pwbba_w),this));
 
 	m_gx894_ram_write_offset = 0;
 	m_gx894_ram_read_offset = 0;
@@ -2265,7 +2267,7 @@ DRIVER_INIT_MEMBER(ksys573_state,gtrfrkdigital)
 	DRIVER_INIT_CALL(konami573);
 
 	gx894pwbba_init( NULL );
-	machine().device("maincpu")->memory().space(AS_PROGRAM).install_readwrite_handler( 0x1f600000, 0x1f6000ff, read32_delegate(FUNC(ksys573_state::gtrfrks_io_r),this), write32_delegate(FUNC(ksys573_state::gtrfrks_io_w),this) );
+	m_maincpu->space(AS_PROGRAM).install_readwrite_handler( 0x1f600000, 0x1f6000ff, read32_delegate(FUNC(ksys573_state::gtrfrks_io_r),this), write32_delegate(FUNC(ksys573_state::gtrfrks_io_w),this) );
 }
 
 /* ddr solo */
@@ -2557,7 +2559,7 @@ DRIVER_INIT_MEMBER(ksys573_state,dmx)
 	DRIVER_INIT_CALL(konami573);
 
 	gx894pwbba_init( &ksys573_state::dmx_output_callback );
-	machine().device("maincpu")->memory().space(AS_PROGRAM).install_write_handler(0x1f600000, 0x1f6000ff, write32_delegate(FUNC(ksys573_state::dmx_io_w),this) );
+	m_maincpu->space(AS_PROGRAM).install_write_handler(0x1f600000, 0x1f6000ff, write32_delegate(FUNC(ksys573_state::dmx_io_w),this) );
 }
 
 /* salary man champ */
@@ -2710,7 +2712,7 @@ DRIVER_INIT_MEMBER(ksys573_state,mamboagg)
 	DRIVER_INIT_CALL(konami573);
 
 	gx894pwbba_init( &ksys573_state::mamboagg_output_callback );
-	machine().device("maincpu")->memory().space(AS_PROGRAM).install_write_handler(0x1f600000, 0x1f6000ff, write32_delegate(FUNC(ksys573_state::mamboagg_io_w),this));
+	m_maincpu->space(AS_PROGRAM).install_write_handler(0x1f600000, 0x1f6000ff, write32_delegate(FUNC(ksys573_state::mamboagg_io_w),this));
 }
 
 
@@ -3025,7 +3027,7 @@ READ32_MEMBER(ksys573_state::gunmania_r)
 DRIVER_INIT_MEMBER(ksys573_state,gunmania)
 {
 	DRIVER_INIT_CALL(konami573);
-	machine().device("maincpu")->memory().space(AS_PROGRAM).install_readwrite_handler( 0x1f640000, 0x1f6400ff, read32_delegate(FUNC(ksys573_state::gunmania_r),this), write32_delegate(FUNC(ksys573_state::gunmania_w),this));
+	m_maincpu->space(AS_PROGRAM).install_readwrite_handler( 0x1f640000, 0x1f6400ff, read32_delegate(FUNC(ksys573_state::gunmania_r),this), write32_delegate(FUNC(ksys573_state::gunmania_w),this));
 }
 
 /* ADC0834 Interface */
@@ -3059,6 +3061,9 @@ static MACHINE_CONFIG_START( konami573, ksys573_state )
 	/* basic machine hardware */
 	MCFG_CPU_ADD( "maincpu", CXD8530CQ, XTAL_67_7376MHz )
 	MCFG_CPU_PROGRAM_MAP( konami573_map )
+
+	MCFG_RAM_MODIFY("maincpu:ram")
+	MCFG_RAM_DEFAULT_SIZE("4M")
 
 	MCFG_PSX_DMA_CHANNEL_READ( "maincpu", 5, psx_dma_read_delegate( FUNC( ksys573_state::cdrom_dma_read ), (ksys573_state *) owner ) )
 	MCFG_PSX_DMA_CHANNEL_WRITE( "maincpu", 5, psx_dma_write_delegate( FUNC( ksys573_state::cdrom_dma_write ), (ksys573_state *) owner ) )

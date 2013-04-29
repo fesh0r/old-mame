@@ -129,10 +129,12 @@ class polgar_state : public mboard_state
 public:
 	polgar_state(const machine_config &mconfig, device_type type, const char *tag)
 		: mboard_state(mconfig, type, tag),
-			m_lcdc(*this, "hd44780")
+			m_lcdc(*this, "hd44780"),
+			m_beeper(*this, "beeper")
 		{ }
 
 	optional_device<hd44780_device> m_lcdc;
+	optional_device<beep_device> m_beeper;
 
 	UINT8 led_status;
 	UINT8 lcd_char;
@@ -244,9 +246,9 @@ WRITE8_MEMBER(polgar_state::write_polgar_IO)
 	}
 
 	if (BIT(data,2) || BIT(data,3))
-			machine().device<beep_device>("beep")->set_state(1);
+			m_beeper->set_state(1);
 		else
-			machine().device<beep_device>("beep")->set_state(0);
+			m_beeper->set_state(0);
 
 	if (BIT(data,7) && BIT(data, 4)) {
 		for (i = 0;i < 8;i++)
@@ -412,9 +414,9 @@ WRITE8_MEMBER(polgar_state::milano_write_LED)
 WRITE8_MEMBER(polgar_state::megaiv_write_LED)
 {
 	if (BIT(data,7))
-		machine().device<beep_device>("beep")->set_state(1);
+		m_beeper->set_state(1);
 	else
-		machine().device<beep_device>("beep")->set_state(0);
+		m_beeper->set_state(0);
 	output_set_led_value(102,BIT(data,1)?1:0);
 	output_set_led_value(107,BIT(data,6)?1:0);
 
@@ -475,13 +477,13 @@ if ((data & 0xa1) == 0xa1) {
 }
 
 if (BIT(data,7))
-	machine().device<beep_device>("beep")->set_state(1);
+	m_beeper->set_state(1);
 else
-	machine().device<beep_device>("beep")->set_state(0);
+	m_beeper->set_state(0);
 if (BIT(data,1))
-	machine().device<beep_device>("beep")->set_state(1);
+	m_beeper->set_state(1);
 else
-	machine().device<beep_device>("beep")->set_state(0);
+	m_beeper->set_state(0);
 //  logerror("LEDs  FUNC = %02x found = %d\n",data,found);
 	if (!found) {
 		logerror("unknown LED mask %d\n",data);
@@ -724,9 +726,9 @@ READ32_MEMBER(polgar_state::read_keys_BPL32)
 WRITE8_MEMBER(polgar_state::beep_academy)
 {
 	if (!BIT(data,7))
-			machine().device<beep_device>("beep")->set_state(1);
+			m_beeper->set_state(1);
 		else
-			machine().device<beep_device>("beep")->set_state(0);
+			m_beeper->set_state(0);
 }
 
 WRITE8_MEMBER(polgar_state::megaiv_IO)
@@ -807,12 +809,12 @@ READ8_MEMBER(polgar_state::read_keys_board_academy)
 
 TIMER_DEVICE_CALLBACK_MEMBER(polgar_state::cause_nmi)
 {
-	machine().device("maincpu")->execute().set_input_line(INPUT_LINE_NMI,PULSE_LINE);
+	m_maincpu->set_input_line(INPUT_LINE_NMI,PULSE_LINE);
 }
 
 TIMER_DEVICE_CALLBACK_MEMBER(polgar_state::cause_M6502_irq)
 {
-	machine().device("maincpu")->execute().set_input_line(M65C02_IRQ_LINE, HOLD_LINE);
+	m_maincpu->set_input_line(M65C02_IRQ_LINE, HOLD_LINE);
 }
 
 
@@ -878,7 +880,6 @@ WRITE16_MEMBER(polgar_state::write_LCD_data)
 void polgar_state::write_IOenable(unsigned char data,address_space &space)
 {
 	hd44780_device * hd44780 = space.machine().device<hd44780_device>("hd44780");
-	beep_device *speaker = machine().device<beep_device>("beep");
 
 	if (BIT(data,5) && BIT(data,4)) {
 		if (BIT(data,1)) {
@@ -904,9 +905,9 @@ void polgar_state::write_IOenable(unsigned char data,address_space &space)
 	logerror("Write to IOENBL data: %08x\n",data);
 
 		if (BIT(data,2) || BIT(data,3))
-					speaker->set_state(1);
+					m_beeper->set_state(1);
 				else
-					speaker->set_state(0);
+					m_beeper->set_state(0);
 	}
 
 }
@@ -948,7 +949,7 @@ WRITE16_MEMBER(polgar_state::write_unknown2)
 
 READ32_MEMBER(polgar_state::read_unknown3_32)
 {
-	logerror("Read from unknown3 offset: %x %08x\n",offset,(unsigned int) machine().device("maincpu")->state().state_int(M68K_PC));
+	logerror("Read from unknown3 offset: %x %08x\n",offset,(unsigned int) m_maincpu->state_int(M68K_PC));
 	return 0xffffffff;
 	//return unknown2_data|unknown2_data<<24;
 
@@ -975,19 +976,19 @@ WRITE32_MEMBER(polgar_state::write_1000000)
 
 TIMER_DEVICE_CALLBACK_MEMBER(polgar_state::timer_update_irq6)
 {
-	machine().device("maincpu")->execute().set_input_line(6, HOLD_LINE);
+	m_maincpu->set_input_line(6, HOLD_LINE);
 }
 
 TIMER_DEVICE_CALLBACK_MEMBER(polgar_state::timer_update_irq2)
 {
-	machine().device("maincpu")->execute().set_input_line(2, HOLD_LINE);
+	m_maincpu->set_input_line(2, HOLD_LINE);
 }
 
 
 TIMER_DEVICE_CALLBACK_MEMBER(polgar_state::timer_update_irq_academy)
 {
 	if (academyallowNMI) {
-		machine().device("maincpu")->execute().set_input_line(6, HOLD_LINE);
+		m_maincpu->set_input_line(6, HOLD_LINE);
 	}
 }
 
@@ -997,7 +998,7 @@ MACHINE_START_MEMBER(polgar_state,van32)
 // patch LCD delay loop on the 68030 machines until waitstates and/or opcode timings are fixed in MAME core
 // patches gen32 gen32_41 gen32_oc lond030
 
-	UINT8 *rom = machine().root_device().memregion("maincpu")->base();
+	UINT8 *rom = memregion("maincpu")->base();
 
 	if(rom[0x870] == 0x0c && rom[0x871] == 0x78) {
 		if (!strcmp(machine().system().name,"gen32_oc")) {
@@ -1305,7 +1306,7 @@ static ADDRESS_MAP_START(diablo68_mem , AS_PROGRAM, 16, polgar_state )
 	AM_RANGE( 0x00ff0000, 0x00ff7fff ) AM_ROM AM_REGION("maincpu",10000) // Opening Book
 //  AM_RANGE( 0x00300000, 0x00300007 ) AM_READ(diablo68_aciaread)
 //  AM_RANGE( 0x00300000, 0x00300007 ) AM_READ(diablo68_aciawrite)
-//  AM_RANGE( 0x00300002, 0x00300003 ) AM_READ_LEGACY(diablo68_flags)
+//  AM_RANGE( 0x00300002, 0x00300003 ) AM_READ(diablo68_flags)
 	AM_RANGE( 0x003a0000, 0x003a0001 ) AM_WRITE(diablo68_write_LCD)
 	AM_RANGE( 0x003c0000, 0x003c0001 ) AM_WRITE(diablo68_reg_select)
 	AM_RANGE( 0x00280000, 0x0028ffff ) AM_RAM  // hash tables
@@ -1532,7 +1533,7 @@ static MACHINE_CONFIG_FRAGMENT ( chess_common )
 
 	/* sound hardware */
 	MCFG_SPEAKER_STANDARD_MONO("mono")
-	MCFG_SOUND_ADD("beep", BEEP, 0)
+	MCFG_SOUND_ADD("beeper", BEEP, 0)
 	MCFG_SOUND_ROUTE(ALL_OUTPUTS, "mono", 1.0)
 
 MACHINE_CONFIG_END

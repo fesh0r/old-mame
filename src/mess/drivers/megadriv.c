@@ -59,7 +59,7 @@ public:
 	UINT8 m_page_register;
 
 	UINT16 pico_read_penpos(int pen);
-	DECLARE_READ16_HANDLER(pico_68k_io_read);
+	DECLARE_READ16_MEMBER(pico_68k_io_read);
 	DECLARE_WRITE16_MEMBER(pico_68k_io_write);
 	DECLARE_MACHINE_START(pico);
 };
@@ -350,14 +350,15 @@ MACHINE_START_MEMBER(md_cons_state, ms_megadriv)
 	vdp_get_word_from_68k_mem = vdp_get_word_from_68k_mem_console;
 
 	// for now m_cartslot is only in MD and not 32x and SegaCD
-	machine().device("maincpu")->memory().space(AS_PROGRAM).install_readwrite_handler(0x000000, 0x7fffff, read16_delegate(FUNC(base_md_cart_slot_device::read),(base_md_cart_slot_device*)m_slotcart), write16_delegate(FUNC(base_md_cart_slot_device::write),(base_md_cart_slot_device*)m_slotcart));
-	machine().device("maincpu")->memory().space(AS_PROGRAM).install_readwrite_handler(0xa13000, 0xa130ff, read16_delegate(FUNC(base_md_cart_slot_device::read_a13),(base_md_cart_slot_device*)m_slotcart), write16_delegate(FUNC(base_md_cart_slot_device::write_a13),(base_md_cart_slot_device*)m_slotcart));
-	machine().device("maincpu")->memory().space(AS_PROGRAM).install_readwrite_handler(0xa15000, 0xa150ff, read16_delegate(FUNC(base_md_cart_slot_device::read_a15),(base_md_cart_slot_device*)m_slotcart), write16_delegate(FUNC(base_md_cart_slot_device::write_a15),(base_md_cart_slot_device*)m_slotcart));
-	machine().device("maincpu")->memory().space(AS_PROGRAM).install_write_handler(0xa14000, 0xa14003, write16_delegate(FUNC(base_md_cart_slot_device::write_tmss_bank),(base_md_cart_slot_device*)m_slotcart));
+	m_maincpu->space(AS_PROGRAM).install_readwrite_handler(0x000000, 0x7fffff, read16_delegate(FUNC(base_md_cart_slot_device::read),(base_md_cart_slot_device*)m_slotcart), write16_delegate(FUNC(base_md_cart_slot_device::write),(base_md_cart_slot_device*)m_slotcart));
+	m_maincpu->space(AS_PROGRAM).install_readwrite_handler(0xa13000, 0xa130ff, read16_delegate(FUNC(base_md_cart_slot_device::read_a13),(base_md_cart_slot_device*)m_slotcart), write16_delegate(FUNC(base_md_cart_slot_device::write_a13),(base_md_cart_slot_device*)m_slotcart));
+	m_maincpu->space(AS_PROGRAM).install_readwrite_handler(0xa15000, 0xa150ff, read16_delegate(FUNC(base_md_cart_slot_device::read_a15),(base_md_cart_slot_device*)m_slotcart), write16_delegate(FUNC(base_md_cart_slot_device::write_a15),(base_md_cart_slot_device*)m_slotcart));
+	m_maincpu->space(AS_PROGRAM).install_write_handler(0xa14000, 0xa14003, write16_delegate(FUNC(base_md_cart_slot_device::write_tmss_bank),(base_md_cart_slot_device*)m_slotcart));
 }
 
 MACHINE_RESET_MEMBER(md_cons_state,ms_megadriv )
 {
+	m_maincpu->reset();
 	MACHINE_RESET_CALL_MEMBER( megadriv );
 }
 
@@ -517,31 +518,31 @@ DEVICE_IMAGE_LOAD_MEMBER( md_base_state, _32x_cart )
 	if (image.software_entry() == NULL)
 	{
 		length = image.length();
-		temp_copy = auto_alloc_array(image.device().machine(), UINT8, length);
+		temp_copy = auto_alloc_array(machine(), UINT8, length);
 		image.fread(temp_copy, length);
 	}
 	else
 	{
 		length = image.get_software_region_length("rom");
-		temp_copy = auto_alloc_array(image.device().machine(), UINT8, length);
+		temp_copy = auto_alloc_array(machine(), UINT8, length);
 		memcpy(temp_copy, image.get_software_region("rom"), length);
 	}
 
 	/* Copy the cart image in the locations the driver expects */
 	// Notice that, by using pick_integer, we are sure the code works on both LE and BE machines
-	ROM16 = (UINT16 *) image.device().machine().root_device().memregion("gamecart")->base();
+	ROM16 = (UINT16 *) memregion("gamecart")->base();
 	for (i = 0; i < length; i += 2)
 		ROM16[i / 2] = pick_integer_be(temp_copy, i, 2);
 
-	ROM32 = (UINT32 *) image.device().machine().root_device().memregion("gamecart_sh2")->base();
+	ROM32 = (UINT32 *) memregion("gamecart_sh2")->base();
 	for (i = 0; i < length; i += 4)
 		ROM32[i / 4] = pick_integer_be(temp_copy, i, 4);
 
-	ROM16 = (UINT16 *) image.device().machine().root_device().memregion("maincpu")->base();
+	ROM16 = (UINT16 *) memregion("maincpu")->base();
 	for (i = 0x00; i < length; i += 2)
 		ROM16[i / 2] = pick_integer_be(temp_copy, i, 2);
 
-	auto_free(image.device().machine(), temp_copy);
+	auto_free(machine(), temp_copy);
 
 	return IMAGE_INIT_PASS;
 }
@@ -951,7 +952,7 @@ UINT16 pico_state::pico_read_penpos(int pen)
 	return penpos;
 }
 
-READ16_HANDLER(pico_state::pico_68k_io_read )
+READ16_MEMBER(pico_state::pico_68k_io_read )
 {
 	UINT8 retdata = 0;
 
@@ -1071,10 +1072,10 @@ MACHINE_START_MEMBER(pico_state,pico)
 	m_io_penx = ioport("PENX");
 	m_io_peny = ioport("PENY");
 
-	machine().device("maincpu")->memory().space(AS_PROGRAM).install_readwrite_handler(0x000000, 0x7fffff, read16_delegate(FUNC(base_md_cart_slot_device::read),(base_md_cart_slot_device*)m_picocart), write16_delegate(FUNC(base_md_cart_slot_device::write),(base_md_cart_slot_device*)m_picocart));
-	machine().device("maincpu")->memory().space(AS_PROGRAM).install_readwrite_handler(0xa13000, 0xa130ff, read16_delegate(FUNC(base_md_cart_slot_device::read_a13),(base_md_cart_slot_device*)m_picocart), write16_delegate(FUNC(base_md_cart_slot_device::write_a13),(base_md_cart_slot_device*)m_picocart));
-	machine().device("maincpu")->memory().space(AS_PROGRAM).install_readwrite_handler(0xa15000, 0xa150ff, read16_delegate(FUNC(base_md_cart_slot_device::read_a15),(base_md_cart_slot_device*)m_picocart), write16_delegate(FUNC(base_md_cart_slot_device::write_a15),(base_md_cart_slot_device*)m_picocart));
-	machine().device("maincpu")->memory().space(AS_PROGRAM).install_write_handler(0xa14000, 0xa14003, write16_delegate(FUNC(base_md_cart_slot_device::write_tmss_bank),(base_md_cart_slot_device*)m_picocart));
+	m_maincpu->space(AS_PROGRAM).install_readwrite_handler(0x000000, 0x7fffff, read16_delegate(FUNC(base_md_cart_slot_device::read),(base_md_cart_slot_device*)m_picocart), write16_delegate(FUNC(base_md_cart_slot_device::write),(base_md_cart_slot_device*)m_picocart));
+	m_maincpu->space(AS_PROGRAM).install_readwrite_handler(0xa13000, 0xa130ff, read16_delegate(FUNC(base_md_cart_slot_device::read_a13),(base_md_cart_slot_device*)m_picocart), write16_delegate(FUNC(base_md_cart_slot_device::write_a13),(base_md_cart_slot_device*)m_picocart));
+	m_maincpu->space(AS_PROGRAM).install_readwrite_handler(0xa15000, 0xa150ff, read16_delegate(FUNC(base_md_cart_slot_device::read_a15),(base_md_cart_slot_device*)m_picocart), write16_delegate(FUNC(base_md_cart_slot_device::write_a15),(base_md_cart_slot_device*)m_picocart));
+	m_maincpu->space(AS_PROGRAM).install_write_handler(0xa14000, 0xa14003, write16_delegate(FUNC(base_md_cart_slot_device::write_tmss_bank),(base_md_cart_slot_device*)m_picocart));
 }
 
 static MACHINE_CONFIG_START( pico, pico_state )

@@ -106,15 +106,14 @@ class kim1_state : public driver_device
 {
 public:
 	kim1_state(const machine_config &mconfig, device_type type, const char *tag)
-		: driver_device(mconfig, type, tag)
-		, m_maincpu(*this, "maincpu")
-		, m_riot2(*this, "miot_u2")
-		, m_cass(*this, CASSETTE_TAG)
-		, m_line0(*this, "LINE0")
-		, m_line1(*this, "LINE1")
-		, m_line2(*this, "LINE2")
-		, m_line3(*this, "LINE3")
-	{ }
+		: driver_device(mconfig, type, tag),
+		m_maincpu(*this, "maincpu"),
+		m_riot2(*this, "miot_u2"),
+		m_cass(*this, "cassette"),
+		m_line0(*this, "LINE0"),
+		m_line1(*this, "LINE1"),
+		m_line2(*this, "LINE2"),
+		m_line3(*this, "LINE3") { }
 
 	required_device<cpu_device> m_maincpu;
 	required_device<mos6530_device> m_riot2;
@@ -359,7 +358,7 @@ static MACHINE_CONFIG_START( kim1, kim1_state )
 	/* Devices */
 	MCFG_MOS6530_ADD( "miot_u2", 1000000, kim1_u2_mos6530_interface )
 	MCFG_MOS6530_ADD( "miot_u3", 1000000, kim1_u3_mos6530_interface )
-	MCFG_CASSETTE_ADD( CASSETTE_TAG, kim1_cassette_interface )
+	MCFG_CASSETTE_ADD( "cassette", kim1_cassette_interface )
 	MCFG_TIMER_DRIVER_ADD_PERIODIC("led_timer", kim1_state, kim1_update_leds, attotime::from_hz(60))
 	MCFG_TIMER_DRIVER_ADD_PERIODIC("cassette_timer", kim1_state, kim1_cassette_input, attotime::from_hz(44100))
 MACHINE_CONFIG_END

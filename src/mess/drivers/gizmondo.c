@@ -44,7 +44,8 @@ class gizmondo_state : public driver_device
 {
 public:
 	gizmondo_state(const machine_config &mconfig, device_type type, const char *tag)
-		: driver_device(mconfig, type, tag) { }
+		: driver_device(mconfig, type, tag) ,
+		m_maincpu(*this, "maincpu") { }
 
 	UINT32 m_port[9];
 	device_t *m_s3c2440;
@@ -53,6 +54,9 @@ public:
 	virtual void machine_reset();
 	DECLARE_INPUT_CHANGED_MEMBER(port_changed);
 	inline void ATTR_PRINTF(3,4) verboselog( int n_level, const char *s_fmt, ...);
+	required_device<cpu_device> m_maincpu;
+	DECLARE_READ32_MEMBER(s3c2440_gpio_port_r);
+	DECLARE_WRITE32_MEMBER(s3c2440_gpio_port_w);
 };
 
 
@@ -74,11 +78,10 @@ inline void ATTR_PRINTF(3,4) gizmondo_state::verboselog( int n_level, const char
 
 // I/O PORT
 
-static UINT32 s3c2440_gpio_port_r( device_t *device, int port, UINT32 mask)
+READ32_MEMBER(gizmondo_state::s3c2440_gpio_port_r)
 {
-	gizmondo_state *gizmondo = device->machine().driver_data<gizmondo_state>();
-	UINT32 data = gizmondo->m_port[port];
-	switch (port)
+	UINT32 data = m_port[offset];
+	switch (offset)
 	{
 		case S3C2440_GPIO_PORT_D :
 		{
@@ -88,16 +91,16 @@ static UINT32 s3c2440_gpio_port_r( device_t *device, int port, UINT32 mask)
 		break;
 		case S3C2440_GPIO_PORT_F :
 		{
-			UINT32 port_c = gizmondo->m_port[S3C2440_GPIO_PORT_C];
+			UINT32 port_c = m_port[S3C2440_GPIO_PORT_C];
 			data = data & ~0x000000F2;
 			// keys
 			data |= 0x00F2;
-			if ((port_c & 0x01) == 0) data &= ~device->machine().root_device().ioport( "PORTF-01")->read();
-			if ((port_c & 0x02) == 0) data &= ~device->machine().root_device().ioport( "PORTF-02")->read();
-			if ((port_c & 0x04) == 0) data &= ~device->machine().root_device().ioport( "PORTF-04")->read();
-			if ((port_c & 0x08) == 0) data &= ~device->machine().root_device().ioport( "PORTF-08")->read();
-			if ((port_c & 0x10) == 0) data &= ~device->machine().root_device().ioport( "PORTF-10")->read();
-			data &= ~device->machine().root_device().ioport( "PORTF")->read();
+			if ((port_c & 0x01) == 0) data &= ~ioport( "PORTF-01")->read();
+			if ((port_c & 0x02) == 0) data &= ~ioport( "PORTF-02")->read();
+			if ((port_c & 0x04) == 0) data &= ~ioport( "PORTF-04")->read();
+			if ((port_c & 0x08) == 0) data &= ~ioport( "PORTF-08")->read();
+			if ((port_c & 0x10) == 0) data &= ~ioport( "PORTF-10")->read();
+			data &= ~ioport( "PORTF")->read();
 		}
 		break;
 		case S3C2440_GPIO_PORT_G :
@@ -105,7 +108,7 @@ static UINT32 s3c2440_gpio_port_r( device_t *device, int port, UINT32 mask)
 			data = data & ~0x00008001;
 			// keys
 			data = data | 0x8000;
-			data &= ~device->machine().root_device().ioport( "PORTG")->read();
+			data &= ~ioport( "PORTG")->read();
 			// no sd card inserted
 			data = data | 0x0001;
 		}
@@ -114,10 +117,9 @@ static UINT32 s3c2440_gpio_port_r( device_t *device, int port, UINT32 mask)
 	return data;
 }
 
-static void s3c2440_gpio_port_w( device_t *device, int port, UINT32 mask, UINT32 data)
+WRITE32_MEMBER(gizmondo_state::s3c2440_gpio_port_w)
 {
-	gizmondo_state *gizmondo = device->machine().driver_data<gizmondo_state>();
-	gizmondo->m_port[port] = data;
+	m_port[offset] = data;
 }
 
 INPUT_CHANGED_MEMBER(gizmondo_state::port_changed)
@@ -127,7 +129,7 @@ INPUT_CHANGED_MEMBER(gizmondo_state::port_changed)
 }
 
 #if 0
-static QUICKLOAD_LOAD( gizmondo )
+QUICKLOAD_LOAD_MEMBER( gizmondo_state, gizmondo )
 {
 	return gizmondo_quickload( image, file_type, quickload_size, 0x3000E000); // eboot
 	//return gizmondo_quickload( image, file_type, quickload_size, 0x30400000); // wince
@@ -148,7 +150,7 @@ void gizmondo_state::machine_start()
 
 void gizmondo_state::machine_reset()
 {
-	machine().device("maincpu")->reset();
+	m_maincpu->reset();
 }
 
 /*******************************************************************************
@@ -176,17 +178,17 @@ DRIVER_INIT_MEMBER(gizmondo_state,gizmondo)
 static S3C2440_INTERFACE( gizmondo_s3c2440_intf )
 {
 	// CORE (pin read / pin write)
-	{ NULL, NULL },
+	{ DEVCB_NULL, DEVCB_NULL },
 	// GPIO (port read / port write)
-	{ s3c2440_gpio_port_r, s3c2440_gpio_port_w },
+	{ DEVCB_DRIVER_MEMBER32(gizmondo_state,s3c2440_gpio_port_r), DEVCB_DRIVER_MEMBER32(gizmondo_state,s3c2440_gpio_port_w) },
 	// I2C (scl write / sda read / sda write)
-	{ NULL, NULL, NULL },
+	{ DEVCB_NULL, DEVCB_NULL, DEVCB_NULL },
 	// ADC (data read)
-	{ NULL },
+	{ DEVCB_NULL },
 	// I2S (data write)
-	{ NULL },
+	{ DEVCB_NULL },
 	// NAND (command write / address write / data read / data write)
-	{ NULL, NULL, NULL, NULL },
+	{ DEVCB_NULL, DEVCB_NULL, DEVCB_NULL, DEVCB_NULL },
 	// LCD (flags)
 	{ 0 }
 };
@@ -214,7 +216,7 @@ static MACHINE_CONFIG_START( gizmondo, gizmondo_state )
 	MCFG_DISKONCHIP_G3_ADD("diskonchip", 64)
 
 #if 0
-	MCFG_QUICKLOAD_ADD("quickload", wince, "bin", 0)
+	MCFG_QUICKLOAD_ADD("quickload", gizmondo_state, wince, "bin", 0)
 #endif
 MACHINE_CONFIG_END
 

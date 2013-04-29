@@ -63,7 +63,9 @@ class sfkick_state : public driver_device
 public:
 	sfkick_state(const machine_config &mconfig, device_type type, const char *tag)
 		: driver_device(mconfig, type, tag),
-			m_v9938(*this, "v9938") { }
+			m_v9938(*this, "v9938"),
+		m_maincpu(*this, "maincpu"),
+		m_soundcpu(*this, "soundcpu") { }
 
 	UINT8 *m_main_mem;
 	int m_bank_cfg;
@@ -84,6 +86,8 @@ public:
 	void sfkick_bank_set(int num, int data);
 	DECLARE_WRITE_LINE_MEMBER(irqhandler);
 	DECLARE_WRITE_LINE_MEMBER(sfkick_vdp_interrupt);
+	required_device<cpu_device> m_maincpu;
+	required_device<cpu_device> m_soundcpu;
 };
 
 
@@ -435,7 +439,7 @@ INPUT_PORTS_END
 
 WRITE_LINE_MEMBER(sfkick_state::sfkick_vdp_interrupt)
 {
-	machine().device("maincpu")->execute().set_input_line(0, (state ? HOLD_LINE : CLEAR_LINE));
+	m_maincpu->set_input_line(0, (state ? HOLD_LINE : CLEAR_LINE));
 }
 
 void sfkick_state::machine_reset()
@@ -459,7 +463,7 @@ TIMER_DEVICE_CALLBACK_MEMBER(sfkick_state::sfkick_interrupt)
 
 WRITE_LINE_MEMBER(sfkick_state::irqhandler)
 {
-	machine().device("soundcpu")->execute().set_input_line_and_vector(0, state ? ASSERT_LINE : CLEAR_LINE, 0xff);
+	m_soundcpu->set_input_line_and_vector(0, state ? ASSERT_LINE : CLEAR_LINE, 0xff);
 }
 
 static const ym2203_interface ym2203_config =

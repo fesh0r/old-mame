@@ -352,13 +352,12 @@ WRITE8_MEMBER(thunderx_state::thunderx_sh_irqtrigger_w)
 
 WRITE8_MEMBER(thunderx_state::scontra_snd_bankswitch_w)
 {
-	device_t *device = machine().device("k007232");
 	/* b3-b2: bank for chanel B */
 	/* b1-b0: bank for chanel A */
 
 	int bank_A = (data & 0x03);
 	int bank_B = ((data >> 2) & 0x03);
-	k007232_set_bank(device, bank_A, bank_B);
+	k007232_set_bank(m_k007232, bank_A, bank_B);
 }
 
 READ8_MEMBER(thunderx_state::k052109_051960_r)
@@ -599,12 +598,6 @@ MACHINE_START_MEMBER(thunderx_state,scontra)
 {
 	m_generic_paletteram_8.allocate(0x800);
 
-	m_maincpu = machine().device<cpu_device>("maincpu");
-	m_audiocpu = machine().device<cpu_device>("audiocpu");
-	m_k007232 = machine().device("k007232");
-	m_k052109 = machine().device("k052109");
-	m_k051960 = machine().device("k051960");
-
 	save_item(NAME(m_priority));
 	save_item(NAME(m_1f98_data));
 	save_item(NAME(m_palette_selected));
@@ -638,7 +631,7 @@ MACHINE_RESET_MEMBER(thunderx_state,scontra)
 
 MACHINE_RESET_MEMBER(thunderx_state,thunderx)
 {
-	konami_configure_set_lines(machine().device("maincpu"), thunderx_banking);
+	konami_configure_set_lines(m_maincpu, thunderx_banking);
 
 	MACHINE_RESET_CALL_MEMBER(scontra);
 }

@@ -46,7 +46,7 @@ for now. Even at 12 this slowdown still happens a little.
 WRITE16_MEMBER(toki_state::tokib_soundcommand16_w)
 {
 	soundlatch_byte_w(space, 0, data & 0xff);
-	machine().device("audiocpu")->execute().set_input_line(0, HOLD_LINE);
+	m_audiocpu->set_input_line(0, HOLD_LINE);
 }
 
 READ16_MEMBER(toki_state::pip16_r)
@@ -58,17 +58,16 @@ READ16_MEMBER(toki_state::pip16_r)
 
 WRITE_LINE_MEMBER(toki_state::toki_adpcm_int)
 {
-	msm5205_data_w (machine().device("msm"), m_msm5205next);
+	msm5205_data_w (m_msm, m_msm5205next);
 	m_msm5205next >>= 4;
 
 	m_toggle ^= 1;
 	if (m_toggle)
-		machine().device("audiocpu")->execute().set_input_line(INPUT_LINE_NMI, PULSE_LINE);
+		m_audiocpu->set_input_line(INPUT_LINE_NMI, PULSE_LINE);
 }
 
 WRITE8_MEMBER(toki_state::toki_adpcm_control_w)
 {
-	device_t *device = machine().device("msm");
 	int bankaddress;
 	UINT8 *RAM = memregion("audiocpu")->base();
 
@@ -77,7 +76,7 @@ WRITE8_MEMBER(toki_state::toki_adpcm_control_w)
 	bankaddress = 0x10000 + (data & 0x01) * 0x4000;
 	membank("bank1")->set_base(&RAM[bankaddress]);
 
-	msm5205_reset_w(device,data & 0x08);
+	msm5205_reset_w(m_msm,data & 0x08);
 }
 
 WRITE8_MEMBER(toki_state::toki_adpcm_data_w)
@@ -858,7 +857,7 @@ DRIVER_INIT_MEMBER(toki_state,jujuba)
 
 	/* Decrypt data for z80 program */
 	{
-		address_space &space = machine().device("audiocpu")->memory().space(AS_PROGRAM);
+		address_space &space = m_audiocpu->space(AS_PROGRAM);
 		UINT8 *decrypt = auto_alloc_array(machine(), UINT8, 0x20000);
 		UINT8 *rom = memregion("audiocpu")->base();
 		int i;

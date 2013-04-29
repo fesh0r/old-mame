@@ -95,8 +95,7 @@ ADDRESS_MAP_END
 
 WRITE8_MEMBER(yunsung8_state::yunsung8_sound_bankswitch_w)
 {
-	device_t *device = machine().device("msm");
-	msm5205_reset_w(device, data & 0x20);
+	msm5205_reset_w(m_msm, data & 0x20);
 
 	membank("bank2")->set_entry(data & 0x07);
 
@@ -445,7 +444,7 @@ GFXDECODE_END
 
 WRITE_LINE_MEMBER(yunsung8_state::yunsung8_adpcm_int)
 {
-	msm5205_data_w(machine().device("msm"), m_adpcm >> 4);
+	msm5205_data_w(m_msm, m_adpcm >> 4);
 	m_adpcm <<= 4;
 
 	m_toggle ^= 1;
@@ -473,7 +472,6 @@ void yunsung8_state::machine_start()
 	membank("bank2")->configure_entries(0, 3, &AUDIO[0x00000], 0x4000);
 	membank("bank2")->configure_entries(3, 5, &AUDIO[0x10000], 0x4000);
 
-	m_audiocpu = machine().device<cpu_device>("audiocpu");
 
 	save_item(NAME(m_videoram));
 	save_item(NAME(m_layers_ctrl));

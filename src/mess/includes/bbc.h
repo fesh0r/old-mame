@@ -19,37 +19,41 @@
 #include "video/mc6845.h"
 #include "video/saa5050.h"
 #include "sound/sn76496.h"
+#include "imagedev/cassette.h"
 
 class bbc_state : public driver_device
 {
 public:
 	bbc_state(const machine_config &mconfig, device_type type, const char *tag)
-		: driver_device(mconfig, type, tag)
-		, m_maincpu(*this, "maincpu")
-		, m_mc6845(*this, "mc6845")
-		, m_sn(*this, "sn76489")
-		, m_trom(*this, "saa505x")
-		, m_ACCCON_IRR(CLEAR_LINE)
-		, m_via_system_irq(CLEAR_LINE)
-		, m_via_user_irq(CLEAR_LINE)
-		, m_acia_irq(CLEAR_LINE)
-		, m_region_maincpu(*this, "maincpu")
-		, m_region_user1(*this, "user1")
-		, m_region_user2(*this, "user2")
-		, m_bank1(*this, "bank1")
-		, m_bank2(*this, "bank2")
-		, m_bank3(*this, "bank3")
-		, m_bank4(*this, "bank4")
-		, m_bank5(*this, "bank5")
-		, m_bank6(*this, "bank6")
-		, m_bank7(*this, "bank7")
-		, m_bank8(*this, "bank8")
-	{ }
+		: driver_device(mconfig, type, tag),
+		m_maincpu(*this, "maincpu"),
+		m_mc6845(*this, "mc6845"),
+		m_sn(*this, "sn76489"),
+		m_trom(*this, "saa505x"),
+		m_cassette(*this, "cassette"),
+		m_acia(*this, "acia6850"),
+		m_ACCCON_IRR(CLEAR_LINE),
+		m_via_system_irq(CLEAR_LINE),
+		m_via_user_irq(CLEAR_LINE),
+		m_acia_irq(CLEAR_LINE),
+		m_region_maincpu(*this, "maincpu"),
+		m_region_user1(*this, "user1"),
+		m_region_user2(*this, "user2"),
+		m_bank1(*this, "bank1"),
+		m_bank2(*this, "bank2"),
+		m_bank3(*this, "bank3"),
+		m_bank4(*this, "bank4"),
+		m_bank5(*this, "bank5"),
+		m_bank6(*this, "bank6"),
+		m_bank7(*this, "bank7"),
+		m_bank8(*this, "bank8") { }
 
 	required_device<cpu_device> m_maincpu;
 	required_device<mc6845_device> m_mc6845;
 	optional_device<sn76489_device> m_sn;
 	required_device<saa5050_device> m_trom;
+	required_device<cassette_image_device> m_cassette;
+	required_device<acia6850_device> m_acia;
 
 	void check_interrupts();
 
@@ -156,6 +160,17 @@ public:
 	int m_len2;
 	int m_len3;
 	int m_mc6850_clock;
+	UINT8 m_serproc_data;
+	int m_dcd_cass;
+	int m_rxd_cass;
+	int m_rxd_rs423;
+	int m_cts_rs423;
+	int m_cass_out_enabled;
+	int m_txd;
+	UINT32 m_nr_high_tones;
+	int m_cass_out_samples_to_go;
+	int m_cass_out_bit;
+	int m_cass_out_phase;
 	emu_timer *m_tape_timer;
 
 
@@ -317,6 +332,11 @@ public:
 	DECLARE_WRITE_LINE_MEMBER(bbc_wd177x_intrq_w);
 	DECLARE_WRITE_LINE_MEMBER(bbc_wd177x_drq_w);
 	DECLARE_WRITE_LINE_MEMBER(bbc_vsync);
+	DECLARE_READ_LINE_MEMBER(bbc_rxd_r) { return ( m_serproc_data & 0x40 ) ? m_rxd_rs423 : m_rxd_cass; }
+	DECLARE_READ_LINE_MEMBER(bbc_dcd_r) { return ( m_serproc_data & 0x40 ) ? 0 : m_dcd_cass; }
+	DECLARE_READ_LINE_MEMBER(bbc_cts_r) { return ( m_serproc_data & 0x40 ) ? m_cts_rs423 : 0; }
+	DECLARE_WRITE_LINE_MEMBER(bbc_rts_w);
+	DECLARE_WRITE_LINE_MEMBER(bbc_txd_w);
 
 	DECLARE_DEVICE_IMAGE_LOAD_MEMBER( bbcb_cart );
 
@@ -336,6 +356,26 @@ protected:
 	void bbcbp_setvideoshadow(int vdusel);
 	void common_init(int memorySize);
 	void set_pixel_lookup();
+	void set_cursor(bbc_state *state);
+	void BBC_Clock_CR(bbc_state *state);
+	void BBC_draw_teletext();
+	void BBC_ula_drawpixel(bbc_state *state, int col, int number_of_pixels);
+	void BBC_draw_hi_res();
+	void BBC_Set_HSync(int offset, int data);
+	void BBC_Set_VSync(int offset, int data);
+	void BBC_Set_CRE(int offset, int data);
+	void bbc_frameclock();
+	int vdudriverset();
+	int bbcm_vdudriverset();
+	int bbc_keyboard(address_space &space, int data);
+	void bbcb_IC32_initialise(bbc_state *state);
+	void MC146818_set(address_space &space);
+	void bbc_TMSint(int status);
+	void MC6850_Receive_Clock(int new_clock);
+	void BBC_Cassette_motor(unsigned char status);
+	void bbc_update_fdq_int(int state);
+public:
+	unsigned int calculate_video_address(int ma,int ra);
 };
 
 

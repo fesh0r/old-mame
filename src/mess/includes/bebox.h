@@ -14,6 +14,7 @@
 #include "machine/8237dma.h"
 #include "machine/53c810.h"
 #include "machine/upd765.h"
+#include "machine/ram.h"
 
 struct bebox_devices_t
 {
@@ -29,9 +30,15 @@ class bebox_state : public driver_device
 public:
 	bebox_state(const machine_config &mconfig, device_type type, const char *tag)
 		: driver_device(mconfig, type, tag),
-			m_lsi53c810(*this, "scsi:lsi53c810"){ }
+			m_ppc1(*this, "ppc1"),
+			m_ppc2(*this, "ppc2"),
+			m_lsi53c810(*this, "scsi:lsi53c810"),
+			m_ram(*this, RAM_TAG){ }
 
+	required_device<cpu_device> m_ppc1;
+	required_device<cpu_device> m_ppc2;
 	required_device<lsi53c810_device> m_lsi53c810;
+	required_device<ram_device> m_ram;
 	UINT32 m_cpu_imask[2];
 	UINT32 m_interrupts;
 	UINT32 m_crossproc_interrupts;
@@ -85,6 +92,9 @@ public:
 	DECLARE_READ64_MEMBER(bb_slave_64be_r);
 
 	DECLARE_WRITE_LINE_MEMBER(bebox_ide_interrupt);
+
+	DECLARE_WRITE_LINE_MEMBER(bebox_keyboard_interrupt);
+	DECLARE_READ8_MEMBER(bebox_get_out2);
 
 	void fdc_interrupt(bool state);
 	void fdc_dma_drq(bool state);

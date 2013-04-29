@@ -31,30 +31,30 @@ class nightgal_state : public driver_device
 {
 public:
 	nightgal_state(const machine_config &mconfig, device_type type, const char *tag)
-		: driver_device(mconfig, type, tag)
-		, m_comms_ram(*this, "comms_ram")
-		, m_region_gfx1(*this, "gfx1")
-		, m_io_cr_clear(*this, "CR_CLEAR")
-		, m_io_coins(*this, "COINS")
-		, m_io_pl1_1(*this, "PL1_1")
-		, m_io_pl1_2(*this, "PL1_2")
-		, m_io_pl1_3(*this, "PL1_3")
-		, m_io_pl1_4(*this, "PL1_4")
-		, m_io_pl1_5(*this, "PL1_5")
-		, m_io_pl1_6(*this, "PL1_6")
-		, m_io_pl2_1(*this, "PL2_1")
-		, m_io_pl2_2(*this, "PL2_2")
-		, m_io_pl2_3(*this, "PL2_3")
-		, m_io_pl2_4(*this, "PL2_4")
-		, m_io_pl2_5(*this, "PL2_5")
-		, m_io_pl2_6(*this, "PL2_6")
-		, m_io_system(*this, "SYSTEM")
-		, m_io_sysa(*this, "SYSA")
-		, m_io_dswa(*this, "DSWA")
-		, m_io_dswb(*this, "DSWB")
-		, m_io_dswc(*this, "DSWC")
-
-	{ }
+		: driver_device(mconfig, type, tag),
+		m_comms_ram(*this, "comms_ram"),
+		m_maincpu(*this, "maincpu"),
+		m_subcpu(*this, "sub"),
+		m_region_gfx1(*this, "gfx1"),
+		m_io_cr_clear(*this, "CR_CLEAR"),
+		m_io_coins(*this, "COINS"),
+		m_io_pl1_1(*this, "PL1_1"),
+		m_io_pl1_2(*this, "PL1_2"),
+		m_io_pl1_3(*this, "PL1_3"),
+		m_io_pl1_4(*this, "PL1_4"),
+		m_io_pl1_5(*this, "PL1_5"),
+		m_io_pl1_6(*this, "PL1_6"),
+		m_io_pl2_1(*this, "PL2_1"),
+		m_io_pl2_2(*this, "PL2_2"),
+		m_io_pl2_3(*this, "PL2_3"),
+		m_io_pl2_4(*this, "PL2_4"),
+		m_io_pl2_5(*this, "PL2_5"),
+		m_io_pl2_6(*this, "PL2_6"),
+		m_io_system(*this, "SYSTEM"),
+		m_io_sysa(*this, "SYSA"),
+		m_io_dswa(*this, "DSWA"),
+		m_io_dswb(*this, "DSWB"),
+		m_io_dswc(*this, "DSWC") { }
 
 	/* video-related */
 	UINT8 m_blit_raw_data[3];
@@ -70,8 +70,8 @@ public:
 	required_shared_ptr<UINT8> m_comms_ram;
 
 	/* devices */
-	cpu_device *m_maincpu;
-	cpu_device *m_subcpu;
+	required_device<cpu_device> m_maincpu;
+	required_device<cpu_device> m_subcpu;
 
 	/* memory */
 	UINT8      m_blit_buffer[256*256];
@@ -525,7 +525,7 @@ static ADDRESS_MAP_START( nightgal_io, AS_IO, 8, nightgal_state )
 	ADDRESS_MAP_GLOBAL_MASK(0xff)
 	AM_RANGE(0x01,0x01) AM_DEVREAD_LEGACY("aysnd", ay8910_r)
 	AM_RANGE(0x02,0x03) AM_DEVWRITE_LEGACY("aysnd", ay8910_data_address_w)
-//  AM_RANGE(0x10,0x10) AM_WRITE_LEGACY(output_w)
+//  AM_RANGE(0x10,0x10) AM_WRITE(output_w)
 	AM_RANGE(0x10,0x10) AM_READ_PORT("DSWC")
 	AM_RANGE(0x11,0x11) AM_READ_PORT("SYSA")
 	AM_RANGE(0x12,0x12) AM_READ_PORT("DSWA")
@@ -564,7 +564,7 @@ ADDRESS_MAP_END
 static ADDRESS_MAP_START( sexygal_io, AS_IO, 8, nightgal_state )
 	ADDRESS_MAP_GLOBAL_MASK(0xff)
 	AM_RANGE(0x00,0x01) AM_DEVREADWRITE_LEGACY("ymsnd", ym2203_r, ym2203_w)
-//  AM_RANGE(0x10,0x10) AM_WRITE_LEGACY(output_w)
+//  AM_RANGE(0x10,0x10) AM_WRITE(output_w)
 	AM_RANGE(0x10,0x10) AM_READ_PORT("DSWC")
 	AM_RANGE(0x11,0x11) AM_READ_PORT("SYSA") AM_WRITE(mux_w)
 	AM_RANGE(0x12,0x12) AM_MIRROR(0xe8) AM_READ_PORT("DSWA") AM_WRITE(royalqn_blitter_0_w)
@@ -600,7 +600,7 @@ static ADDRESS_MAP_START( royalqn_io, AS_IO, 8, nightgal_state )
 	ADDRESS_MAP_GLOBAL_MASK(0xff)
 	AM_RANGE(0x01,0x01) AM_MIRROR(0xec) AM_DEVREAD_LEGACY("aysnd", ay8910_r)
 	AM_RANGE(0x02,0x03) AM_MIRROR(0xec) AM_DEVWRITE_LEGACY("aysnd", ay8910_data_address_w)
-	AM_RANGE(0x10,0x10) AM_MIRROR(0xe8) AM_READ_PORT("DSWC") AM_WRITENOP //AM_WRITE_LEGACY(output_w)
+	AM_RANGE(0x10,0x10) AM_MIRROR(0xe8) AM_READ_PORT("DSWC") AM_WRITENOP //AM_WRITE(output_w)
 	AM_RANGE(0x11,0x11) AM_MIRROR(0xe8) AM_READ_PORT("SYSA") AM_WRITE(mux_w)
 	AM_RANGE(0x12,0x12) AM_MIRROR(0xe8) AM_READ_PORT("DSWA") AM_WRITE(royalqn_blitter_0_w)
 	AM_RANGE(0x13,0x13) AM_MIRROR(0xe8) AM_READ_PORT("DSWB") AM_WRITE(royalqn_blitter_1_w)
@@ -876,9 +876,6 @@ static const ay8910_interface ay8910_config =
 
 void nightgal_state::machine_start()
 {
-	m_maincpu = machine().device<cpu_device>("maincpu");
-	m_subcpu = machine().device<cpu_device>("sub");
-
 	save_item(NAME(m_nsc_latch));
 	save_item(NAME(m_z80_latch));
 	save_item(NAME(m_mux_data));

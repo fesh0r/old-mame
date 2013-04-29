@@ -333,8 +333,8 @@ void x07_state::t6834_cmd (UINT8 cmd)
 		break;
 	case 0x1c:  //UDC Init
 		{
-			memcpy(m_t6834_ram + 0x200, (UINT8*)machine().root_device().memregion("gfx1")->base() + 0x400, 0x100);
-			memcpy(m_t6834_ram + 0x300, (UINT8*)machine().root_device().memregion("gfx1")->base() + 0x700, 0x100);
+			memcpy(m_t6834_ram + 0x200, (UINT8*)memregion("gfx1")->base() + 0x400, 0x100);
+			memcpy(m_t6834_ram + 0x300, (UINT8*)memregion("gfx1")->base() + 0x700, 0x100);
 		}
 		break;
 
@@ -928,8 +928,8 @@ INPUT_CHANGED_MEMBER( x07_state::kb_func_keys )
 INPUT_CHANGED_MEMBER( x07_state::kb_keys )
 {
 	UINT8 modifier;
-	UINT8 a1 = field.machine().root_device().ioport("A1")->read();
-	UINT8 bz = field.machine().root_device().ioport("BZ")->read();
+	UINT8 a1 = ioport("A1")->read();
+	UINT8 bz = ioport("BZ")->read();
 	UINT8 keycode = (UINT8)(FPTR)param;
 
 	if (m_kb_on && !newval)
@@ -1509,9 +1509,9 @@ static MACHINE_CONFIG_START( x07, x07_state )
 
 	/* sound hardware */
 	MCFG_SPEAKER_STANDARD_MONO( "mono" )
-	MCFG_SOUND_ADD( BEEPER_TAG, BEEP, 0 )
+	MCFG_SOUND_ADD( "beeper", BEEP, 0 )
 	MCFG_SOUND_ROUTE( ALL_OUTPUTS, "mono", 0.50 )
-	MCFG_SOUND_WAVE_ADD(WAVE_TAG, CASSETTE_TAG)
+	MCFG_SOUND_WAVE_ADD(WAVE_TAG, "cassette")
 	MCFG_SOUND_ROUTE(ALL_OUTPUTS, "mono", 0.25)
 
 	/* printer */
@@ -1539,7 +1539,7 @@ static MACHINE_CONFIG_START( x07, x07_state )
 	MCFG_CARTSLOT_INTERFACE("x07_card")
 
 	/* cassette */
-	MCFG_CASSETTE_ADD( CASSETTE_TAG, x07_cassette_interface )
+	MCFG_CASSETTE_ADD( "cassette", x07_cassette_interface )
 
 	/* Software lists */
 	MCFG_SOFTWARE_LIST_ADD("card_list", "x07_card")

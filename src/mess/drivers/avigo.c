@@ -823,11 +823,10 @@ TIMER_DEVICE_CALLBACK_MEMBER(avigo_state::avigo_1hz_timer)
 	refresh_ints();
 }
 
-static QUICKLOAD_LOAD(avigo)
+QUICKLOAD_LOAD_MEMBER( avigo_state,avigo)
 {
-	avigo_state *state = image.device().machine().driver_data<avigo_state>();
-	address_space& flash1 = state->m_flashes[1]->space(0);
-	const char *systemname = image.device().machine().system().name;
+	address_space& flash1 = m_flashes[1]->space(0);
+	const char *systemname = machine().system().name;
 	UINT32 first_app_page = (0x50000>>14);
 	int app_page;
 
@@ -859,14 +858,14 @@ static QUICKLOAD_LOAD(avigo)
 		logerror("Application loaded at 0x%05x-0x%05x\n", app_page<<14, (app_page<<14) + (UINT32)image.length());
 
 		// copy app file into flash memory
-		image.fread((UINT8*)state->m_flashes[1]->space().get_read_ptr(app_page<<14), image.length());
+		image.fread((UINT8*)m_flashes[1]->space().get_read_ptr(app_page<<14), image.length());
 
 		// update the application ID
 		flash1.write_byte((app_page<<14) + 0x1a5, 0x80 + (app_page - (first_app_page>>14)));
 
 		// reset the CPU for allow at the Avigo OS to recognize the installed app
-		state->m_warm_start = 1;
-		state->m_maincpu->reset();
+		m_warm_start = 1;
+		m_maincpu->reset();
 
 		return IMAGE_INIT_PASS;
 	}
@@ -908,7 +907,7 @@ static MACHINE_CONFIG_START( avigo, avigo_state )
 
 	/* sound hardware */
 	MCFG_SPEAKER_STANDARD_MONO("mono")
-	MCFG_SOUND_ADD(SPEAKER_TAG, SPEAKER_SOUND, 0)
+	MCFG_SOUND_ADD("speaker", SPEAKER_SOUND, 0)
 	MCFG_SOUND_ROUTE(ALL_OUTPUTS, "mono", 0.50)
 
 	/* real time clock */
@@ -932,7 +931,7 @@ static MACHINE_CONFIG_START( avigo, avigo_state )
 	MCFG_TIMER_DRIVER_ADD_PERIODIC("1hz_timer", avigo_state, avigo_1hz_timer, attotime::from_hz(1))
 
 	/* quickload */
-	MCFG_QUICKLOAD_ADD("quickload", avigo, "app", 0)
+	MCFG_QUICKLOAD_ADD("quickload", avigo_state, avigo, "app", 0)
 MACHINE_CONFIG_END
 
 

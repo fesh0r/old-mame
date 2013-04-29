@@ -12,12 +12,6 @@
 #include "sound/beep.h"
 #include "imagedev/cassette.h"
 
-
-static cassette_image_device *cassette_device_image( running_machine &machine )
-{
-	return machine.device<cassette_image_device>(CASSETTE_TAG);
-}
-
 void electron_state::electron_tape_start()
 {
 	if (m_ula.tape_running )
@@ -46,7 +40,7 @@ TIMER_CALLBACK_MEMBER(electron_state::electron_tape_timer_handler)
 	if ( m_ula.cassette_motor_mode )
 	{
 		double tap_val;
-		tap_val = cassette_device_image(machine())->input();
+		tap_val = m_cassette->input();
 		if ( tap_val < -0.5 )
 		{
 			m_ula.tape_value = ( m_ula.tape_value << 8 ) | TAPE_LOW;
@@ -94,13 +88,13 @@ TIMER_CALLBACK_MEMBER(electron_state::electron_tape_timer_handler)
 				//logerror( "++ Read stop bit: %d\n", m_ula.stop_bit );
 				if ( m_ula.start_bit && m_ula.stop_bit && m_ula.tape_byte == 0xFF && ! m_ula.high_tone_set )
 				{
-					electron_interrupt_handler( machine(), INT_SET, INT_HIGH_TONE );
+					electron_interrupt_handler( INT_SET, INT_HIGH_TONE );
 					m_ula.high_tone_set = 1;
 				}
 				else if ( ! m_ula.start_bit && m_ula.stop_bit )
 				{
 					//logerror( "-- Byte read from tape: %02x\n", m_ula.tape_byte );
-					electron_interrupt_handler( machine(), INT_SET, INT_RECEIVE_FULL );
+					electron_interrupt_handler( INT_SET, INT_RECEIVE_FULL );
 				}
 				else
 				{
@@ -154,7 +148,7 @@ WRITE8_MEMBER(electron_state::electron_1mhz_w)
 
 READ8_MEMBER(electron_state::electron_ula_r)
 {
-	UINT8 data = ((UINT8 *)machine().root_device().memregion("user1")->base())[0x43E00 + offset];
+	UINT8 data = ((UINT8 *)memregion("user1")->base())[0x43E00 + offset];
 	switch ( offset & 0x0f )
 	{
 	case 0x00:  /* Interrupt status */
@@ -164,7 +158,7 @@ READ8_MEMBER(electron_state::electron_ula_r)
 	case 0x01:  /* Unknown */
 		break;
 	case 0x04:  /* Casette data shift register */
-		electron_interrupt_handler(machine(), INT_CLEAR, INT_RECEIVE_FULL );
+		electron_interrupt_handler(INT_CLEAR, INT_RECEIVE_FULL );
 		data = m_ula.tape_byte;
 		break;
 	}
@@ -177,7 +171,6 @@ static const UINT16 electron_screen_base[8] = { 0x3000, 0x3000, 0x3000, 0x4000, 
 
 WRITE8_MEMBER(electron_state::electron_ula_w)
 {
-	beep_device *speaker = machine().device<beep_device>(BEEPER_TAG);
 	int i = electron_palette_offset[(( offset >> 1 ) & 0x03)];
 	logerror( "ULA: write offset %02x <- %02x\n", offset & 0x0f, data );
 	switch( offset & 0x0f )
@@ -220,15 +213,15 @@ WRITE8_MEMBER(electron_state::electron_ula_w)
 		}
 		if ( data & 0x10 )
 		{
-			electron_interrupt_handler( machine(), INT_CLEAR, INT_DISPLAY_END );
+			electron_interrupt_handler( INT_CLEAR, INT_DISPLAY_END );
 		}
 		if ( data & 0x20 )
 		{
-			electron_interrupt_handler( machine(), INT_CLEAR, INT_RTC );
+			electron_interrupt_handler( INT_CLEAR, INT_RTC );
 		}
 		if ( data & 0x40 )
 		{
-			electron_interrupt_handler( machine(), INT_CLEAR, INT_HIGH_TONE );
+			electron_interrupt_handler( INT_CLEAR, INT_HIGH_TONE );
 		}
 		if ( data & 0x80 )
 		{
@@ -237,7 +230,7 @@ WRITE8_MEMBER(electron_state::electron_ula_w)
 	case 0x06:  /* Counter divider */
 		if ( m_ula.communication_mode == 0x01)
 		{
-			speaker->set_frequency( 1000000 / ( 16 * ( data + 1 ) ) );
+			m_beeper->set_frequency( 1000000 / ( 16 * ( data + 1 ) ) );
 		}
 		break;
 	case 0x07:  /* Misc. */
@@ -245,19 +238,19 @@ WRITE8_MEMBER(electron_state::electron_ula_w)
 		switch( m_ula.communication_mode )
 		{
 		case 0x00:  /* cassette input */
-			speaker->set_state( 0 );
+			m_beeper->set_state( 0 );
 			electron_tape_start();
 			break;
 		case 0x01:  /* sound generation */
-			speaker->set_state( 1 );
+			m_beeper->set_state( 1 );
 			electron_tape_stop();
 			break;
 		case 0x02:  /* cassette output */
-			speaker->set_state( 0 );
+			m_beeper->set_state( 0 );
 			electron_tape_stop();
 			break;
 		case 0x03:  /* not used */
-			speaker->set_state( 0 );
+			m_beeper->set_state( 0 );
 			electron_tape_stop();
 			break;
 		}
@@ -267,7 +260,7 @@ WRITE8_MEMBER(electron_state::electron_ula_w)
 		m_ula.vram = (UINT8 *)space.get_read_ptr(m_ula.screen_base );
 		logerror( "ULA: screen mode set to %d\n", m_ula.screen_mode );
 		m_ula.cassette_motor_mode = ( data >> 6 ) & 0x01;
-		cassette_device_image(machine())->change_state(m_ula.cassette_motor_mode ? CASSETTE_MOTOR_ENABLED : CASSETTE_MOTOR_DISABLED, CASSETTE_MOTOR_DISABLED );
+		m_cassette->change_state(m_ula.cassette_motor_mode ? CASSETTE_MOTOR_ENABLED : CASSETTE_MOTOR_DISABLED, CASSETTE_MOTOR_DISABLED );
 		m_ula.capslock_mode = ( data >> 7 ) & 0x01;
 		break;
 	case 0x08: case 0x0A: case 0x0C: case 0x0E:
@@ -287,26 +280,25 @@ WRITE8_MEMBER(electron_state::electron_ula_w)
 	}
 }
 
-void electron_interrupt_handler(running_machine &machine, int mode, int interrupt)
+void electron_state::electron_interrupt_handler(int mode, int interrupt)
 {
-	electron_state *state = machine.driver_data<electron_state>();
 	if ( mode == INT_SET )
 	{
-		state->m_ula.interrupt_status |= interrupt;
+		m_ula.interrupt_status |= interrupt;
 	}
 	else
 	{
-		state->m_ula.interrupt_status &= ~interrupt;
+		m_ula.interrupt_status &= ~interrupt;
 	}
-	if ( state->m_ula.interrupt_status & state->m_ula.interrupt_control & ~0x83 )
+	if ( m_ula.interrupt_status & m_ula.interrupt_control & ~0x83 )
 	{
-		state->m_ula.interrupt_status |= 0x01;
-		machine.device("maincpu")->execute().set_input_line(0, ASSERT_LINE );
+		m_ula.interrupt_status |= 0x01;
+		m_maincpu->set_input_line(0, ASSERT_LINE );
 	}
 	else
 	{
-		state->m_ula.interrupt_status &= ~0x01;
-		machine.device("maincpu")->execute().set_input_line(0, CLEAR_LINE );
+		m_ula.interrupt_status &= ~0x01;
+		m_maincpu->set_input_line(0, CLEAR_LINE );
 	}
 }
 
@@ -316,9 +308,8 @@ void electron_interrupt_handler(running_machine &machine, int mode, int interrup
 
 TIMER_CALLBACK_MEMBER(electron_state::setup_beep)
 {
-	beep_device *speaker = machine().device<beep_device>(BEEPER_TAG);
-	speaker->set_state( 0 );
-	speaker->set_frequency( 300 );
+	m_beeper->set_state( 0 );
+	m_beeper->set_frequency( 300 );
 }
 
 void electron_state::machine_reset()
@@ -335,7 +326,7 @@ void electron_state::machine_reset()
 	m_ula.screen_size = 0x8000 - 0x3000;
 	m_ula.screen_addr = 0;
 	m_ula.tape_running = 0;
-	m_ula.vram = (UINT8 *)machine().device("maincpu")->memory().space(AS_PROGRAM).get_read_ptr(m_ula.screen_base);
+	m_ula.vram = (UINT8 *)m_maincpu->space(AS_PROGRAM).get_read_ptr(m_ula.screen_base);
 }
 
 void electron_state::machine_start()

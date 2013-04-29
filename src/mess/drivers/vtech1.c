@@ -158,16 +158,18 @@ public:
 	vtech1_state(const machine_config &mconfig, device_type type, const char *tag)
 		: driver_device(mconfig, type, tag),
 			m_mc6847(*this, "mc6847"),
-			m_speaker(*this, SPEAKER_TAG),
-			m_cassette(*this, CASSETTE_TAG),
-			m_videoram(*this, "videoram"){ }
+			m_speaker(*this, "speaker"),
+			m_cassette(*this, "cassette"),
+			m_videoram(*this, "videoram"),
+		m_maincpu(*this, "maincpu"),
+		m_ram(*this, RAM_TAG) { }
 
 	/* devices */
 	required_device<mc6847_base_device> m_mc6847;
 	optional_device<speaker_sound_device> m_speaker;
 	optional_device<cassette_image_device> m_cassette;
 
-	UINT8 *m_ram;
+	UINT8 *m_ram_pointer;
 	UINT32 m_ram_size;
 	required_shared_ptr<UINT8> m_videoram;
 
@@ -199,8 +201,11 @@ public:
 	DECLARE_READ8_MEMBER(vtech1_printer_r);
 	DECLARE_WRITE8_MEMBER(vtech1_strobe_w);
 	DECLARE_READ8_MEMBER(vtech1_mc6847_videoram_r);
+	DECLARE_SNAPSHOT_LOAD_MEMBER( vtech1 );
 	void vtech1_get_track();
 	void vtech1_put_track();
+	required_device<cpu_device> m_maincpu;
+	required_device<ram_device> m_ram;
 };
 
 
@@ -208,10 +213,9 @@ public:
     SNAPSHOT LOADING
 ***************************************************************************/
 
-static SNAPSHOT_LOAD( vtech1 )
+SNAPSHOT_LOAD_MEMBER( vtech1_state, vtech1 )
 {
-	vtech1_state *vtech1 = image.device().machine().driver_data<vtech1_state>();
-	address_space &space = image.device().machine().device("maincpu")->memory().space(AS_PROGRAM);
+	address_space &space = m_maincpu->space(AS_PROGRAM);
 	UINT8 i, header[24];
 	UINT16 start, end, size;
 	char pgmname[18];
@@ -227,7 +231,7 @@ static SNAPSHOT_LOAD( vtech1 )
 	size = end - start;
 
 	/* check if we have enough ram */
-	if (vtech1->m_ram_size < size)
+	if (m_ram_size < size)
 	{
 		char message[256];
 		snprintf(message, ARRAY_LENGTH(message), "SNAPLOAD: %s\nInsufficient RAM - need %04X",pgmname,size);
@@ -237,7 +241,7 @@ static SNAPSHOT_LOAD( vtech1 )
 	}
 
 	/* write it to ram */
-	image.fread( &vtech1->m_ram[start - 0x7800], size);
+	image.fread( &m_ram_pointer[start - 0x7800], size);
 
 	/* patch variables depending on snapshot type */
 	switch (header[21])
@@ -258,7 +262,7 @@ static SNAPSHOT_LOAD( vtech1 )
 		space.write_byte(0x788e, start % 256); /* usr subroutine address */
 		space.write_byte(0x788f, start / 256);
 		image.message(" %s (M)\nsize=%04X : start=%04X : end=%04X",pgmname,size,start,end);
-		image.device().machine().device("maincpu")->state().set_pc(start);              /* start program */
+		m_maincpu->set_pc(start);              /* start program */
 		break;
 
 	default:
@@ -623,22 +627,22 @@ READ8_MEMBER(vtech1_state::vtech1_mc6847_videoram_r)
 
 DRIVER_INIT_MEMBER(vtech1_state,vtech1)
 {
-	address_space &prg = machine().device("maincpu")->memory().space(AS_PROGRAM);
+	address_space &prg = m_maincpu->space(AS_PROGRAM);
 	int id;
 
 	/* ram */
-	m_ram = machine().device<ram_device>(RAM_TAG)->pointer();
-	m_ram_size = machine().device<ram_device>(RAM_TAG)->size();
+	m_ram_pointer = m_ram->pointer();
+	m_ram_size = m_ram->size();
 
 	/* setup memory banking */
-	membank("bank1")->set_base(m_ram);
+	membank("bank1")->set_base(m_ram_pointer);
 
 	/* 16k memory expansion? */
 	if (m_ram_size == 18*1024 || m_ram_size == 22*1024 || m_ram_size == 32*1024)
 	{
 		offs_t base = 0x7800 + (m_ram_size - 0x4000);
 		prg.install_readwrite_bank(base, base + 0x3fff, "bank2");
-		membank("bank2")->set_base(m_ram + base - 0x7800);
+		membank("bank2")->set_base(m_ram_pointer + base - 0x7800);
 	}
 
 	/* 64k expansion? */
@@ -646,11 +650,11 @@ DRIVER_INIT_MEMBER(vtech1_state,vtech1)
 	{
 		/* install fixed first bank */
 		prg.install_readwrite_bank(0x8000, 0xbfff, "bank2");
-		membank("bank2")->set_base(m_ram + 0x800);
+		membank("bank2")->set_base(m_ram_pointer + 0x800);
 
 		/* install the others, dynamically banked in */
 		prg.install_readwrite_bank(0xc000, 0xffff, "bank3");
-		membank("bank3")->configure_entries(0, (m_ram_size - 0x4800) / 0x4000, m_ram + 0x4800, 0x4000);
+		membank("bank3")->configure_entries(0, (m_ram_size - 0x4800) / 0x4000, m_ram_pointer + 0x4800, 0x4000);
 		membank("bank3")->set_entry(0);
 	}
 
@@ -676,7 +680,7 @@ DRIVER_INIT_MEMBER(vtech1_state,vtech1)
 
 DRIVER_INIT_MEMBER(vtech1_state,vtech1h)
 {
-	address_space &prg = machine().device("maincpu")->memory().space(AS_PROGRAM);
+	address_space &prg = m_maincpu->space(AS_PROGRAM);
 
 	DRIVER_INIT_CALL(vtech1);
 
@@ -973,9 +977,9 @@ static MACHINE_CONFIG_START( laser110, vtech1_state )
 
 	/* sound hardware */
 	MCFG_SPEAKER_STANDARD_MONO("mono")
-	MCFG_SOUND_WAVE_ADD(WAVE_TAG, CASSETTE_TAG)
+	MCFG_SOUND_WAVE_ADD(WAVE_TAG, "cassette")
 	MCFG_SOUND_ROUTE(ALL_OUTPUTS, "mono", 0.25)
-	MCFG_SOUND_ADD(SPEAKER_TAG, SPEAKER_SOUND, 0)
+	MCFG_SOUND_ADD("speaker", SPEAKER_SOUND, 0)
 	MCFG_SOUND_CONFIG(vtech1_speaker_interface)
 	MCFG_SOUND_ROUTE(ALL_OUTPUTS, "mono", 0.75)
 
@@ -983,9 +987,9 @@ static MACHINE_CONFIG_START( laser110, vtech1_state )
 	MCFG_CENTRONICS_PRINTER_ADD("centronics", standard_centronics)
 
 	/* snapshot/quickload */
-	MCFG_SNAPSHOT_ADD("snapshot", vtech1, "vz", 1.5)
+	MCFG_SNAPSHOT_ADD("snapshot", vtech1_state, vtech1, "vz", 1.5)
 
-	MCFG_CASSETTE_ADD( CASSETTE_TAG, laser_cassette_interface )
+	MCFG_CASSETTE_ADD( "cassette", laser_cassette_interface )
 
 	/* cartridge */
 	MCFG_CARTSLOT_ADD("cart")

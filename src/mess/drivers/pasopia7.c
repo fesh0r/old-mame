@@ -137,7 +137,7 @@ VIDEO_START_MEMBER(pasopia7_state,pasopia7)
 
 void pasopia7_state::draw_cg4_screen(bitmap_ind16 &bitmap,const rectangle &cliprect,int width)
 {
-	UINT8 *vram = machine().root_device().memregion("vram")->base();
+	UINT8 *vram = memregion("vram")->base();
 	int x,y,xi,yi;
 	int count;
 
@@ -168,7 +168,7 @@ void pasopia7_state::draw_cg4_screen(bitmap_ind16 &bitmap,const rectangle &clipr
 
 void pasopia7_state::draw_tv_screen(bitmap_ind16 &bitmap,const rectangle &cliprect,int width)
 {
-	UINT8 *vram = machine().root_device().memregion("vram")->base();
+	UINT8 *vram = memregion("vram")->base();
 	UINT8 *gfx_data = memregion("font")->base();
 	int x,y,xi,yi;
 	int count;
@@ -226,7 +226,7 @@ void pasopia7_state::draw_tv_screen(bitmap_ind16 &bitmap,const rectangle &clipre
 
 void pasopia7_state::draw_mixed_screen(bitmap_ind16 &bitmap,const rectangle &cliprect,int width)
 {
-	UINT8 *vram = machine().root_device().memregion("vram")->base();
+	UINT8 *vram = memregion("vram")->base();
 	UINT8 *gfx_data = memregion("font")->base();
 	int x,y,xi,yi;
 	int count;
@@ -539,7 +539,7 @@ void pasopia7_state::pasopia_nmi_trap()
 		m_nmi_trap |= 2;
 
 		if(m_nmi_mask == 0)
-			machine().device("maincpu")->execute().set_input_line(INPUT_LINE_NMI, ASSERT_LINE);
+			m_maincpu->set_input_line(INPUT_LINE_NMI, ASSERT_LINE);
 	}
 }
 
@@ -870,7 +870,7 @@ WRITE8_MEMBER( pasopia7_state::nmi_mask_w )
 	{
 		m_nmi_reset &= ~4;
 		m_nmi_trap &= ~2;
-		//machine().device("maincpu")->execute().set_input_line(INPUT_LINE_NMI, CLEAR_LINE); //guess
+		//m_maincpu->set_input_line(INPUT_LINE_NMI, CLEAR_LINE); //guess
 	}
 
 }

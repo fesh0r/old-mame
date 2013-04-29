@@ -134,9 +134,6 @@ static void coolpool_from_shiftreg(address_space &space, UINT32 address, UINT16 
 
 MACHINE_RESET_MEMBER(coolpool_state,amerdart)
 {
-	m_maincpu = machine().device<cpu_device>("maincpu");
-	m_dsp = machine().device("dsp");
-
 	m_nvram_write_enable = 0;
 }
 
@@ -205,8 +202,8 @@ WRITE16_MEMBER(coolpool_state::nvram_thrash_data_w)
 
 TIMER_DEVICE_CALLBACK_MEMBER(coolpool_state::amerdart_audio_int_gen)
 {
-	m_dsp->execute().set_input_line(0, ASSERT_LINE);
-	m_dsp->execute().set_input_line(0, CLEAR_LINE);
+	m_dsp->set_input_line(0, ASSERT_LINE);
+	m_dsp->set_input_line(0, CLEAR_LINE);
 }
 
 
@@ -219,7 +216,7 @@ WRITE16_MEMBER(coolpool_state::amerdart_misc_w)
 
 	/* bits 10-15 are counted down over time */
 
-	machine().device("dsp")->execute().set_input_line(INPUT_LINE_RESET, (data & 0x0400) ? ASSERT_LINE : CLEAR_LINE);
+	m_dsp->set_input_line(INPUT_LINE_RESET, (data & 0x0400) ? ASSERT_LINE : CLEAR_LINE);
 }
 
 READ16_MEMBER(coolpool_state::amerdart_dsp_bio_line_r)
@@ -243,7 +240,7 @@ READ16_MEMBER(coolpool_state::amerdart_dsp_bio_line_r)
 READ16_MEMBER(coolpool_state::amerdart_iop_r)
 {
 //  logerror("%08x:IOP read %04x\n",space.device().safe_pc(),m_iop_answer);
-	machine().device("maincpu")->execute().set_input_line(1, CLEAR_LINE);
+	m_maincpu->set_input_line(1, CLEAR_LINE);
 
 	return m_iop_answer;
 }
@@ -266,7 +263,7 @@ WRITE16_MEMBER(coolpool_state::amerdart_dsp_answer_w)
 {
 //  logerror("%08x:DSP answer %04x\n", space.device().safe_pc(), data);
 	m_iop_answer = data;
-	machine().device("maincpu")->execute().set_input_line(1, ASSERT_LINE);
+	m_maincpu->set_input_line(1, ASSERT_LINE);
 }
 
 
@@ -433,7 +430,7 @@ WRITE16_MEMBER(coolpool_state::coolpool_misc_w)
 	coin_counter_w(machine(), 0, ~data & 0x0001);
 	coin_counter_w(machine(), 1, ~data & 0x0002);
 
-	machine().device("dsp")->execute().set_input_line(INPUT_LINE_RESET, (data & 0x0400) ? ASSERT_LINE : CLEAR_LINE);
+	m_dsp->set_input_line(INPUT_LINE_RESET, (data & 0x0400) ? ASSERT_LINE : CLEAR_LINE);
 }
 
 
@@ -449,9 +446,9 @@ TIMER_CALLBACK_MEMBER(coolpool_state::deferred_iop_w)
 {
 	m_iop_cmd = param;
 	m_cmd_pending = 1;
-	machine().device("dsp")->execute().set_input_line(0, HOLD_LINE);    /* ???  I have no idea who should generate this! */
-															/* the DSP polls the status bit so it isn't strictly */
-															/* necessary to also have an IRQ */
+	m_dsp->set_input_line(0, HOLD_LINE);    /* ???  I have no idea who should generate this! */
+											/* the DSP polls the status bit so it isn't strictly */
+											/* necessary to also have an IRQ */
 	machine().scheduler().boost_interleave(attotime::zero, attotime::from_usec(50));
 }
 
@@ -466,7 +463,7 @@ WRITE16_MEMBER(coolpool_state::coolpool_iop_w)
 READ16_MEMBER(coolpool_state::coolpool_iop_r)
 {
 	logerror("%08x:IOP read %04x\n",space.device().safe_pc(),m_iop_answer);
-	machine().device("maincpu")->execute().set_input_line(1, CLEAR_LINE);
+	m_maincpu->set_input_line(1, CLEAR_LINE);
 
 	return m_iop_answer;
 }
@@ -492,7 +489,7 @@ WRITE16_MEMBER(coolpool_state::dsp_answer_w)
 {
 	logerror("%08x:IOP answer %04x\n", space.device().safe_pc(), data);
 	m_iop_answer = data;
-	machine().device("maincpu")->execute().set_input_line(1, ASSERT_LINE);
+	m_maincpu->set_input_line(1, ASSERT_LINE);
 }
 
 
@@ -540,8 +537,7 @@ WRITE16_MEMBER(coolpool_state::dsp_romaddr_w)
 
 WRITE16_MEMBER(coolpool_state::dsp_dac_w)
 {
-	dac_device *device = machine().device<dac_device>("dac");
-	device->write_signed16((INT16)(data << 4) + 0x8000);
+	m_dac->write_signed16((INT16)(data << 4) + 0x8000);
 }
 
 
@@ -694,7 +690,7 @@ static ADDRESS_MAP_START( coolpool_dsp_io_map, AS_IO, 16, coolpool_state )
 	AM_RANGE(0x07, 0x07) AM_READ_PORT("IN1")
 	AM_RANGE(TMS32025_BIO, TMS32025_BIO) AM_READ(dsp_bio_line_r)
 	AM_RANGE(TMS32025_HOLD, TMS32025_HOLD) AM_READ(dsp_hold_line_r)
-//  AM_RANGE(TMS32025_HOLDA, TMS32025_HOLDA) AM_WRITE_LEGACY(dsp_HOLDA_signal_w)
+//  AM_RANGE(TMS32025_HOLDA, TMS32025_HOLDA) AM_WRITE(dsp_HOLDA_signal_w)
 ADDRESS_MAP_END
 
 
@@ -1165,7 +1161,7 @@ DRIVER_INIT_MEMBER(coolpool_state,amerdart)
 
 DRIVER_INIT_MEMBER(coolpool_state,coolpool)
 {
-	machine().device("dsp")->memory().space(AS_IO).install_read_handler(0x07, 0x07, read16_delegate(FUNC(coolpool_state::coolpool_input_r),this));
+	m_dsp->space(AS_IO).install_read_handler(0x07, 0x07, read16_delegate(FUNC(coolpool_state::coolpool_input_r),this));
 
 	register_state_save(machine());
 }

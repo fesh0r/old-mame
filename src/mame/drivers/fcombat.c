@@ -257,8 +257,6 @@ GFXDECODE_END
 
 void fcombat_state::machine_start()
 {
-	m_maincpu = machine().device<cpu_device>("maincpu");
-
 	save_item(NAME(m_cocktail_flip));
 	save_item(NAME(m_char_palette));
 	save_item(NAME(m_sprite_palette));

@@ -252,7 +252,7 @@ Green value, Red value, Blue value: 0 = 0%, 01/10 = 50%, 11 = 100%.
 The 01 case is not used, it is unknown if this produces a different amount of colour.
 */
 
-static unsigned char kccomp_get_colour_element(int colour_value)
+unsigned char amstrad_state::kccomp_get_colour_element(int colour_value)
 {
 	switch (colour_value)
 	{
@@ -275,7 +275,7 @@ with different data and be able to select the other entries - not tested on a re
 and not supported by this driver */
 PALETTE_INIT_MEMBER(amstrad_state,kccomp)
 {
-	const UINT8 *color_prom = machine().root_device().memregion("proms")->base();
+	const UINT8 *color_prom = memregion("proms")->base();
 	int i;
 
 	color_prom = color_prom+0x018000;
@@ -323,7 +323,7 @@ PALETTE_INIT_MEMBER(amstrad_state,aleste)
 	int i;
 
 	/* CPC Colour data is stored in the colour ROM (RFCOLDAT.BIN) at 0x140-0x17f */
-	unsigned char* pal = machine().root_device().memregion("user4")->base();
+	unsigned char* pal = memregion("user4")->base();
 
 	for(i=0; i<32; i++)
 	{
@@ -3093,7 +3093,7 @@ MACHINE_RESET_MEMBER(amstrad_state,aleste)
 
 
 /* load snapshot */
-SNAPSHOT_LOAD(amstrad)
+SNAPSHOT_LOAD_MEMBER( amstrad_state,amstrad)
 {
 	UINT8 *snapshot;
 
@@ -3114,7 +3114,7 @@ SNAPSHOT_LOAD(amstrad)
 		return IMAGE_INIT_FAIL;
 	}
 
-	image.device().machine().driver_data<amstrad_state>()->amstrad_handle_snapshot(snapshot);
+	amstrad_handle_snapshot(snapshot);
 	free(snapshot);
 	return IMAGE_INIT_PASS;
 }

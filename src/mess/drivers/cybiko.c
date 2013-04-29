@@ -317,7 +317,7 @@ static MACHINE_CONFIG_START( cybikov1, cybiko_state )
 	MCFG_DEFAULT_LAYOUT(layout_lcd)
 	// sound
 	MCFG_SPEAKER_STANDARD_MONO("mono")
-	MCFG_SOUND_ADD(SPEAKER_TAG, SPEAKER_SOUND, 0)
+	MCFG_SOUND_ADD("speaker", SPEAKER_SOUND, 0)
 	MCFG_SOUND_ROUTE(ALL_OUTPUTS, "mono", 1.00)
 	// machine
 	/* rtc */
@@ -330,7 +330,7 @@ static MACHINE_CONFIG_START( cybikov1, cybiko_state )
 	MCFG_RAM_EXTRA_OPTIONS("1M")
 
 	/* quickload */
-	MCFG_QUICKLOAD_ADD("quickload", cybiko, "bin,nv", 0)
+	MCFG_QUICKLOAD_ADD("quickload", cybiko_state, cybiko, "bin,nv", 0)
 MACHINE_CONFIG_END
 
 static MACHINE_CONFIG_DERIVED( cybikov2, cybikov1)
@@ -364,7 +364,7 @@ static MACHINE_CONFIG_DERIVED( cybikoxt, cybikov1)
 
 	/* quickload */
 	MCFG_DEVICE_REMOVE("quickload")
-	MCFG_QUICKLOAD_ADD("quickload", cybikoxt, "bin,nv", 0)
+	MCFG_QUICKLOAD_ADD("quickload", cybiko_state, cybikoxt, "bin,nv", 0)
 MACHINE_CONFIG_END
 
 

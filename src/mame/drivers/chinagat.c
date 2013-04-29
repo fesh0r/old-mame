@@ -87,7 +87,8 @@ class chinagat_state : public ddragon_state
 {
 public:
 	chinagat_state(const machine_config &mconfig, device_type type, const char *tag)
-		: ddragon_state(mconfig, type, tag) {};
+		: ddragon_state(mconfig, type, tag),
+		m_adpcm(*this, "adpcm") { };
 
 	TIMER_DEVICE_CALLBACK_MEMBER(chinagat_scanline);
 	DECLARE_DRIVER_INIT(chinagat);
@@ -106,6 +107,7 @@ public:
 	DECLARE_READ8_MEMBER( saiyugoub1_m5205_irq_r );
 	DECLARE_WRITE_LINE_MEMBER(saiyugoub1_m5205_irq_w);
 	DECLARE_WRITE_LINE_MEMBER(chinagat_irq_handler);
+	optional_device<msm5205_device> m_adpcm;
 };
 
 
@@ -163,7 +165,7 @@ WRITE8_MEMBER(chinagat_state::chinagat_interrupt_w )
 	{
 		case 0: /* 3e00 - SND irq */
 			soundlatch_byte_w(space, 0, data);
-			m_snd_cpu->execute().set_input_line(m_sound_irq, (m_sound_irq == INPUT_LINE_NMI) ? PULSE_LINE : HOLD_LINE );
+			m_soundcpu->set_input_line(m_sound_irq, (m_sound_irq == INPUT_LINE_NMI) ? PULSE_LINE : HOLD_LINE );
 			break;
 
 		case 1: /* 3e01 - NMI ack */
@@ -179,7 +181,7 @@ WRITE8_MEMBER(chinagat_state::chinagat_interrupt_w )
 			break;
 
 		case 4: /* 3e04 - sub CPU IRQ ack */
-			m_sub_cpu->execute().set_input_line(m_sprite_irq, (m_sprite_irq == INPUT_LINE_NMI) ? PULSE_LINE : HOLD_LINE );
+			m_subcpu->set_input_line(m_sprite_irq, (m_sprite_irq == INPUT_LINE_NMI) ? PULSE_LINE : HOLD_LINE );
 			break;
 	}
 }
@@ -200,12 +202,12 @@ WRITE8_MEMBER(chinagat_state::chinagat_video_ctrl_w )
 
 WRITE8_MEMBER(chinagat_state::chinagat_bankswitch_w )
 {
-	space.machine().root_device().membank("bank1")->set_entry(data & 0x07); // shall we check (data & 7) < 6 (# of banks)?
+	membank("bank1")->set_entry(data & 0x07); // shall we check (data & 7) < 6 (# of banks)?
 }
 
 WRITE8_MEMBER(chinagat_state::chinagat_sub_bankswitch_w )
 {
-	space.machine().root_device().membank("bank4")->set_entry(data & 0x07); // shall we check (data & 7) < 6 (# of banks)?
+	membank("bank4")->set_entry(data & 0x07); // shall we check (data & 7) < 6 (# of banks)?
 }
 
 READ8_MEMBER(chinagat_state::saiyugoub1_mcu_command_r )
@@ -213,7 +215,7 @@ READ8_MEMBER(chinagat_state::saiyugoub1_mcu_command_r )
 #if 0
 	if (m_mcu_command == 0x78)
 	{
-		space.machine().device<cpu_device>("mcu")->suspend(SUSPEND_REASON_HALT, 1); /* Suspend (speed up) */
+		m_mcu->suspend(SUSPEND_REASON_HALT, 1); /* Suspend (speed up) */
 	}
 #endif
 	return m_mcu_command;
@@ -225,7 +227,7 @@ WRITE8_MEMBER(chinagat_state::saiyugoub1_mcu_command_w )
 #if 0
 	if (data != 0x78)
 	{
-		space.machine().device<cpu_device>("mcu")->resume(SUSPEND_REASON_HALT); /* Wake up */
+		m_mcu->resume(SUSPEND_REASON_HALT); /* Wake up */
 	}
 #endif
 }
@@ -238,7 +240,6 @@ WRITE8_MEMBER(chinagat_state::saiyugoub1_adpcm_rom_addr_w )
 
 WRITE8_MEMBER(chinagat_state::saiyugoub1_adpcm_control_w )
 {
-	device_t *device = machine().device("adpcm");
 	/* i8748 Port 2 write */
 	UINT8 *saiyugoub1_adpcm_rom = memregion("adpcm")->base();
 
@@ -246,7 +247,7 @@ WRITE8_MEMBER(chinagat_state::saiyugoub1_adpcm_control_w )
 	{
 		logerror("ADPCM output disabled\n");
 		m_pcm_nibble = 0x0f;
-		msm5205_reset_w(device, 1);
+		msm5205_reset_w(m_adpcm, 1);
 	}
 	else
 	{
@@ -275,7 +276,7 @@ WRITE8_MEMBER(chinagat_state::saiyugoub1_adpcm_control_w )
 
 		if (((m_i8748_P2 & 0xc) >= 8) && ((data & 0xc) == 4))
 		{
-			msm5205_data_w (device, m_pcm_nibble);
+			msm5205_data_w (m_adpcm, m_pcm_nibble);
 			logerror("Writing %02x to m5205\n", m_pcm_nibble);
 		}
 		logerror("$ROM=%08x  P1=%02x  P2=%02x  Prev_P2=%02x  Nibble=%1x  PCM_data=%02x\n", m_adpcm_addr, m_i8748_P1, data, m_i8748_P2, m_pcm_shift, m_pcm_nibble);
@@ -291,15 +292,14 @@ WRITE8_MEMBER(chinagat_state::saiyugoub1_m5205_clk_w )
 
 	/* Actually, T0 output clk mode is not supported by the i8048 core */
 #if 0
-	device_t *device = machine().device("adpcm");
 	m_m5205_clk++;
 	if (m_m5205_clk == 8)
 	{
-		msm5205_vclk_w(device, 1);      /* ??? */
+		msm5205_vclk_w(m_adpcm, 1);      /* ??? */
 		m_m5205_clk = 0;
 	}
 	else
-		msm5205_vclk_w(device, 0);      /* ??? */
+		msm5205_vclk_w(m_adpcm, 0);      /* ??? */
 #endif
 }
 
@@ -507,7 +507,7 @@ GFXDECODE_END
 
 WRITE_LINE_MEMBER(chinagat_state::chinagat_irq_handler)
 {
-	m_snd_cpu->execute().set_input_line(0, state ? ASSERT_LINE : CLEAR_LINE );
+	m_soundcpu->set_input_line(0, state ? ASSERT_LINE : CLEAR_LINE );
 }
 
 /* This on the bootleg board, instead of the m6295 */
@@ -531,10 +531,6 @@ static const ym2203_interface ym2203_config =
 
 MACHINE_START_MEMBER(chinagat_state,chinagat)
 {
-	m_maincpu = machine().device<cpu_device>("maincpu");
-	m_sub_cpu = machine().device("sub");
-	m_snd_cpu = machine().device("audiocpu");
-
 	/* configure banks */
 	membank("bank1")->configure_entries(0, 8, memregion("maincpu")->base() + 0x10000, 0x4000);
 
@@ -581,7 +577,7 @@ static MACHINE_CONFIG_START( chinagat, chinagat_state )
 	MCFG_CPU_ADD("sub", HD6309, MAIN_CLOCK / 2)     /* 1.5 MHz (12MHz oscillator / 4 internally) */
 	MCFG_CPU_PROGRAM_MAP(sub_map)
 
-	MCFG_CPU_ADD("audiocpu", Z80, XTAL_3_579545MHz)     /* 3.579545 MHz */
+	MCFG_CPU_ADD("soundcpu", Z80, XTAL_3_579545MHz)     /* 3.579545 MHz */
 	MCFG_CPU_PROGRAM_MAP(sound_map)
 
 	MCFG_QUANTUM_TIME(attotime::from_hz(6000)) /* heavy interleaving to sync up sprite<->main cpu's */
@@ -603,7 +599,7 @@ static MACHINE_CONFIG_START( chinagat, chinagat_state )
 	MCFG_SPEAKER_STANDARD_MONO("mono")
 
 	MCFG_YM2151_ADD("ymsnd", 3579545)
-	MCFG_YM2151_IRQ_HANDLER(INPUTLINE("audiocpu", 0))
+	MCFG_YM2151_IRQ_HANDLER(INPUTLINE("soundcpu", 0))
 	MCFG_SOUND_ROUTE(0, "mono", 0.80)
 	MCFG_SOUND_ROUTE(1, "mono", 0.80)
 
@@ -621,7 +617,7 @@ static MACHINE_CONFIG_START( saiyugoub1, chinagat_state )
 	MCFG_CPU_ADD("sub", M6809, MAIN_CLOCK / 8)      /* 68B09EP 1.5 MHz (12MHz oscillator) */
 	MCFG_CPU_PROGRAM_MAP(sub_map)
 
-	MCFG_CPU_ADD("audiocpu", Z80, XTAL_3_579545MHz)     /* 3.579545 MHz oscillator */
+	MCFG_CPU_ADD("soundcpu", Z80, XTAL_3_579545MHz)     /* 3.579545 MHz oscillator */
 	MCFG_CPU_PROGRAM_MAP(saiyugoub1_sound_map)
 
 	MCFG_CPU_ADD("mcu", I8748, 9263750)     /* 9.263750 MHz oscillator, divided by 3*5 internally */
@@ -647,7 +643,7 @@ static MACHINE_CONFIG_START( saiyugoub1, chinagat_state )
 	MCFG_SPEAKER_STANDARD_MONO("mono")
 
 	MCFG_YM2151_ADD("ymsnd", 3579545)
-	MCFG_YM2151_IRQ_HANDLER(INPUTLINE("audiocpu", 0))
+	MCFG_YM2151_IRQ_HANDLER(INPUTLINE("soundcpu", 0))
 	MCFG_SOUND_ROUTE(0, "mono", 0.80)
 	MCFG_SOUND_ROUTE(1, "mono", 0.80)
 
@@ -666,7 +662,7 @@ static MACHINE_CONFIG_START( saiyugoub2, chinagat_state )
 	MCFG_CPU_ADD("sub", M6809, MAIN_CLOCK / 8)      /* 1.5 MHz (12MHz oscillator) */
 	MCFG_CPU_PROGRAM_MAP(sub_map)
 
-	MCFG_CPU_ADD("audiocpu", Z80, XTAL_3_579545MHz)     /* 3.579545 MHz oscillator */
+	MCFG_CPU_ADD("soundcpu", Z80, XTAL_3_579545MHz)     /* 3.579545 MHz oscillator */
 	MCFG_CPU_PROGRAM_MAP(ym2203c_sound_map)
 
 	MCFG_QUANTUM_TIME(attotime::from_hz(6000)) /* heavy interleaving to sync up sprite<->main cpu's */
@@ -717,7 +713,7 @@ ROM_START( chinagat )
 	ROM_LOAD( "23j4-0.48",   0x10000, 0x18000, CRC(2914af38) SHA1(3d690fa50b7d36a22de82c026d59a16126a7b73c) ) /* Banks 0x4000 long @ 0x4000 */
 	ROM_CONTINUE(            0x08000, 0x08000 )             /* Static code */
 
-	ROM_REGION( 0x10000, "audiocpu", 0 )    /* Music CPU, 64KB */
+	ROM_REGION( 0x10000, "soundcpu", 0 )    /* Music CPU, 64KB */
 	ROM_LOAD( "23j0-0.40",   0x00000, 0x08000, CRC(9ffcadb6) SHA1(606dbdd73aee3cabb2142200ac6f8c96169e4b19) )
 
 	ROM_REGION(0x20000, "gfx1", 0 ) /* Text */
@@ -754,7 +750,7 @@ ROM_START( saiyugou )
 	ROM_LOAD( "23j4-0.48",  0x10000, 0x18000, CRC(2914af38) SHA1(3d690fa50b7d36a22de82c026d59a16126a7b73c) )    /* Banks 0x4000 long @ 0x4000 */
 	ROM_CONTINUE(           0x08000, 0x08000)               /* Static code */
 
-	ROM_REGION( 0x10000, "audiocpu", 0 )    /* Music CPU, 64KB */
+	ROM_REGION( 0x10000, "soundcpu", 0 )    /* Music CPU, 64KB */
 	ROM_LOAD( "23j0-0.40",  0x00000, 0x8000, CRC(9ffcadb6) SHA1(606dbdd73aee3cabb2142200ac6f8c96169e4b19) )
 
 	ROM_REGION(0x20000, "gfx1", 0 ) /* Text */
@@ -798,7 +794,7 @@ ROM_START( saiyugoub1 )
 	*/
 	ROM_CONTINUE(           0x08000, 0x08000 )              /* Static code */
 
-	ROM_REGION( 0x10000, "audiocpu", 0 )    /* Music CPU, 64KB */
+	ROM_REGION( 0x10000, "soundcpu", 0 )    /* Music CPU, 64KB */
 	ROM_LOAD( "a-1.bin",  0x00000, 0x8000,  CRC(46e5a6d4) SHA1(965ed7bdb727ab32ce3322ca49f1a4e3786e8051) )
 
 	ROM_REGION( 0x800, "mcu", 0 )       /* ADPCM CPU, 1KB */
@@ -863,7 +859,7 @@ ROM_START( saiyugoub2 )
 	*/
 	ROM_CONTINUE(         0x08000, 0x08000 )                /* Static code */
 
-	ROM_REGION( 0x10000, "audiocpu", 0 )    /* Music CPU, 64KB */
+	ROM_REGION( 0x10000, "soundcpu", 0 )    /* Music CPU, 64KB */
 	ROM_LOAD( "sai-alt1.bin", 0x00000, 0x8000, CRC(8d397a8d) SHA1(52599521c3dbcecc1ae56bb80dc855e76d700134) )
 
 //  ROM_REGION( 0x800, "cpu3", 0 )     /* ADPCM CPU, 1KB */

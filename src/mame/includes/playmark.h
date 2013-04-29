@@ -5,13 +5,17 @@ class playmark_state : public driver_device
 {
 public:
 	playmark_state(const machine_config &mconfig, device_type type, const char *tag)
-		: driver_device(mconfig, type, tag) ,
+		: driver_device(mconfig, type, tag),
 		m_bgvideoram(*this, "bgvideoram"),
 		m_videoram1(*this, "videoram1"),
 		m_videoram2(*this, "videoram2"),
 		m_videoram3(*this, "videoram3"),
 		m_spriteram(*this, "spriteram"),
-		m_rowscroll(*this, "rowscroll"){ }
+		m_rowscroll(*this, "rowscroll"),
+		m_oki(*this, "oki"),
+		m_eeprom(*this, "eeprom"),
+		m_maincpu(*this, "maincpu"),
+		m_audiocpu(*this, "audiocpu") { }
 
 	/* memory pointers */
 	optional_shared_ptr<UINT16> m_bgvideoram;
@@ -48,8 +52,8 @@ public:
 	int         m_old_oki_bank;
 
 	/* devices */
-	okim6295_device *m_oki;
-	eeprom_device *m_eeprom;
+	required_device<okim6295_device> m_oki;
+	optional_device<eeprom_device> m_eeprom;
 	DECLARE_WRITE16_MEMBER(coinctrl_w);
 	DECLARE_WRITE16_MEMBER(wbeachvl_coin_eeprom_w);
 	DECLARE_WRITE16_MEMBER(hotmind_coin_eeprom_w);
@@ -100,4 +104,6 @@ public:
 	void bigtwinb_draw_sprites( bitmap_ind16 &bitmap, const rectangle &cliprect, int codeshift );
 	void draw_bitmap( bitmap_ind16 &bitmap, const rectangle &cliprect );
 	UINT8 playmark_asciitohex(UINT8 data);
+	required_device<cpu_device> m_maincpu;
+	optional_device<cpu_device> m_audiocpu;
 };

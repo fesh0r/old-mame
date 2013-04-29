@@ -1160,8 +1160,8 @@ static INPUT_PORTS_START( vboy )
 	PORT_BIT( 0x0040, IP_ACTIVE_HIGH, IPT_JOYSTICKRIGHT_UP ) PORT_PLAYER(1)
 	PORT_BIT( 0x0020, IP_ACTIVE_HIGH, IPT_BUTTON3 ) PORT_NAME("L") PORT_PLAYER(1) // Left button on back
 	PORT_BIT( 0x0010, IP_ACTIVE_HIGH, IPT_BUTTON4 ) PORT_NAME("R") PORT_PLAYER(1) // Right button on back
-	PORT_BIT( 0x0008, IP_ACTIVE_HIGH, IPT_BUTTON2 ) PORT_NAME("B") PORT_PLAYER(1) // B button (Mario Clash Jump button)
-	PORT_BIT( 0x0004, IP_ACTIVE_HIGH, IPT_BUTTON1 ) PORT_NAME("A") PORT_PLAYER(1) // A button
+	PORT_BIT( 0x0008, IP_ACTIVE_HIGH, IPT_BUTTON1 ) PORT_NAME("B") PORT_PLAYER(1) // B button (Mario Clash Jump button)
+	PORT_BIT( 0x0004, IP_ACTIVE_HIGH, IPT_BUTTON2 ) PORT_NAME("A") PORT_PLAYER(1) // A button
 	PORT_BIT( 0x0002, IP_ACTIVE_LOW,  IPT_UNUSED ) // Always 1
 	PORT_BIT( 0x0001, IP_ACTIVE_HIGH, IPT_UNUSED ) // Battery low
 INPUT_PORTS_END
@@ -1349,12 +1349,11 @@ WRITE32_MEMBER(vboy_state::sram_w)
 
 DEVICE_IMAGE_LOAD_MEMBER( vboy_state, vboy_cart )
 {
-	vboy_state *state = image.device().machine().driver_data<vboy_state>();
 	UINT32 chip = 0;
-	UINT8 *ROM = image.device().machine().root_device().memregion("cartridge")->base();
+	UINT8 *ROM = memregion("cartridge")->base();
 	UINT32 cart_size;
 
-	state->m_nvptr = (UINT8 *)NULL;
+	m_nvptr = (UINT8 *)NULL;
 	if (image.software_entry() == NULL)
 	{
 		cart_size = image.length();
@@ -1372,17 +1371,17 @@ DEVICE_IMAGE_LOAD_MEMBER( vboy_state, vboy_cart )
 
 	if (chip)
 	{
-		state->m_nvptr = (UINT8 *)&state->m_vboy_sram;
+		m_nvptr = (UINT8 *)&m_vboy_sram;
 
-		image.device().machine().device("maincpu")->memory().space(AS_PROGRAM).install_read_handler(0x06000000, 0x0600ffff, read32_delegate(FUNC(vboy_state::sram_r),state));
-		image.device().machine().device("maincpu")->memory().space(AS_PROGRAM).install_write_handler(0x06000000, 0x0600ffff, write32_delegate(FUNC(vboy_state::sram_w),state));
+		m_maincpu->space(AS_PROGRAM).install_read_handler(0x06000000, 0x0600ffff, read32_delegate(FUNC(vboy_state::sram_r),this));
+		m_maincpu->space(AS_PROGRAM).install_write_handler(0x06000000, 0x0600ffff, write32_delegate(FUNC(vboy_state::sram_w),this));
 
-		image.battery_load(state->m_nvptr, 0x10000, 0x00);
-		state->m_nvimage = image;
+		image.battery_load(m_nvptr, 0x10000, 0x00);
+		m_nvimage = image;
 	}
 	else
 	{
-		state->m_nvimage = NULL;
+		m_nvimage = NULL;
 	}
 
 	return IMAGE_INIT_PASS;

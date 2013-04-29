@@ -593,9 +593,6 @@ static const es5506_interface es5506_config =
 
 void macrossp_state::machine_start()
 {
-	m_maincpu = machine().device<cpu_device>("maincpu");
-	m_audiocpu = machine().device<cpu_device>("audiocpu");
-
 	save_item(NAME(m_sndpending));
 	save_item(NAME(m_snd_toggle));
 	save_item(NAME(m_fade_effect));
@@ -770,13 +767,13 @@ WRITE32_MEMBER(macrossp_state::quizmoon_speedup_w)
 
 DRIVER_INIT_MEMBER(macrossp_state,macrossp)
 {
-	machine().device("maincpu")->memory().space(AS_PROGRAM).install_write_handler(0xf10158, 0xf1015b, write32_delegate(FUNC(macrossp_state::macrossp_speedup_w),this));
+	m_maincpu->space(AS_PROGRAM).install_write_handler(0xf10158, 0xf1015b, write32_delegate(FUNC(macrossp_state::macrossp_speedup_w),this));
 }
 
 DRIVER_INIT_MEMBER(macrossp_state,quizmoon)
 {
 #ifdef UNUSED_FUNCTION
-	machine().device("maincpu")->memory().space(AS_PROGRAM).install_write_handler(0xf00020, 0xf00023, write32_delegate(FUNC(macrossp_state::quizmoon_speedup_w),this));
+	m_maincpu->space(AS_PROGRAM).install_write_handler(0xf00020, 0xf00023, write32_delegate(FUNC(macrossp_state::quizmoon_speedup_w),this));
 #endif
 }
 

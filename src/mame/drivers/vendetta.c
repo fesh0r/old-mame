@@ -161,7 +161,7 @@ WRITE8_MEMBER(vendetta_state::vendetta_K052109_w)
 
 void vendetta_state::vendetta_video_banking( int select )
 {
-	address_space &space = machine().device("maincpu")->memory().space(AS_PROGRAM);
+	address_space &space = m_maincpu->space(AS_PROGRAM);
 
 	if (select & 1)
 	{
@@ -219,8 +219,7 @@ READ8_MEMBER(vendetta_state::vendetta_sound_interrupt_r)
 
 READ8_MEMBER(vendetta_state::vendetta_sound_r)
 {
-	k053260_device *device = machine().device<k053260_device>("k053260");
-	return device->k053260_r(space, 2 + offset);
+	return m_k053260->k053260_r(space, 2 + offset);
 }
 
 /********************************************/
@@ -460,14 +459,6 @@ void vendetta_state::machine_start()
 
 	m_generic_paletteram_8.allocate(0x1000);
 
-	m_maincpu = machine().device<cpu_device>("maincpu");
-	m_audiocpu = machine().device<cpu_device>("audiocpu");
-	m_k053246 = machine().device("k053246");
-	m_k053251 = machine().device("k053251");
-	m_k052109 = machine().device("k052109");
-	m_k054000 = machine().device("k054000");
-	m_k053260 = machine().device("k053260");
-
 	save_item(NAME(m_irq_enabled));
 	save_item(NAME(m_sprite_colorbase));
 	save_item(NAME(m_layer_colorbase));
@@ -478,7 +469,7 @@ void vendetta_state::machine_reset()
 {
 	int i;
 
-	konami_configure_set_lines(machine().device("maincpu"), vendetta_banking);
+	konami_configure_set_lines(m_maincpu, vendetta_banking);
 
 	for (i = 0; i < 3; i++)
 	{

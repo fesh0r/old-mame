@@ -308,7 +308,8 @@ class viper_state : public driver_device
 {
 public:
 	viper_state(const machine_config &mconfig, device_type type, const char *tag)
-		: driver_device(mconfig, type, tag) { }
+		: driver_device(mconfig, type, tag),
+		m_maincpu(*this, "maincpu") { }
 
 
 	UINT32 m_epic_iack;
@@ -343,6 +344,7 @@ public:
 	DECLARE_WRITE64_MEMBER(cf_card_w);
 	DECLARE_READ64_MEMBER(ata_r);
 	DECLARE_WRITE64_MEMBER(ata_w);
+	DECLARE_WRITE_LINE_MEMBER(voodoo_vblank);
 	DECLARE_DRIVER_INIT(viper);
 	DECLARE_DRIVER_INIT(vipercf);
 	virtual void machine_start();
@@ -358,6 +360,7 @@ public:
 	void mpc8240_epic_reset(void);
 	int ds2430_insert_cmd_bit(int bit);
 	void DS2430_w(int bit);
+	required_device<cpu_device> m_maincpu;
 };
 
 UINT32 viper_state::screen_update_viper(screen_device &screen, bitmap_rgb32 &bitmap, const rectangle &cliprect)
@@ -714,11 +717,11 @@ void viper_state::epic_update_interrupts()
 			printf("vector = %02X\n", epic.iack);
 #endif
 
-		machine().device("maincpu")->execute().set_input_line(INPUT_LINE_IRQ0, ASSERT_LINE);
+		m_maincpu->set_input_line(INPUT_LINE_IRQ0, ASSERT_LINE);
 	}
 	else
 	{
-		machine().device("maincpu")->execute().set_input_line(INPUT_LINE_IRQ0, CLEAR_LINE);
+		m_maincpu->set_input_line(INPUT_LINE_IRQ0, CLEAR_LINE);
 	}
 }
 
@@ -1994,10 +1997,9 @@ INTERRUPT_GEN_MEMBER(viper_state::viper_vblank)
 	//mpc8240_interrupt(device.machine, MPC8240_IRQ3);
 }
 
-static void voodoo_vblank(device_t *device, int state)
+WRITE_LINE_MEMBER(viper_state::voodoo_vblank)
 {
-	viper_state *drvstate = device->machine().driver_data<viper_state>();
-	drvstate->mpc8240_interrupt(MPC8240_IRQ4);
+	mpc8240_interrupt(MPC8240_IRQ4);
 }
 
 void viper_state::machine_start()
@@ -2007,10 +2009,10 @@ void viper_state::machine_start()
 	mpc8240_epic_init();
 
 	/* set conservative DRC options */
-	ppcdrc_set_options(machine().device("maincpu"), PPCDRC_COMPATIBLE_OPTIONS);
+	ppcdrc_set_options(m_maincpu, PPCDRC_COMPATIBLE_OPTIONS);
 
 	/* configure fast RAM regions for DRC */
-	ppcdrc_add_fastram(machine().device("maincpu"), 0x00000000, 0x00ffffff, FALSE, workram);
+	ppcdrc_add_fastram(m_maincpu, 0x00000000, 0x00ffffff, FALSE, workram);
 
 	ds2430_rom = (UINT8*)memregion("ds2430")->base();
 }
@@ -2038,8 +2040,8 @@ static const voodoo_config voodoo_intf =
 	0,//                tmumem1;
 	"screen",//         screen;
 	"maincpu",//        cputag;
-	voodoo_vblank,//    vblank;
-	NULL,//             stall;
+	DEVCB_DRIVER_LINE_MEMBER(viper_state,voodoo_vblank),//    vblank;
+	DEVCB_NULL//             stall;
 };
 
 static MACHINE_CONFIG_START( viper, viper_state )
@@ -2081,15 +2083,15 @@ MACHINE_CONFIG_END
 
 DRIVER_INIT_MEMBER(viper_state,viper)
 {
-//  machine().device("maincpu")->memory().space(AS_PROGRAM).install_legacy_readwrite_handler( *ide, 0xff200000, 0xff207fff, FUNC(hdd_r), FUNC(hdd_w) ); //TODO
+//  m_maincpu->space(AS_PROGRAM).install_legacy_readwrite_handler( *ide, 0xff200000, 0xff207fff, FUNC(hdd_r), FUNC(hdd_w) ); //TODO
 }
 
 DRIVER_INIT_MEMBER(viper_state,vipercf)
 {
 	DRIVER_INIT_CALL(viper);
 
-	machine().device("maincpu")->memory().space(AS_PROGRAM).install_readwrite_handler(0xff000000, 0xff000fff, read64_delegate(FUNC(viper_state::cf_card_data_r), this), write64_delegate(FUNC(viper_state::cf_card_data_w), this) );
-	machine().device("maincpu")->memory().space(AS_PROGRAM).install_readwrite_handler(0xff200000, 0xff200fff, read64_delegate(FUNC(viper_state::cf_card_r), this), write64_delegate(FUNC(viper_state::cf_card_w), this) );
+	m_maincpu->space(AS_PROGRAM).install_readwrite_handler(0xff000000, 0xff000fff, read64_delegate(FUNC(viper_state::cf_card_data_r), this), write64_delegate(FUNC(viper_state::cf_card_data_w), this) );
+	m_maincpu->space(AS_PROGRAM).install_readwrite_handler(0xff200000, 0xff200fff, read64_delegate(FUNC(viper_state::cf_card_r), this), write64_delegate(FUNC(viper_state::cf_card_w), this) );
 }
 
 

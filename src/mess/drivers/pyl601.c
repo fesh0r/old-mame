@@ -46,10 +46,11 @@ class pyl601_state : public driver_device
 public:
 	pyl601_state(const machine_config &mconfig, device_type type, const char *tag)
 		: driver_device(mconfig, type, tag),
-	m_speaker(*this, SPEAKER_TAG),
+	m_speaker(*this, "speaker"),
 	m_fdc(*this, "upd765"),
 	m_ram(*this, RAM_TAG)
-	{ }
+	,
+		m_maincpu(*this, "maincpu") { }
 
 	UINT8 m_rom_page;
 	UINT32 m_vdisk_addr;
@@ -83,6 +84,7 @@ public:
 	virtual void video_start();
 	INTERRUPT_GEN_MEMBER(pyl601_interrupt);
 	DECLARE_FLOPPY_FORMATS( floppy_formats );
+	required_device<cpu_device> m_maincpu;
 };
 
 
@@ -99,7 +101,7 @@ WRITE8_MEMBER(pyl601_state::rom_page_w)
 	{
 		int chip = (data >> 4) % 5;
 		int page = data & 7;
-		membank("bank2")->set_base(machine().root_device().memregion("romdisk")->base() + chip*0x10000 + page * 0x2000);
+		membank("bank2")->set_base(memregion("romdisk")->base() + chip*0x10000 + page * 0x2000);
 	}
 	else
 	{
@@ -371,7 +373,7 @@ void pyl601_state::machine_reset()
 	membank("bank5")->set_base(memregion("maincpu")->base() + 0xf000);
 	membank("bank6")->set_base(ram + 0xf000);
 
-	machine().device("maincpu")->reset();
+	m_maincpu->reset();
 }
 
 void pyl601_state::video_start()
@@ -496,7 +498,7 @@ static MC6845_INTERFACE( pyl601a_crtc6845_interface )
 
 DRIVER_INIT_MEMBER(pyl601_state,pyl601)
 {
-	memset(machine().device<ram_device>(RAM_TAG)->pointer(), 0, 64 * 1024);
+	memset(m_ram->pointer(), 0, 64 * 1024);
 }
 
 INTERRUPT_GEN_MEMBER(pyl601_state::pyl601_interrupt)
@@ -568,7 +570,7 @@ static MACHINE_CONFIG_START( pyl601, pyl601_state )
 
 	/* sound hardware */
 	MCFG_SPEAKER_STANDARD_MONO("mono")
-	MCFG_SOUND_ADD(SPEAKER_TAG, SPEAKER_SOUND, 0)
+	MCFG_SOUND_ADD("speaker", SPEAKER_SOUND, 0)
 	MCFG_SOUND_ROUTE(ALL_OUTPUTS, "mono", 0.50)
 
 	/* Devices */

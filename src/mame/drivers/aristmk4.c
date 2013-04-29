@@ -275,12 +275,14 @@ class aristmk4_state : public driver_device
 {
 public:
 	aristmk4_state(const machine_config &mconfig, device_type type, const char *tag)
-	: driver_device(mconfig, type, tag) ,
-		m_mkiv_vram(*this, "mkiv_vram"){ }
+	: driver_device(mconfig, type, tag),
+		m_samples(*this, "samples"),
+		m_mkiv_vram(*this, "mkiv_vram"),
+		m_maincpu(*this, "maincpu") { }
 
 	int m_rtc_address_strobe;
 	int m_rtc_data_strobe;
-	samples_device *m_samples;
+	required_device<samples_device> m_samples;
 	UINT8 *m_shapeRomPtr;
 	UINT8 m_shapeRom[0xc000];
 	required_shared_ptr<UINT8> m_mkiv_vram;
@@ -340,6 +342,7 @@ public:
 	TIMER_CALLBACK_MEMBER(hopper_reset);
 	TIMER_DEVICE_CALLBACK_MEMBER(aristmk4_pf);
 	inline void uBackgroundColour();
+	required_device<cpu_device> m_maincpu;
 };
 
 /* Partial Cashcade protocol */
@@ -1527,7 +1530,7 @@ static const ay8910_interface ay8910_config2 =
 
 WRITE8_MEMBER(aristmk4_state::firq)
 {
-	machine().device("maincpu")->execute().set_input_line(M6809_FIRQ_LINE, data ? ASSERT_LINE : CLEAR_LINE);
+	m_maincpu->set_input_line(M6809_FIRQ_LINE, data ? ASSERT_LINE : CLEAR_LINE);
 }
 
 static const via6522_interface via_interface =
@@ -1639,7 +1642,6 @@ DRIVER_INIT_MEMBER(aristmk4_state,aristmk4)
 
 void aristmk4_state::machine_start()
 {
-	m_samples = machine().device<samples_device>("samples");
 	state_save_register_global_pointer(machine(), m_nvram, 0x1000); // m_nvram
 }
 
@@ -1649,10 +1651,10 @@ void aristmk4_state::machine_reset()
 	switch(ioport("LK13")->read())  // CPU speed control... 3mhz or 1.5MHz
 	{
 	case 0x00:
-		machine().device("maincpu")->set_unscaled_clock(MAIN_CLOCK/4);  // 3 MHz
+		m_maincpu->set_unscaled_clock(MAIN_CLOCK/4);  // 3 MHz
 		break;
 	case 0x10:
-		machine().device("maincpu")->set_unscaled_clock(MAIN_CLOCK/8);  // 1.5 MHz
+		m_maincpu->set_unscaled_clock(MAIN_CLOCK/8);  // 1.5 MHz
 		break;
 	}
 }
@@ -1677,7 +1679,7 @@ TIMER_DEVICE_CALLBACK_MEMBER(aristmk4_state::aristmk4_pf)
 
 	if(ioport("powerfail")->read()) // send NMI signal if L pressed
 	{
-	machine().device("maincpu")->execute().set_input_line(INPUT_LINE_NMI, ASSERT_LINE );
+	m_maincpu->set_input_line(INPUT_LINE_NMI, ASSERT_LINE );
 	}
 }
 

@@ -115,6 +115,14 @@ Notes:
   setting. For the avid golfer, a more challenging style of swing.".
   This feature only exists when "Language" Dip Swicth is set to "English"
 
+- fitegolfu:  An "SNK Fighting Golf Program Update" notice published in a trade
+  journal outlines 3 improvements which is supposed to allow game players a bit
+  more time at crucial points in the game.
+
+  1) Shot time: The 12/10 seconds dip has been changed to 15/12 seconds.
+  2) Power/Swing gauge moves slower when the ball is on the green.
+  3) Hit Check area around the cup is enlarged for easier putting.
+
 - there are two versions of the Ikari Warriors board, one has the standard JAMMA
   connector while the other has the custom SNK connector. The video and audio
   PCBs are the same, only the CPU PCB changes.
@@ -275,28 +283,28 @@ READ8_MEMBER(snk_state::snk_cpuA_nmi_trigger_r)
 {
 	if(!space.debugger_access())
 	{
-		machine().device("maincpu")->execute().set_input_line(INPUT_LINE_NMI, ASSERT_LINE);
+		m_maincpu->set_input_line(INPUT_LINE_NMI, ASSERT_LINE);
 	}
 	return 0xff;
 }
 
 WRITE8_MEMBER(snk_state::snk_cpuA_nmi_ack_w)
 {
-	machine().device("maincpu")->execute().set_input_line(INPUT_LINE_NMI, CLEAR_LINE);
+	m_maincpu->set_input_line(INPUT_LINE_NMI, CLEAR_LINE);
 }
 
 READ8_MEMBER(snk_state::snk_cpuB_nmi_trigger_r)
 {
 	if(!space.debugger_access())
 	{
-		machine().device("sub")->execute().set_input_line(INPUT_LINE_NMI, ASSERT_LINE);
+		m_subcpu->set_input_line(INPUT_LINE_NMI, ASSERT_LINE);
 	}
 	return 0xff;
 }
 
 WRITE8_MEMBER(snk_state::snk_cpuB_nmi_ack_w)
 {
-	machine().device("sub")->execute().set_input_line(INPUT_LINE_NMI, CLEAR_LINE);
+	m_subcpu->set_input_line(INPUT_LINE_NMI, CLEAR_LINE);
 }
 
 /*********************************************************************/
@@ -318,7 +326,7 @@ WRITE8_MEMBER(snk_state::marvins_soundlatch_w)
 {
 	m_marvins_sound_busy_flag = 1;
 	soundlatch_byte_w(space, offset, data);
-	machine().device("audiocpu")->execute().set_input_line(0, HOLD_LINE);
+	m_audiocpu->set_input_line(0, HOLD_LINE);
 }
 
 READ8_MEMBER(snk_state::marvins_soundlatch_r)
@@ -334,7 +342,7 @@ CUSTOM_INPUT_MEMBER(snk_state::marvins_sound_busy)
 
 READ8_MEMBER(snk_state::marvins_sound_nmi_ack_r)
 {
-	machine().device("audiocpu")->execute().set_input_line(INPUT_LINE_NMI, CLEAR_LINE);
+	m_audiocpu->set_input_line(INPUT_LINE_NMI, CLEAR_LINE);
 	return 0xff;
 }
 
@@ -357,7 +365,7 @@ TIMER_CALLBACK_MEMBER(snk_state::sgladiat_sndirq_update_callback)
 			break;
 	}
 
-	machine().device("audiocpu")->execute().set_input_line(INPUT_LINE_NMI, (m_sound_status & 0x8) ? ASSERT_LINE : CLEAR_LINE);
+	m_audiocpu->set_input_line(INPUT_LINE_NMI, (m_sound_status & 0x8) ? ASSERT_LINE : CLEAR_LINE);
 }
 
 
@@ -381,7 +389,7 @@ READ8_MEMBER(snk_state::sgladiat_sound_nmi_ack_r)
 
 READ8_MEMBER(snk_state::sgladiat_sound_irq_ack_r)
 {
-	machine().device("audiocpu")->execute().set_input_line(0, CLEAR_LINE);
+	m_audiocpu->set_input_line(0, CLEAR_LINE);
 	return 0xff;
 }
 
@@ -442,7 +450,7 @@ TIMER_CALLBACK_MEMBER(snk_state::sndirq_update_callback)
 			break;
 	}
 
-	machine().device("audiocpu")->execute().set_input_line(0, (m_sound_status & 0xb) ? ASSERT_LINE : CLEAR_LINE);
+	m_audiocpu->set_input_line(0, (m_sound_status & 0xb) ? ASSERT_LINE : CLEAR_LINE);
 }
 
 
@@ -2412,6 +2420,17 @@ static INPUT_PORTS_START( fitegolf )
 	PORT_DIPSETTING(    0x40, DEF_STR( Yes ) )
 	PORT_SERVICE( 0x80, IP_ACTIVE_LOW )                     PORT_DIPLOCATION("DSW2:8")
 INPUT_PORTS_END
+
+
+static INPUT_PORTS_START( fitegolfu )
+		PORT_INCLUDE( fitegolf )
+
+	PORT_MODIFY("DSW2")
+	PORT_DIPNAME( 0x01, 0x01, "Shot Time" )                 PORT_DIPLOCATION("DSW2:1")
+	PORT_DIPSETTING(    0x00, "Short (12 sec)" )
+	PORT_DIPSETTING(    0x01, "Long (15 sec)" )
+INPUT_PORTS_END
+
 
 
 static INPUT_PORTS_START( countryc )
@@ -4611,7 +4630,7 @@ ROM_START( fitegolf )
 	ROM_LOAD( "pal20l8a.6r", 0x0400, 0x0144, CRC(0f011673) SHA1(383e6f6e78daec9c874d5b48378111ca60f5ed64) )
 ROM_END
 
-ROM_START( fitegolfu )
+ROM_START( fitegolfu )  /*  Later US version containing enhancements to make the game a little easier */
 	ROM_REGION( 0x10000, "maincpu", 0 )
 	ROM_LOAD( "np45.128", 0x0000, 0x4000, CRC(16e8e763) SHA1(0b5296f2a91a7f3176b7461ca4958865ce998241) )
 	ROM_LOAD( "mn45.256", 0x4000, 0x8000, CRC(a4fa09d5) SHA1(ae7f0cb47de06006ae71252c4201a93a01a26887) )
@@ -6251,7 +6270,7 @@ ROM_END
 DRIVER_INIT_MEMBER(snk_state,countryc)
 {
 	// replace coin counter with trackball select
-	machine().device("maincpu")->memory().space(AS_PROGRAM).install_write_handler(0xc300, 0xc300, write8_delegate(FUNC(snk_state::countryc_trackball_w),this));
+	m_maincpu->space(AS_PROGRAM).install_write_handler(0xc300, 0xc300, write8_delegate(FUNC(snk_state::countryc_trackball_w),this));
 }
 
 
@@ -6273,8 +6292,8 @@ GAME( 1985, tnk3,     0,        tnk3,     tnk3, driver_device,     0,        ROT
 GAME( 1985, tnk3j,    tnk3,     tnk3,     tnk3, driver_device,     0,        ROT270, "SNK", "T.A.N.K (Japan)", 0 )
 GAME( 1986, athena,   0,        athena,   athena, driver_device,   0,        ROT0,   "SNK", "Athena", 0 )
 GAME( 1988, fitegolf, 0,        fitegolf, fitegolf, driver_device, 0,        ROT0,   "SNK", "Fighting Golf (World?)", 0 )
-GAME( 1988, fitegolfu,fitegolf, fitegolf, fitegolf, driver_device, 0,        ROT0,   "SNK", "Fighting Golf (US)", 0 )
-GAME( 1988, countryc, 0,        fitegolf, countryc, snk_state, countryc, ROT0,   "SNK", "Country Club", 0 )
+GAME( 1988, fitegolfu,fitegolf, fitegolf, fitegolfu, driver_device,0,        ROT0,   "SNK", "Fighting Golf (US)", 0 )
+GAME( 1988, countryc, 0,        fitegolf, countryc, snk_state, countryc,     ROT0,   "SNK", "Country Club", 0 )
 
 GAME( 1986, ikari,    0,        ikari,    ikari, driver_device,    0,        ROT270, "SNK", "Ikari Warriors (US JAMMA)", 0 )
 GAME( 1986, ikaria,   ikari,    ikari,    ikaria, driver_device,   0,        ROT270, "SNK", "Ikari Warriors (US)", 0 )

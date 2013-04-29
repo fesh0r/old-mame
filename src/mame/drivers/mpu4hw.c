@@ -2351,7 +2351,7 @@ MACHINE_START_MEMBER(mpu4_state,mod2)
 
 MACHINE_START_MEMBER(mpu4_state,mpu4yam)
 {
-	address_space &space = machine().device("maincpu")->memory().space(AS_PROGRAM);
+	address_space &space = m_maincpu->space(AS_PROGRAM);
 	mpu4_config_common(machine());
 
 	m_link7a_connected=0;
@@ -2361,7 +2361,7 @@ MACHINE_START_MEMBER(mpu4_state,mpu4yam)
 
 MACHINE_START_MEMBER(mpu4_state,mpu4oki)
 {
-	address_space &space = machine().device("maincpu")->memory().space(AS_PROGRAM);
+	address_space &space = m_maincpu->space(AS_PROGRAM);
 	mpu4_config_common(machine());
 
 	m_link7a_connected=0;
@@ -2371,7 +2371,7 @@ MACHINE_START_MEMBER(mpu4_state,mpu4oki)
 
 MACHINE_START_MEMBER(mpu4_state,mpu4bwb)
 {
-	address_space &space = machine().device("maincpu")->memory().space(AS_PROGRAM);
+	address_space &space = m_maincpu->space(AS_PROGRAM);
 	mpu4_config_common(machine());
 
 	m_link7a_connected=0;
@@ -2580,7 +2580,7 @@ DRIVER_INIT_MEMBER(mpu4_state,m4default_alt)
 
 DRIVER_INIT_MEMBER(mpu4_state,m4default_big)
 {
-	address_space &space = machine().device("maincpu")->memory().space(AS_PROGRAM);
+	address_space &space = m_maincpu->space(AS_PROGRAM);
 	DRIVER_INIT_CALL(m4default);
 
 	int size = memregion( "maincpu" )->bytes();
@@ -2612,7 +2612,7 @@ WRITE8_MEMBER(mpu4_state::crystal_sound_w)
 
 DRIVER_INIT_MEMBER(mpu4_state,m_frkstn)
 {
-	address_space &space = machine().device("maincpu")->memory().space(AS_PROGRAM);
+	address_space &space = m_maincpu->space(AS_PROGRAM);
 	DRIVER_INIT_CALL(m4default_big);
 	space.install_read_handler(0x0880, 0x0880, 0, 0, read8_delegate(FUNC(mpu4_state::crystal_sound_r),this));
 	space.install_write_handler(0x0881, 0x0881, 0, 0, write8_delegate(FUNC(mpu4_state::crystal_sound_w),this));
@@ -2668,7 +2668,7 @@ static ADDRESS_MAP_START( mpu4_memmap, AS_PROGRAM, 8, mpu4_state )
 	AM_RANGE(0x0000, 0x07ff) AM_RAM AM_SHARE("nvram")
 	AM_RANGE(0x0800, 0x0810) AM_READWRITE(characteriser_r,characteriser_w)
 	AM_RANGE(0x0850, 0x0850) AM_READWRITE(bankswitch_r,bankswitch_w)    /* write bank (rom page select) */
-/*  AM_RANGE(0x08e0, 0x08e7) AM_READWRITE_LEGACY(68681_duart_r,68681_duart_w) */ //Runs hoppers
+/*  AM_RANGE(0x08e0, 0x08e7) AM_READWRITE(68681_duart_r,68681_duart_w) */ //Runs hoppers
 	AM_RANGE(0x0900, 0x0907) AM_DEVREADWRITE("ptm_ic2", ptm6840_device, read, write)/* PTM6840 IC2 */
 	AM_RANGE(0x0a00, 0x0a03) AM_DEVREADWRITE("pia_ic3", pia6821_device, read, write)        /* PIA6821 IC3 */
 	AM_RANGE(0x0b00, 0x0b03) AM_DEVREADWRITE("pia_ic4", pia6821_device, read, write)        /* PIA6821 IC4 */

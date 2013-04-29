@@ -1177,23 +1177,19 @@ static void gakusai_oki_bank_set(device_t *device)
 
 WRITE16_MEMBER(metro_state::gakusai_oki_bank_hi_w)
 {
-	device_t *device = machine().device("oki");
-
 	if (ACCESSING_BITS_0_7)
 	{
 		m_gakusai_oki_bank_hi = data & 0xff;
-		gakusai_oki_bank_set(device);
+		gakusai_oki_bank_set(m_oki);
 	}
 }
 
 WRITE16_MEMBER(metro_state::gakusai_oki_bank_lo_w)
 {
-	device_t *device = machine().device("oki");
-
 	if (ACCESSING_BITS_0_7)
 	{
 		m_gakusai_oki_bank_lo = data & 0xff;
-		gakusai_oki_bank_set(device);
+		gakusai_oki_bank_set(m_oki);
 	}
 }
 
@@ -1212,26 +1208,21 @@ READ16_MEMBER(metro_state::gakusai_input_r)
 
 READ16_MEMBER(metro_state::gakusai_eeprom_r)
 {
-	device_t *device = machine().device("eeprom");
-	eeprom_device *eeprom = downcast<eeprom_device *>(device);
-	return eeprom->read_bit() & 1;
+	return m_eeprom->read_bit() & 1;
 }
 
 WRITE16_MEMBER(metro_state::gakusai_eeprom_w)
 {
-	device_t *device = machine().device("eeprom");
 	if (ACCESSING_BITS_0_7)
 	{
-		eeprom_device *eeprom = downcast<eeprom_device *>(device);
-
 		// latch the bit
-		eeprom->write_bit(BIT(data, 0));
+		m_eeprom->write_bit(BIT(data, 0));
 
 		// reset line asserted: reset.
-		eeprom->set_cs_line(BIT(data, 2) ? CLEAR_LINE : ASSERT_LINE );
+		m_eeprom->set_cs_line(BIT(data, 2) ? CLEAR_LINE : ASSERT_LINE );
 
 		// clock line asserted: write latch or select next bit to read
-		eeprom->set_clock_line(BIT(data, 1) ? ASSERT_LINE : CLEAR_LINE );
+		m_eeprom->set_clock_line(BIT(data, 1) ? ASSERT_LINE : CLEAR_LINE );
 	}
 }
 
@@ -1314,38 +1305,32 @@ ADDRESS_MAP_END
 
 READ16_MEMBER(metro_state::dokyusp_eeprom_r)
 {
-	device_t *device = machine().device("eeprom");
 	// clock line asserted: write latch or select next bit to read
-	eeprom_device *eeprom = downcast<eeprom_device *>(device);
-	eeprom->set_clock_line(CLEAR_LINE);
-	eeprom->set_clock_line(ASSERT_LINE);
+	m_eeprom->set_clock_line(CLEAR_LINE);
+	m_eeprom->set_clock_line(ASSERT_LINE);
 
-	return eeprom->read_bit() & 1;
+	return m_eeprom->read_bit() & 1;
 }
 
 WRITE16_MEMBER(metro_state::dokyusp_eeprom_bit_w)
 {
-	device_t *device = machine().device("eeprom");
 	if (ACCESSING_BITS_0_7)
 	{
 		// latch the bit
-		eeprom_device *eeprom = downcast<eeprom_device *>(device);
-		eeprom->write_bit(BIT(data, 0));
+		m_eeprom->write_bit(BIT(data, 0));
 
 		// clock line asserted: write latch or select next bit to read
-		eeprom->set_clock_line(CLEAR_LINE);
-		eeprom->set_clock_line(ASSERT_LINE);
+		m_eeprom->set_clock_line(CLEAR_LINE);
+		m_eeprom->set_clock_line(ASSERT_LINE);
 	}
 }
 
 WRITE16_MEMBER(metro_state::dokyusp_eeprom_reset_w)
 {
-	device_t *device = machine().device("eeprom");
 	if (ACCESSING_BITS_0_7)
 	{
 		// reset line asserted: reset.
-		eeprom_device *eeprom = downcast<eeprom_device *>(device);
-		eeprom->set_cs_line(BIT(data, 0) ? CLEAR_LINE : ASSERT_LINE);
+		m_eeprom->set_cs_line(BIT(data, 0) ? CLEAR_LINE : ASSERT_LINE);
 	}
 }
 
@@ -3576,7 +3561,7 @@ MACHINE_START_MEMBER(metro_state,metro)
 MACHINE_RESET_MEMBER(metro_state,metro)
 {
 	if (m_irq_line == -1)
-		machine().device("maincpu")->execute().set_irq_acknowledge_callback(device_irq_acknowledge_delegate(FUNC(metro_state::metro_irq_callback),this));
+		m_maincpu->set_irq_acknowledge_callback(device_irq_acknowledge_delegate(FUNC(metro_state::metro_irq_callback),this));
 }
 
 
@@ -6274,7 +6259,7 @@ void metro_state::metro_common(  )
 
 DRIVER_INIT_MEMBER(metro_state,metro)
 {
-	address_space &space = machine().device("maincpu")->memory().space(AS_PROGRAM);
+	address_space &space = m_maincpu->space(AS_PROGRAM);
 
 	metro_common();
 
@@ -6301,7 +6286,7 @@ DRIVER_INIT_MEMBER(metro_state,karatour)
 
 DRIVER_INIT_MEMBER(metro_state,daitorid)
 {
-	address_space &space = machine().device("maincpu")->memory().space(AS_PROGRAM);
+	address_space &space = m_maincpu->space(AS_PROGRAM);
 
 	metro_common();
 

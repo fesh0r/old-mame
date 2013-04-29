@@ -14,7 +14,8 @@ class apexc_state : public driver_device
 {
 public:
 	apexc_state(const machine_config &mconfig, device_type type, const char *tag)
-		: driver_device(mconfig, type, tag) { }
+		: driver_device(mconfig, type, tag) ,
+		m_maincpu(*this, "maincpu") { }
 
 	UINT32 m_panel_data_reg;    /* value of a data register on the control panel which can
                                 be edited - the existence of this register is a personnal
@@ -41,6 +42,7 @@ public:
 	void apexc_teletyper_init();
 	void apexc_teletyper_linefeed();
 	void apexc_teletyper_putchar(int character);
+	required_device<cpu_device> m_maincpu;
 };
 
 void apexc_state::machine_start()
@@ -104,13 +106,13 @@ bool apexc_cylinder_image_device::call_load()
 	/* load RAM contents */
 	m_writable = !is_readonly();
 
-	fread( machine().root_device().memregion("maincpu")->base(), 0x1000);
+	fread( memregion("maincpu")->base(), 0x1000);
 #ifdef LSB_FIRST
 	{   /* fix endianness */
 		UINT32 *RAM;
 		int i;
 
-		RAM = (UINT32 *)(*machine().root_device().memregion("maincpu"));
+		RAM = (UINT32 *)(*memregion("maincpu"));
 
 		for (i=0; i < 0x0400; i++)
 			RAM[i] = BIG_ENDIANIZE_INT32(RAM[i]);
@@ -134,14 +136,14 @@ void apexc_cylinder_image_device::call_unload()
 			UINT32 *RAM;
 			int i;
 
-			RAM = (UINT32 *)(*machine().root_device().memregion("maincpu"));
+			RAM = (UINT32 *)(*memregion("maincpu"));
 
 			for (i=0; i < /*0x2000*/0x0400; i++)
 				RAM[i] = BIG_ENDIANIZE_INT32(RAM[i]);
 		}
 #endif
 		/* write */
-		fwrite(machine().root_device().memregion("maincpu")->base(), /*0x8000*/0x1000);
+		fwrite(memregion("maincpu")->base(), /*0x8000*/0x1000);
 	}
 }
 
@@ -403,7 +405,7 @@ INPUT_PORTS_END
 */
 INTERRUPT_GEN_MEMBER(apexc_state::apexc_interrupt)
 {
-	address_space& space = machine().device("maincpu")->memory().space(AS_PROGRAM);
+	address_space& space = m_maincpu->space(AS_PROGRAM);
 	UINT32 edit_keys;
 	int control_keys;
 
@@ -411,7 +413,7 @@ INTERRUPT_GEN_MEMBER(apexc_state::apexc_interrupt)
 
 
 	/* read new state of edit keys */
-	edit_keys = machine().root_device().ioport("data")->read();
+	edit_keys = ioport("data")->read();
 
 	/* toggle data reg according to transitions */
 	m_panel_data_reg ^= edit_keys & (~m_old_edit_keys);
@@ -612,7 +614,7 @@ UINT32 apexc_state::screen_update_apexc(screen_device &screen, bitmap_ind16 &bit
 
 	apexc_draw_led(bitmap, 0, 0, 1);
 
-	apexc_draw_led(bitmap, 0, 8, machine().device("maincpu")->state().state_int(APEXC_STATE));
+	apexc_draw_led(bitmap, 0, 8, m_maincpu->state_int(APEXC_STATE));
 
 	for (i=0; i<32; i++)
 	{
@@ -824,7 +826,7 @@ DRIVER_INIT_MEMBER(apexc_state,apexc)
 		0x00
 	};
 
-	dst = machine().root_device().memregion("chargen")->base();
+	dst = memregion("chargen")->base();
 
 	memcpy(dst, fontdata6x8, apexcfontdata_size);
 }

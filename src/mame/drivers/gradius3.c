@@ -107,10 +107,10 @@ TIMER_DEVICE_CALLBACK_MEMBER(gradius3_state::gradius3_sub_scanline)
 	int scanline = param;
 
 	if(scanline == 240 && m_irqBmask & 1) // vblank-out irq
-		machine().device("sub")->execute().set_input_line(1, HOLD_LINE);
+		m_subcpu->set_input_line(1, HOLD_LINE);
 
 	if(scanline ==  16 && m_irqBmask & 2) // sprite end DMA irq
-		machine().device("sub")->execute().set_input_line(2, HOLD_LINE);
+		m_subcpu->set_input_line(2, HOLD_LINE);
 }
 
 WRITE16_MEMBER(gradius3_state::cpuB_irqtrigger_w)
@@ -137,13 +137,12 @@ WRITE16_MEMBER(gradius3_state::sound_irq_w)
 
 WRITE8_MEMBER(gradius3_state::sound_bank_w)
 {
-	device_t *device = machine().device("k007232");
 	int bank_A, bank_B;
 
 	/* banks # for the 007232 (chip 1) */
 	bank_A = ((data >> 0) & 0x03);
 	bank_B = ((data >> 2) & 0x03);
-	k007232_set_bank(device, bank_A, bank_B);
+	k007232_set_bank(m_k007232, bank_A, bank_B);
 }
 
 
@@ -281,13 +280,6 @@ static const k051960_interface gradius3_k051960_intf =
 
 void gradius3_state::machine_start()
 {
-	m_maincpu = machine().device<cpu_device>("maincpu");
-	m_audiocpu = machine().device<cpu_device>("audiocpu");
-	m_subcpu = machine().device<cpu_device>("sub");
-	m_k007232 = machine().device("k007232");
-	m_k052109 = machine().device("k052109");
-	m_k051960 = machine().device("k051960");
-
 	save_item(NAME(m_irqAen));
 	save_item(NAME(m_irqBmask));
 	save_item(NAME(m_priority));
@@ -296,7 +288,7 @@ void gradius3_state::machine_start()
 void gradius3_state::machine_reset()
 {
 	/* start with cpu B halted */
-	machine().device("sub")->execute().set_input_line(INPUT_LINE_RESET, ASSERT_LINE);
+	m_subcpu->set_input_line(INPUT_LINE_RESET, ASSERT_LINE);
 	m_irqAen = 0;
 	m_irqBmask = 0;
 	m_priority = 0;

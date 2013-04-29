@@ -17,13 +17,12 @@ class bob85_state : public driver_device
 {
 public:
 	bob85_state(const machine_config &mconfig, device_type type, const char *tag)
-		: driver_device(mconfig, type, tag)
-		, m_maincpu(*this, "maincpu")
-		, m_cass(*this, CASSETTE_TAG)
-		, m_line0(*this, "LINE0")
-		, m_line1(*this, "LINE1")
-		, m_line2(*this, "LINE2")
-	{ }
+		: driver_device(mconfig, type, tag),
+		m_maincpu(*this, "maincpu"),
+		m_cass(*this, "cassette"),
+		m_line0(*this, "LINE0"),
+		m_line1(*this, "LINE1"),
+		m_line2(*this, "LINE2") { }
 
 	required_device<cpu_device> m_maincpu;
 	required_device<cassette_image_device> m_cass;
@@ -214,7 +213,7 @@ static MACHINE_CONFIG_START( bob85, bob85_state )
 	MCFG_DEFAULT_LAYOUT(layout_bob85)
 
 	// devices
-	MCFG_CASSETTE_ADD(CASSETTE_TAG, bob85_cassette_interface)
+	MCFG_CASSETTE_ADD("cassette", bob85_cassette_interface)
 MACHINE_CONFIG_END
 
 /* ROM definition */

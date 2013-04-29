@@ -10,6 +10,7 @@
 #define PC1350_H_
 
 #include "machine/nvram.h"
+#include "machine/ram.h"
 
 #define PC1350_CONTRAST (ioport("DSW0")->read() & 0x07)
 
@@ -18,7 +19,9 @@ class pc1350_state : public driver_device
 {
 public:
 	pc1350_state(const machine_config &mconfig, device_type type, const char *tag)
-		: driver_device(mconfig, type, tag) { }
+		: driver_device(mconfig, type, tag),
+		m_maincpu(*this, "maincpu"),
+		m_ram(*this, RAM_TAG) { }
 
 	UINT8 m_outa;
 	UINT8 m_outb;
@@ -39,6 +42,8 @@ public:
 	DECLARE_READ8_MEMBER(pc1350_keyboard_line_r);
 
 	virtual void machine_start();
+	required_device<cpu_device> m_maincpu;
+	required_device<ram_device> m_ram;
 };
 
 #endif /* PC1350_H_ */

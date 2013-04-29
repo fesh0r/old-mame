@@ -95,8 +95,7 @@ WRITE8_MEMBER(parodius_state::parodius_3fc0_w)
 
 READ8_MEMBER(parodius_state::parodius_sound_r)
 {
-	k053260_device *device = machine().device<k053260_device>("k053260");
-	return device->k053260_r(space, 2 + offset);
+	return m_k053260->k053260_r(space, 2 + offset);
 }
 
 WRITE8_MEMBER(parodius_state::parodius_sh_irqtrigger_w)
@@ -246,13 +245,6 @@ void parodius_state::machine_start()
 
 	m_generic_paletteram_8.allocate(0x1000);
 
-	m_maincpu = machine().device<cpu_device>("maincpu");
-	m_audiocpu = machine().device<cpu_device>("audiocpu");
-	m_k053260 = machine().device("k053260");
-	m_k053245 = machine().device("k053245");
-	m_k053251 = machine().device("k053251");
-	m_k052109 = machine().device("k052109");
-
 	save_item(NAME(m_videobank));
 	save_item(NAME(m_sprite_colorbase));
 	save_item(NAME(m_layer_colorbase));
@@ -263,7 +255,7 @@ void parodius_state::machine_reset()
 {
 	int i;
 
-	konami_configure_set_lines(machine().device("maincpu"), parodius_banking);
+	konami_configure_set_lines(m_maincpu, parodius_banking);
 
 	for (i = 0; i < 3; i++)
 	{

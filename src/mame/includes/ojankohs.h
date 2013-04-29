@@ -3,15 +3,18 @@
     Ojanko High School & other Video System mahjong series
 
 *************************************************************************/
+#include "sound/msm5205.h"
 
 class ojankohs_state : public driver_device
 {
 public:
 	ojankohs_state(const machine_config &mconfig, device_type type, const char *tag)
-		: driver_device(mconfig, type, tag) ,
+		: driver_device(mconfig, type, tag),
 		m_videoram(*this, "videoram"),
 		m_colorram(*this, "colorram"),
-		m_paletteram(*this, "paletteram"){ }
+		m_paletteram(*this, "paletteram"),
+		m_maincpu(*this, "maincpu"),
+		m_msm(*this, "msm"){ }
 
 	/* memory pointers */
 	optional_shared_ptr<UINT8> m_videoram;
@@ -35,8 +38,8 @@ public:
 	int       m_vclk_left;
 
 	/* devices */
-	cpu_device *m_maincpu;
-	device_t *m_msm;
+	required_device<cpu_device> m_maincpu;
+	required_device<msm5205_device> m_msm;
 	DECLARE_WRITE8_MEMBER(ojankohs_rombank_w);
 	DECLARE_WRITE8_MEMBER(ojankoy_rombank_w);
 	DECLARE_WRITE8_MEMBER(ojankohs_msm5205_w);

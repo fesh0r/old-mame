@@ -58,7 +58,7 @@ void starwars_state::machine_reset()
 	/* ESB-specific */
 	if (m_is_esb)
 	{
-		address_space &space = machine().device("maincpu")->memory().space(AS_PROGRAM);
+		address_space &space = m_maincpu->space(AS_PROGRAM);
 
 		/* reset the slapstic */
 		slapstic_reset();
@@ -83,7 +83,7 @@ void starwars_state::machine_reset()
 
 WRITE8_MEMBER(starwars_state::irq_ack_w)
 {
-	machine().device("maincpu")->execute().set_input_line(M6809_IRQ_LINE, CLEAR_LINE);
+	m_maincpu->set_input_line(M6809_IRQ_LINE, CLEAR_LINE);
 }
 
 
@@ -200,7 +200,7 @@ static ADDRESS_MAP_START( sound_map, AS_PROGRAM, 8, starwars_state )
 	AM_RANGE(0x0000, 0x07ff) AM_WRITE(starwars_sout_w)
 	AM_RANGE(0x0800, 0x0fff) AM_READ(starwars_sin_r)        /* SIN Read */
 	AM_RANGE(0x1000, 0x107f) AM_RAM                         /* 6532 ram */
-	AM_RANGE(0x1080, 0x109f) AM_DEVREADWRITE_LEGACY("riot", riot6532_r, riot6532_w)
+	AM_RANGE(0x1080, 0x109f) AM_DEVREADWRITE("riot", riot6532_device, read, write)
 	AM_RANGE(0x1800, 0x183f) AM_WRITE(quad_pokeyn_w)
 	AM_RANGE(0x2000, 0x27ff) AM_RAM                         /* program RAM */
 	AM_RANGE(0x4000, 0x7fff) AM_ROM                         /* sound roms */
@@ -348,7 +348,6 @@ static MACHINE_CONFIG_START( starwars, starwars_state )
 	MCFG_VIDEO_START(avg_starwars)
 
 	/* sound hardware */
-	MCFG_SOUND_START(starwars)
 	MCFG_SPEAKER_STANDARD_MONO("mono")
 
 	MCFG_POKEY_ADD("pokey1", MASTER_CLOCK / 8)
@@ -523,14 +522,14 @@ DRIVER_INIT_MEMBER(starwars_state,esb)
 	m_slapstic_base = &rom[0x08000];
 
 	/* install an opcode base handler */
-	address_space &space = machine().device<m6809_device>("maincpu")->space(AS_PROGRAM);
+	address_space &space = m_maincpu->space(AS_PROGRAM);
 	space.set_direct_update_handler(direct_update_delegate(FUNC(starwars_state::esb_setdirect), this));
 
 	/* install read/write handlers for it */
-	machine().device("maincpu")->memory().space(AS_PROGRAM).install_readwrite_handler(0x8000, 0x9fff, read8_delegate(FUNC(starwars_state::esb_slapstic_r),this), write8_delegate(FUNC(starwars_state::esb_slapstic_w),this));
+	m_maincpu->space(AS_PROGRAM).install_readwrite_handler(0x8000, 0x9fff, read8_delegate(FUNC(starwars_state::esb_slapstic_r),this), write8_delegate(FUNC(starwars_state::esb_slapstic_w),this));
 
 	/* install additional banking */
-	machine().device("maincpu")->memory().space(AS_PROGRAM).install_read_bank(0xa000, 0xffff, "bank2");
+	m_maincpu->space(AS_PROGRAM).install_read_bank(0xa000, 0xffff, "bank2");
 
 	/* prepare the matrix processor */
 	m_is_esb = 1;

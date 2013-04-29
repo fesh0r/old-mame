@@ -38,9 +38,9 @@ READ8_MEMBER( mz80_state::mz80k_8255_portc_r )
 	UINT8 val = 0;
 	val |= m_mz80k_vertical ? 0x80 : 0x00;
 	val |= ((m_mz80k_cursor_cnt & 0x3f) > 31) ? 0x40 : 0x00;
-	val |= (m_cass->get_state() & CASSETTE_MASK_UISTATE)== CASSETTE_PLAY ? 0x10 : 0x00;
+	val |= (m_cassette->get_state() & CASSETTE_MASK_UISTATE)== CASSETTE_PLAY ? 0x10 : 0x00;
 
-	if (m_cass->input() > 0.00)
+	if (m_cassette->input() > 0.00)
 		val |= 0x20;
 
 	return val;
@@ -68,7 +68,7 @@ WRITE_LINE_MEMBER( mz80_state::pit_out0_changed )
 
 WRITE_LINE_MEMBER( mz80_state::pit_out2_changed )
 {
-	machine().device("maincpu")->execute().set_input_line(0, HOLD_LINE);
+	m_maincpu->set_input_line(0, HOLD_LINE);
 }
 
 I8255_INTERFACE( mz80k_8255_int )

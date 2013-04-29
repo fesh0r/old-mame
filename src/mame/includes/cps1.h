@@ -3,6 +3,7 @@
 
 #include "sound/msm5205.h"
 #include "sound/qsound.h"
+#include "sound/okim6295.h"
 
 struct gfx_range
 {
@@ -73,7 +74,10 @@ public:
 		m_qsound_sharedram2(*this, "qsound_ram2"),
 		m_objram1(*this, "objram1"),
 		m_objram2(*this, "objram2"),
-		m_output(*this, "output")
+		m_output(*this, "output"),
+		m_maincpu(*this, "maincpu"),
+		m_audiocpu(*this, "audiocpu"),
+		m_oki(*this, "oki")
 	{ }
 
 	/* memory pointers */
@@ -160,8 +164,9 @@ public:
 	UINT16       *m_bootleg_work_ram;
 
 	/* devices */
-	cpu_device *m_maincpu;
-	cpu_device *m_audiocpu;
+	required_device<cpu_device> m_maincpu;
+	optional_device<cpu_device> m_audiocpu;
+	optional_device<okim6295_device> m_oki;
 	msm5205_device *m_msm_1;    // fcrash
 	msm5205_device *m_msm_2;    // fcrash
 	DECLARE_READ16_MEMBER(cps1_hack_dsw_r);

@@ -31,9 +31,8 @@
     MEMORY / I/O
 ***************************************************************************/
 
-static void enterprise_update_memory_page(address_space &space, offs_t page, int index)
+void ep_state::enterprise_update_memory_page(address_space &space, offs_t page, int index)
 {
-	ep_state *state = space.machine().driver_data<ep_state>();
 	int start = (page - 1) * 0x4000;
 	int end = (page - 1) * 0x4000 + 0x3fff;
 	char page_num[10];
@@ -47,7 +46,7 @@ static void enterprise_update_memory_page(address_space &space, offs_t page, int
 	case 0x03:
 		space.install_read_bank(start, end, page_num);
 		space.nop_write(start, end);
-		state->membank(page_num)->set_base(space.machine().root_device().memregion("exos")->base() + (index * 0x4000));
+		membank(page_num)->set_base(memregion("exos")->base() + (index * 0x4000));
 		break;
 
 	case 0x04:
@@ -56,14 +55,14 @@ static void enterprise_update_memory_page(address_space &space, offs_t page, int
 	case 0x07:
 		space.install_read_bank(start, end, page_num);
 		space.nop_write(start, end);
-		state->membank(page_num)->set_base(space.machine().root_device().memregion("cartridges")->base() + ((index - 0x04) * 0x4000));
+		membank(page_num)->set_base(memregion("cartridges")->base() + ((index - 0x04) * 0x4000));
 		break;
 
 	case 0x20:
 	case 0x21:
 		space.install_read_bank(start, end, page_num);
 		space.nop_write(start, end);
-		state->membank(page_num)->set_base(state->memregion("exdos")->base() + ((index - 0x20) * 0x4000));
+		membank(page_num)->set_base(memregion("exdos")->base() + ((index - 0x20) * 0x4000));
 		break;
 
 	case 0xf8:
@@ -71,10 +70,10 @@ static void enterprise_update_memory_page(address_space &space, offs_t page, int
 	case 0xfa:
 	case 0xfb:
 		/* additional 64k ram */
-		if (space.machine().device<ram_device>(RAM_TAG)->size() == 128*1024)
+		if (m_ram->size() == 128*1024)
 		{
 			space.install_readwrite_bank(start, end, page_num);
-			state->membank(page_num)->set_base(space.machine().device<ram_device>(RAM_TAG)->pointer() + (index - 0xf4) * 0x4000);
+			membank(page_num)->set_base(m_ram->pointer() + (index - 0xf4) * 0x4000);
 		}
 		else
 		{
@@ -88,7 +87,7 @@ static void enterprise_update_memory_page(address_space &space, offs_t page, int
 	case 0xff:
 		/* basic 64k ram */
 		space.install_readwrite_bank(start, end, page_num);
-		state->membank(page_num)->set_base(space.machine().device<ram_device>(RAM_TAG)->pointer() + (index - 0xfc) * 0x4000);
+		membank(page_num)->set_base(m_ram->pointer() + (index - 0xfc) * 0x4000);
 		break;
 
 	default:
@@ -106,7 +105,7 @@ WRITE8_MEMBER(ep_state::enterprise_dave_reg_write)
 	case 0x11:
 	case 0x12:
 	case 0x13:
-		enterprise_update_memory_page(machine().device("maincpu")->memory().space(AS_PROGRAM), offset - 0x0f, data);
+		enterprise_update_memory_page(m_maincpu->space(AS_PROGRAM), offset - 0x0f, data);
 		break;
 
 	case 0x15:
@@ -128,13 +127,13 @@ READ8_MEMBER(ep_state::enterprise_dave_reg_read)
 	{
 		case 0x015:
 			/* read keyboard line */
-			dave_set_reg(machine().device("custom"), 0x015, machine().root_device().ioport(keynames[keyboard_line])->read());
+			dave_set_reg(machine().device("custom"), 0x015, ioport(keynames[keyboard_line])->read());
 			break;
 
 		case 0x016:
 		{
 			int ExternalJoystickInputs;
-			int ExternalJoystickPortInput = machine().root_device().ioport("JOY1")->read();
+			int ExternalJoystickPortInput = ioport("JOY1")->read();
 
 			if (keyboard_line <= 4)
 			{
@@ -168,7 +167,7 @@ static const dave_interface enterprise_dave_interface =
 
 void ep_state::machine_reset()
 {
-	machine().device("maincpu")->execute().set_input_line_vector(0, 0xff);
+	m_maincpu->set_input_line_vector(0, 0xff);
 }
 
 
@@ -247,7 +246,7 @@ static ADDRESS_MAP_START( enterprise_io, AS_IO, 8, ep_state )
 	ADDRESS_MAP_GLOBAL_MASK(0xff)
 	AM_RANGE(0x10, 0x13) AM_MIRROR(0x04) AM_DEVREADWRITE_LEGACY("wd1770", wd17xx_r, wd17xx_w)
 	AM_RANGE(0x18, 0x18) AM_MIRROR(0x04) AM_READWRITE(exdos_card_r, exdos_card_w)
-	AM_RANGE(0x80, 0x8f) AM_WRITE_LEGACY(epnick_reg_w)
+	AM_RANGE(0x80, 0x8f) AM_WRITE(epnick_reg_w)
 	AM_RANGE(0xa0, 0xbf) AM_DEVREADWRITE_LEGACY("custom", dave_reg_r, dave_reg_w)
 ADDRESS_MAP_END
 

@@ -15,7 +15,7 @@
 
 WRITE_LINE_MEMBER(kaypro_state::kaypro_interrupt)
 {
-	machine().device("maincpu")->execute().set_input_line(0, state);
+	m_maincpu->set_input_line(0, state);
 }
 
 READ8_MEMBER( kaypro_state::pio_system_r )
@@ -48,7 +48,7 @@ WRITE8_MEMBER( kaypro_state::common_pio_system_w )
 	{
 		mem.unmap_readwrite (0x0000, 0x3fff);
 		mem.install_read_bank (0x0000, 0x0fff, "bank1");
-		membank("bank1")->set_base(machine().root_device().memregion("maincpu")->base());
+		membank("bank1")->set_base(memregion("maincpu")->base());
 		mem.install_readwrite_handler (0x3000, 0x3fff, read8_delegate(FUNC(kaypro_state::kaypro_videoram_r), this), write8_delegate(FUNC(kaypro_state::kaypro_videoram_w), this));
 	}
 	else
@@ -56,8 +56,8 @@ WRITE8_MEMBER( kaypro_state::common_pio_system_w )
 		mem.unmap_readwrite(0x0000, 0x3fff);
 		mem.install_read_bank (0x0000, 0x3fff, "bank2");
 		mem.install_write_bank (0x0000, 0x3fff, "bank3");
-		membank("bank2")->set_base(machine().root_device().memregion("rambank")->base());
-		membank("bank3")->set_base(machine().root_device().memregion("rambank")->base());
+		membank("bank2")->set_base(memregion("rambank")->base());
+		membank("bank3")->set_base(memregion("rambank")->base());
 	}
 
 	wd17xx_dden_w(m_fdc, BIT(data, 5));
@@ -155,21 +155,21 @@ WRITE8_MEMBER( kaypro_state::kaypro2x_system_port_w )
     d0 drive A */
 
 	/* get address space */
-	address_space &mem = machine().device("maincpu")->memory().space(AS_PROGRAM);
+	address_space &mem = m_maincpu->space(AS_PROGRAM);
 
 	if (BIT(data, 7))
 	{
 		mem.unmap_readwrite (0x0000, 0x3fff);
 		mem.install_read_bank (0x0000, 0x1fff, "bank1");
-		membank("bank1")->set_base(mem.machine().root_device().memregion("maincpu")->base());
+		membank("bank1")->set_base(memregion("maincpu")->base());
 	}
 	else
 	{
 		mem.unmap_readwrite (0x0000, 0x3fff);
 		mem.install_read_bank (0x0000, 0x3fff, "bank2");
 		mem.install_write_bank (0x0000, 0x3fff, "bank3");
-		membank("bank2")->set_base(mem.machine().root_device().memregion("rambank")->base());
-		membank("bank3")->set_base(mem.machine().root_device().memregion("rambank")->base());
+		membank("bank2")->set_base(memregion("rambank")->base());
+		membank("bank3")->set_base(memregion("rambank")->base());
 	}
 
 	wd17xx_dden_w(m_fdc, BIT(data, 5));
@@ -280,8 +280,8 @@ WRITE8_MEMBER(kaypro_state::kaypro_sio_w)
 
 TIMER_CALLBACK_MEMBER(kaypro_state::kaypro_timer_callback)
 {
-	if (machine().device("maincpu")->state().state_int(Z80_HALT))
-		machine().device("maincpu")->execute().set_input_line(INPUT_LINE_NMI, ASSERT_LINE);
+	if (m_maincpu->state_int(Z80_HALT))
+		m_maincpu->set_input_line(INPUT_LINE_NMI, ASSERT_LINE);
 }
 
 WRITE_LINE_MEMBER( kaypro_state::kaypro_fdc_intrq_w )
@@ -289,7 +289,7 @@ WRITE_LINE_MEMBER( kaypro_state::kaypro_fdc_intrq_w )
 	if (state)
 		machine().scheduler().timer_set(attotime::from_usec(25), timer_expired_delegate(FUNC(kaypro_state::kaypro_timer_callback),this));
 	else
-		machine().device("maincpu")->execute().set_input_line(INPUT_LINE_NMI, CLEAR_LINE);
+		m_maincpu->set_input_line(INPUT_LINE_NMI, CLEAR_LINE);
 }
 
 WRITE_LINE_MEMBER( kaypro_state::kaypro_fdc_drq_w )
@@ -297,7 +297,7 @@ WRITE_LINE_MEMBER( kaypro_state::kaypro_fdc_drq_w )
 	if (state)
 		machine().scheduler().timer_set(attotime::from_usec(25), timer_expired_delegate(FUNC(kaypro_state::kaypro_timer_callback),this));
 	else
-		machine().device("maincpu")->execute().set_input_line(INPUT_LINE_NMI, CLEAR_LINE);
+		m_maincpu->set_input_line(INPUT_LINE_NMI, CLEAR_LINE);
 
 }
 
@@ -343,11 +343,10 @@ MACHINE_RESET_MEMBER(kaypro_state,kaypro2x)
 
 ************************************************************/
 
-QUICKLOAD_LOAD( kayproii )
+QUICKLOAD_LOAD_MEMBER( kaypro_state, kayproii )
 {
-	kaypro_state *state = image.device().machine().driver_data<kaypro_state>();
-	address_space &space = state->m_maincpu->space(AS_PROGRAM);
-	UINT8 *RAM = state->memregion("rambank")->base();
+	address_space &space = m_maincpu->space(AS_PROGRAM);
+	UINT8 *RAM = memregion("rambank")->base();
 	UINT16 i;
 	UINT8 data;
 
@@ -359,18 +358,17 @@ QUICKLOAD_LOAD( kayproii )
 		RAM[i+0x100] = data;
 	}
 
-	state->common_pio_system_w(space, 0, state->m_system_port & 0x7f);  // switch TPA in
+	common_pio_system_w(space, 0, m_system_port & 0x7f);  // switch TPA in
 	RAM[0x80]=0;                            // clear out command tail
 	RAM[0x81]=0;
-	state->m_maincpu->set_pc(0x100);                // start program
+	m_maincpu->set_pc(0x100);                // start program
 	return IMAGE_INIT_PASS;
 }
 
-QUICKLOAD_LOAD( kaypro2x )
+QUICKLOAD_LOAD_MEMBER( kaypro_state, kaypro2x )
 {
-	kaypro_state *state = image.device().machine().driver_data<kaypro_state>();
-	address_space &space = state->m_maincpu->space(AS_PROGRAM);
-	UINT8 *RAM = state->memregion("rambank")->base();
+	address_space &space = m_maincpu->space(AS_PROGRAM);
+	UINT8 *RAM = memregion("rambank")->base();
 	UINT16 i;
 	UINT8 data;
 
@@ -381,9 +379,9 @@ QUICKLOAD_LOAD( kaypro2x )
 		RAM[i+0x100] = data;
 	}
 
-	state->kaypro2x_system_port_w(space, 0, state->m_system_port & 0x7f);
+	kaypro2x_system_port_w(space, 0, m_system_port & 0x7f);
 	RAM[0x80]=0;
 	RAM[0x81]=0;
-	state->m_maincpu->set_pc(0x100);
+	m_maincpu->set_pc(0x100);
 	return IMAGE_INIT_PASS;
 }

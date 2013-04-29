@@ -91,8 +91,10 @@ class pockstat_state : public driver_device
 {
 public:
 	pockstat_state(const machine_config &mconfig, device_type type, const char *tag)
-		: driver_device(mconfig, type, tag) ,
-		m_lcd_buffer(*this, "lcd_buffer"){ }
+		: driver_device(mconfig, type, tag),
+		m_lcd_buffer(*this, "lcd_buffer"),
+		m_maincpu(*this, "maincpu"),
+		m_dac(*this, "dac") { }
 
 	required_shared_ptr<UINT32> m_lcd_buffer;
 	ps_ftlb_regs_t m_ftlb_regs;
@@ -131,6 +133,8 @@ public:
 	UINT32 ps_intc_get_interrupt_line(UINT32 line);
 	void ps_intc_set_interrupt_line(UINT32 line, int state);
 	void ps_timer_start(int index);
+	required_device<cpu_device> m_maincpu;
+	required_device<dac_device> m_dac;
 };
 
 
@@ -320,19 +324,19 @@ void pockstat_state::ps_intc_set_interrupt_line(UINT32 line, int state)
 	}
 	if(m_intc_regs.hold & m_intc_regs.enable & PS_INT_IRQ_MASK)
 	{
-		machine().device("maincpu")->execute().set_input_line(ARM7_IRQ_LINE, ASSERT_LINE);
+		m_maincpu->set_input_line(ARM7_IRQ_LINE, ASSERT_LINE);
 	}
 	else
 	{
-		machine().device("maincpu")->execute().set_input_line(ARM7_IRQ_LINE, CLEAR_LINE);
+		m_maincpu->set_input_line(ARM7_IRQ_LINE, CLEAR_LINE);
 	}
 	if(m_intc_regs.hold & m_intc_regs.enable & PS_INT_FIQ_MASK)
 	{
-		machine().device("maincpu")->execute().set_input_line(ARM7_FIRQ_LINE, ASSERT_LINE);
+		m_maincpu->set_input_line(ARM7_FIRQ_LINE, ASSERT_LINE);
 	}
 	else
 	{
-		machine().device("maincpu")->execute().set_input_line(ARM7_FIRQ_LINE, CLEAR_LINE);
+		m_maincpu->set_input_line(ARM7_FIRQ_LINE, CLEAR_LINE);
 	}
 }
 
@@ -526,7 +530,7 @@ WRITE32_MEMBER(pockstat_state::ps_clock_w)
 		case 0x0000/4:
 			verboselog(0, "ps_clock_w: Clock Mode = %08x & %08x\n", data, mem_mask );
 			COMBINE_DATA(&m_clock_regs.mode);
-			machine().device("maincpu")->set_unscaled_clock(CPU_FREQ[m_clock_regs.mode & 0x0f]);
+			m_maincpu->set_unscaled_clock(CPU_FREQ[m_clock_regs.mode & 0x0f]);
 			break;
 		case 0x0004/4:
 			verboselog(0, "ps_clock_w: Clock Control = %08x & %08x\n", data, mem_mask );
@@ -749,7 +753,7 @@ WRITE32_MEMBER(pockstat_state::ps_lcd_w)
 
 INPUT_CHANGED_MEMBER(pockstat_state::input_update)
 {
-	UINT32 buttons = machine().root_device().ioport("BUTTONS")->read();
+	UINT32 buttons = ioport("BUTTONS")->read();
 
 	ps_intc_set_interrupt_line(PS_INT_BTN_ACTION, (buttons &  1) ? 1 : 0);
 	ps_intc_set_interrupt_line(PS_INT_BTN_RIGHT, (buttons &  2) ? 1 : 0);
@@ -799,7 +803,7 @@ WRITE32_MEMBER(pockstat_state::ps_flash_w)
 	if(m_ps_flash_write_count)
 	{
 		m_ps_flash_write_count--;
-		COMBINE_DATA(&((UINT32*)(*machine().root_device().memregion("flash")))[offset]);
+		COMBINE_DATA(&((UINT32*)(*memregion("flash")))[offset]);
 	}
 }
 
@@ -816,7 +820,7 @@ WRITE32_MEMBER(pockstat_state::ps_audio_w)
 
 WRITE32_MEMBER(pockstat_state::ps_dac_w)
 {
-	machine().device<dac_device>("dac")->write_unsigned16((UINT16)((data + 0x8000) & 0x0000ffff));
+	m_dac->write_unsigned16((UINT16)((data + 0x8000) & 0x0000ffff));
 }
 
 static ADDRESS_MAP_START(pockstat_mem, AS_PROGRAM, 32, pockstat_state )
@@ -897,7 +901,7 @@ void pockstat_state::machine_start()
 
 void pockstat_state::machine_reset()
 {
-	machine().device("maincpu")->state().set_pc(0x4000000);
+	m_maincpu->set_pc(0x4000000);
 
 	m_ps_flash_write_enable_count = 0;
 	m_ps_flash_write_count = 0;
@@ -935,7 +939,7 @@ UINT32 pockstat_state::screen_update_pockstat(screen_device &screen, bitmap_rgb3
 DEVICE_IMAGE_LOAD_MEMBER( pockstat_state, pockstat_flash )
 {
 	int i, length;
-	UINT8 *cart = image.device().machine().root_device().memregion("flash")->base();
+	UINT8 *cart = memregion("flash")->base();
 	static const char *gme_id = "123-456-STD";
 
 	length = image.fread( cart, 0x20f40);

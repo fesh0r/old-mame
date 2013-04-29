@@ -336,8 +336,9 @@ public:
 		driver_device(mconfig, type, tag),
 		m_znsec0(*this,"maincpu:sio0:znsec0"),
 		m_znsec1(*this,"maincpu:sio0:znsec1"),
-		m_zndip(*this,"maincpu:sio0:zndip")
-	{
+		m_zndip(*this,"maincpu:sio0:zndip"),
+		m_maincpu(*this, "maincpu"),
+		m_mn10200(*this, "mn10200") {
 	}
 
 	required_device<znsec_device> m_znsec0;
@@ -398,6 +399,8 @@ public:
 	UINT32 gen_flash_r(intelfsh16_device *device, offs_t offset, UINT32 mem_mask);
 	void gen_flash_w(intelfsh16_device *device, offs_t offset, UINT32 data, UINT32 mem_mask);
 	void install_handlers(int mode);
+	required_device<cpu_device> m_maincpu;
+	required_device<cpu_device> m_mn10200;
 };
 
 
@@ -584,7 +587,7 @@ WRITE32_MEMBER(taitogn_state::flash_s3_w)
 
 void taitogn_state::install_handlers(int mode)
 {
-	address_space &a = machine().device("maincpu")->memory().space(AS_PROGRAM);
+	address_space &a = m_maincpu->space(AS_PROGRAM);
 	if(mode == 0) {
 		// Mode 0 has access to the subbios, the mn102 flash and the rf5c296 mem zone
 		a.install_readwrite_handler(0x1f000000, 0x1f1fffff, read32_delegate(FUNC(taitogn_state::flash_subbios_r),this), write32_delegate(FUNC(taitogn_state::flash_subbios_w),this));
@@ -782,7 +785,7 @@ DRIVER_INIT_MEMBER(taitogn_state,coh3002t)
 DRIVER_INIT_MEMBER(taitogn_state,coh3002t_mp)
 {
 	DRIVER_INIT_CALL(coh3002t);
-	machine().device("maincpu")->memory().space(AS_PROGRAM).install_read_handler(0x1fa10100, 0x1fa10103, read32_delegate(FUNC(taitogn_state::gnet_mahjong_panel_r),this));
+	m_maincpu->space(AS_PROGRAM).install_read_handler(0x1fa10100, 0x1fa10103, read32_delegate(FUNC(taitogn_state::gnet_mahjong_panel_r),this));
 }
 
 MACHINE_RESET_MEMBER(taitogn_state,coh3002t)
@@ -796,12 +799,10 @@ MACHINE_RESET_MEMBER(taitogn_state,coh3002t)
 	card->ide_set_gnet_readlock(1);
 
 	// halt sound CPU since it has no valid program at start
-	machine().device("mn10200")->execute().set_input_line(INPUT_LINE_RESET,ASSERT_LINE); /* MCU */
+	m_mn10200->set_input_line(INPUT_LINE_RESET,ASSERT_LINE); /* MCU */
 }
 
 static ADDRESS_MAP_START( taitogn_map, AS_PROGRAM, 32, taitogn_state )
-	AM_RANGE(0x00000000, 0x003fffff) AM_RAM AM_SHARE("share1") /* ram */
-	AM_RANGE(0x00400000, 0x007fffff) AM_RAM AM_SHARE("share1") /* ram mirror */
 	AM_RANGE(0x1f000000, 0x1f1fffff) AM_READWRITE(flash_s1_r, flash_s1_w)
 	AM_RANGE(0x1f200000, 0x1f3fffff) AM_READWRITE(flash_s2_r, flash_s2_w)
 	AM_RANGE(0x1f400000, 0x1f5fffff) AM_READWRITE(flash_s3_r, flash_s3_w)
@@ -824,10 +825,7 @@ static ADDRESS_MAP_START( taitogn_map, AS_PROGRAM, 32, taitogn_state )
 	AM_RANGE(0x1fb70000, 0x1fb70003) AM_READWRITE(gn_1fb70000_r, gn_1fb70000_w)
 	AM_RANGE(0x1fbe0000, 0x1fbe01ff) AM_RAM // 256 bytes com zone with the mn102, low bytes of words only, with additional comm at 1fb80000
 	AM_RANGE(0x1fc00000, 0x1fc7ffff) AM_ROM AM_SHARE("share2") AM_REGION("mainbios", 0) /* bios */
-	AM_RANGE(0x80000000, 0x803fffff) AM_RAM AM_SHARE("share1") /* ram mirror */
-	AM_RANGE(0x80400000, 0x807fffff) AM_RAM AM_SHARE("share1") /* ram mirror */
 	AM_RANGE(0x9fc00000, 0x9fc7ffff) AM_ROM AM_SHARE("share2") /* bios mirror */
-	AM_RANGE(0xa0000000, 0xa03fffff) AM_RAM AM_SHARE("share1") /* ram mirror */
 	AM_RANGE(0xbfc00000, 0xbfc7ffff) AM_WRITENOP AM_ROM AM_SHARE("share2") /* bios mirror */
 ADDRESS_MAP_END
 
@@ -836,6 +834,9 @@ static MACHINE_CONFIG_START( coh3002t, taitogn_state )
 	/* basic machine hardware */
 	MCFG_CPU_ADD( "maincpu", CXD8661R, XTAL_100MHz )
 	MCFG_CPU_PROGRAM_MAP(taitogn_map)
+
+	MCFG_RAM_MODIFY("maincpu:ram")
+	MCFG_RAM_DEFAULT_SIZE("4M")
 
 	MCFG_DEVICE_ADD("maincpu:sio0:znsec0", ZNSEC, 0)
 	MCFG_DEVICE_ADD("maincpu:sio0:znsec1", ZNSEC, 0)
@@ -1229,7 +1230,7 @@ GAME( 2005, otenamhf, taitogn,  coh3002t, coh3002t, taitogn_state, coh3002t, ROT
 GAME( 2000, psyvaria, taitogn,  coh3002t, coh3002t, taitogn_state, coh3002t, ROT270, "Success", "Psyvariar -Medium Unit- (V2.04J)", GAME_IMPERFECT_SOUND )
 GAME( 2000, psyvarrv, taitogn,  coh3002t, coh3002t, taitogn_state, coh3002t, ROT270, "Success", "Psyvariar -Revision- (V2.04J)", GAME_IMPERFECT_SOUND )
 GAME( 2000, zokuoten, taitogn,  coh3002t, coh3002t, taitogn_state, coh3002t, ROT0,   "Success", "Zoku Otenamihaiken (V2.03J)", GAME_IMPERFECT_SOUND )
-GAME( 2004, zooo,     taitogn,  coh3002t, coh3002t, taitogn_state, coh3002t, ROT0,   "Success", "Zooo (V2.01J)", GAME_NOT_WORKING | GAME_IMPERFECT_SOUND ) // missing most of the playfield
+GAME( 2004, zooo,     taitogn,  coh3002t, coh3002t, taitogn_state, coh3002t, ROT0,   "Success", "Zooo (V2.01J)", GAME_IMPERFECT_SOUND )
 
 GAME( 1999, mahjngoh, taitogn,  coh3002t, coh3002t_mp, taitogn_state, coh3002t_mp, ROT0, "Warashi / Mahjong Kobo / Taito", "Mahjong Oh (V2.06J)", GAME_IMPERFECT_SOUND )
 GAME( 2001, usagi,    taitogn,  coh3002t, coh3002t_mp, taitogn_state, coh3002t_mp, ROT0, "Warashi / Mahjong Kobo / Taito", "Usagi (V2.02J)", GAME_IMPERFECT_SOUND )
@@ -1237,7 +1238,7 @@ GAME( 2000, soutenry, taitogn,  coh3002t, coh3002t, taitogn_state, coh3002t, ROT
 GAME( 2000, shanghss, taitogn,  coh3002t, coh3002t, taitogn_state, coh3002t, ROT0,   "Warashi", "Shanghai Shoryu Sairin (V2.03J)", GAME_IMPERFECT_SOUND )
 GAME( 2002, shangtou, taitogn,  coh3002t, coh3002t, taitogn_state, coh3002t, ROT0,   "Warashi / Sunsoft / Taito", "Shanghai Sangokuhai Tougi (Ver 2.01J)", GAME_IMPERFECT_SOUND )
 
-GAME( 2001, nightrai, taitogn,  coh3002t, coh3002t, taitogn_state, coh3002t, ROT0,   "Takumi", "Night Raid (V2.03J)", GAME_NOT_WORKING | GAME_IMPERFECT_SOUND ) // no background / enemy sprites
+GAME( 2001, nightrai, taitogn,  coh3002t, coh3002t, taitogn_state, coh3002t, ROT0,   "Takumi", "Night Raid (V2.03J)", GAME_IMPERFECT_SOUND )
 GAME( 2001, otenki,   taitogn,  coh3002t, coh3002t, taitogn_state, coh3002t, ROT0,   "Takumi", "Otenki Kororin (V2.01J)", GAME_IMPERFECT_SOUND )
 
 GAME( 2002, xiistag,  taitogn,  coh3002t, coh3002t, taitogn_state, coh3002t, ROT270, "Triangle Service", "XII Stag (V2.01J)", GAME_IMPERFECT_SOUND )

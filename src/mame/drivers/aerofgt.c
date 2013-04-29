@@ -113,19 +113,15 @@ WRITE8_MEMBER(aerofgt_state::aerofgt_sh_bankswitch_w)
 
 WRITE16_MEMBER(aerofgt_state::pspikesb_oki_banking_w)
 {
-	device_t *device = machine().device("oki");
-	okim6295_device *oki = downcast<okim6295_device *>(device);
-	oki->set_bank_base(0x40000 * (data & 3));
+	m_oki->set_bank_base(0x40000 * (data & 3));
 }
 
 /*TODO: sound banking. */
 WRITE16_MEMBER(aerofgt_state::aerfboo2_okim6295_banking_w)
 {
-//  device_t *device = machine().device("oki");
 //  if(ACCESSING_BITS_8_15)
 //  {
-//      okim6295_device *oki = downcast<okim6295_device *>(device);
-//      oki->set_bank_base(0x40000 * ((data & 0xf00)>>8));
+//      m_oki->set_bank_base(0x40000 * ((data & 0xf00)>>8));
 //  }
 }
 
@@ -1293,7 +1289,6 @@ static const ym3812_interface ym3812_config =
 
 MACHINE_START_MEMBER(aerofgt_state,common)
 {
-	m_audiocpu = machine().device<cpu_device>("audiocpu");
 	save_item(NAME(m_pending_command));
 }
 

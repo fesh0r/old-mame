@@ -265,14 +265,14 @@ WRITE_LINE_MEMBER(williams_state::williams_main_irq)
 	int combined_state = pia_1->irq_a_state() | pia_1->irq_b_state();
 
 	/* IRQ to the main CPU */
-	machine().device("maincpu")->execute().set_input_line(M6809_IRQ_LINE, combined_state ? ASSERT_LINE : CLEAR_LINE);
+	m_maincpu->set_input_line(M6809_IRQ_LINE, combined_state ? ASSERT_LINE : CLEAR_LINE);
 }
 
 
 WRITE_LINE_MEMBER(williams_state::williams_main_firq)
 {
 	/* FIRQ to the main CPU */
-	machine().device("maincpu")->execute().set_input_line(M6809_FIRQ_LINE, state ? ASSERT_LINE : CLEAR_LINE);
+	m_maincpu->set_input_line(M6809_FIRQ_LINE, state ? ASSERT_LINE : CLEAR_LINE);
 }
 
 
@@ -282,7 +282,7 @@ WRITE_LINE_MEMBER(williams_state::williams_snd_irq)
 	int combined_state = pia_2->irq_a_state() | pia_2->irq_b_state();
 
 	/* IRQ to the sound CPU */
-	machine().device("soundcpu")->execute().set_input_line(M6800_IRQ_LINE, combined_state ? ASSERT_LINE : CLEAR_LINE);
+	m_soundcpu->set_input_line(M6800_IRQ_LINE, combined_state ? ASSERT_LINE : CLEAR_LINE);
 }
 /* Same as above, but for second sound board */
 WRITE_LINE_MEMBER(williams_state::williams_snd_irq_b)
@@ -291,7 +291,7 @@ WRITE_LINE_MEMBER(williams_state::williams_snd_irq_b)
 	int combined_state = pia_2->irq_a_state() | pia_2->irq_b_state();
 
 	/* IRQ to the sound CPU */
-	machine().device("soundcpu_b")->execute().set_input_line(M6800_IRQ_LINE, combined_state ? ASSERT_LINE : CLEAR_LINE);
+	m_soundcpu_b->set_input_line(M6800_IRQ_LINE, combined_state ? ASSERT_LINE : CLEAR_LINE);
 }
 
 
@@ -309,7 +309,7 @@ WRITE_LINE_MEMBER(williams_state::mysticm_main_irq)
 	int combined_state = pia_0->irq_b_state() | pia_1->irq_a_state() | pia_1->irq_b_state();
 
 	/* IRQ to the main CPU */
-	machine().device("maincpu")->execute().set_input_line(M6809_IRQ_LINE, combined_state ? ASSERT_LINE : CLEAR_LINE);
+	m_maincpu->set_input_line(M6809_IRQ_LINE, combined_state ? ASSERT_LINE : CLEAR_LINE);
 }
 
 
@@ -320,7 +320,7 @@ WRITE_LINE_MEMBER(williams_state::tshoot_main_irq)
 	int combined_state = pia_0->irq_a_state() | pia_0->irq_b_state() | pia_1->irq_a_state() | pia_1->irq_b_state();
 
 	/* IRQ to the main CPU */
-	machine().device("maincpu")->execute().set_input_line(M6809_IRQ_LINE, combined_state ? ASSERT_LINE : CLEAR_LINE);
+	m_maincpu->set_input_line(M6809_IRQ_LINE, combined_state ? ASSERT_LINE : CLEAR_LINE);
 }
 
 
@@ -422,7 +422,7 @@ TIMER_DEVICE_CALLBACK_MEMBER(williams_state::williams2_endscreen_callback)
 
 void williams_state::williams2_postload()
 {
-	address_space &space = machine().device("maincpu")->memory().space(AS_PROGRAM);
+	address_space &space = m_maincpu->space(AS_PROGRAM);
 	williams2_bank_select_w(space, 0, m_vram_bank);
 }
 
@@ -441,7 +441,7 @@ MACHINE_START_MEMBER(williams_state,williams2)
 
 MACHINE_RESET_MEMBER(williams_state,williams2)
 {
-	address_space &space = machine().device("maincpu")->memory().space(AS_PROGRAM);
+	address_space &space = m_maincpu->space(AS_PROGRAM);
 
 	/* make sure our banking is reset */
 	williams2_bank_select_w(space, 0, 0);
@@ -722,7 +722,7 @@ WRITE8_MEMBER(williams_state::williams2_7segment_w)
 
 void williams_state::defender_postload()
 {
-	address_space &space = machine().device("maincpu")->memory().space(AS_PROGRAM);
+	address_space &space = m_maincpu->space(AS_PROGRAM);
 	defender_bank_select_w(space, 0, m_vram_bank);
 }
 
@@ -740,7 +740,7 @@ MACHINE_START_MEMBER(williams_state,defender)
 
 MACHINE_RESET_MEMBER(williams_state,defender)
 {
-	address_space &space = machine().device("maincpu")->memory().space(AS_PROGRAM);
+	address_space &space = m_maincpu->space(AS_PROGRAM);
 
 	MACHINE_RESET_CALL_MEMBER(williams_common);
 

@@ -54,31 +54,27 @@ WRITE16_MEMBER(deniam_state::sound_command_w)
 	if (ACCESSING_BITS_8_15)
 	{
 		soundlatch_byte_w(space,offset, (data >> 8) & 0xff);
-		m_audio_cpu->execute().set_input_line(INPUT_LINE_NMI, PULSE_LINE);
+		m_audiocpu->set_input_line(INPUT_LINE_NMI, PULSE_LINE);
 	}
 }
 
 WRITE8_MEMBER(deniam_state::deniam16b_oki_rom_bank_w)
 {
-	device_t *device = machine().device("oki");
-	okim6295_device *oki = downcast<okim6295_device *>(device);
-	oki->set_bank_base((data & 0x40) ? 0x40000 : 0x00000);
+	m_oki->set_bank_base((data & 0x40) ? 0x40000 : 0x00000);
 }
 
 WRITE16_MEMBER(deniam_state::deniam16c_oki_rom_bank_w)
 {
-	device_t *device = machine().device("oki");
 	if (ACCESSING_BITS_0_7)
 	{
 		if ((data&0xFE) != 0) popmessage("OKI bank was not 0 or 1! contact MAMEDEV!");
-		okim6295_device *oki = downcast<okim6295_device *>(device);
-		oki->set_bank_base((data & 0x01) ? 0x40000 : 0x00000);
+		m_oki->set_bank_base((data & 0x01) ? 0x40000 : 0x00000);
 	}
 }
 
 WRITE16_MEMBER(deniam_state::deniam_irq_ack_w)
 {
-	machine().device("maincpu")->execute().set_input_line(4, CLEAR_LINE);
+	m_maincpu->set_input_line(4, CLEAR_LINE);
 }
 
 static ADDRESS_MAP_START( deniam16b_map, AS_PROGRAM, 16, deniam_state )
@@ -228,8 +224,8 @@ GFXDECODE_END
 WRITE_LINE_MEMBER(deniam_state::irqhandler)
 {
 	/* system 16c doesn't have the sound CPU */
-	if (m_audio_cpu != NULL)
-		m_audio_cpu->execute().set_input_line(0, state);
+	if (m_audiocpu != NULL)
+		m_audiocpu->set_input_line(0, state);
 }
 
 static const ym3812_interface ym3812_config =
@@ -241,8 +237,6 @@ static const ym3812_interface ym3812_config =
 
 void deniam_state::machine_start()
 {
-	m_audio_cpu = machine().device("audiocpu");
-
 	save_item(NAME(m_display_enable));
 	save_item(NAME(m_coinctrl));
 
@@ -267,7 +261,7 @@ void deniam_state::machine_reset()
 	doesn't matter since the coinup sfx (sample borrowed from 'tyrian' on PC)
 	exists in both banks; it properly sets the bank as soon as the ufo sfx
 	plays or a player character is selected on the character select screen */
-	machine().device<okim6295_device>("oki")->set_bank_base(0x00000);
+	m_oki->set_bank_base(0x00000);
 }
 
 static MACHINE_CONFIG_START( deniam16b, deniam_state )

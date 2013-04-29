@@ -72,10 +72,10 @@ static ADDRESS_MAP_START( mtx_io, AS_IO, 8, mtx_state )
 //  AM_RANGE(0x38, 0x38) AM_DEVWRITE_LEGACY(MC6845_TAG, mc6845_address_w)
 //  AM_RANGE(0x39, 0x39) AM_DEVWRITE_LEGACY(MC6845_TAG, mc6845_register_r, mc6845_register_w)
 /*  AM_RANGE(0x40, 0x43) AM_DEVREADWRITE_LEGACY(FD1791_TAG, wd17xx_r, wd17xx_w)
-    AM_RANGE(0x44, 0x44) AM_READWRITE_LEGACY(fdx_status_r, fdx_control_w)
-    AM_RANGE(0x45, 0x45) AM_WRITE_LEGACY(fdx_drv_sel_w)
-    AM_RANGE(0x46, 0x46) AM_WRITE_LEGACY(fdx_dma_lo_w)
-    AM_RANGE(0x47, 0x47) AM_WRITE_LEGACY(fdx_dma_hi_w)*/
+    AM_RANGE(0x44, 0x44) AM_READWRITE(fdx_status_r, fdx_control_w)
+    AM_RANGE(0x45, 0x45) AM_WRITE(fdx_drv_sel_w)
+    AM_RANGE(0x46, 0x46) AM_WRITE(fdx_dma_lo_w)
+    AM_RANGE(0x47, 0x47) AM_WRITE(fdx_dma_hi_w)*/
 ADDRESS_MAP_END
 
 /*-------------------------------------------------
@@ -372,8 +372,8 @@ static MACHINE_CONFIG_START( mtx512, mtx_state )
 	MCFG_Z80CTC_ADD(Z80CTC_TAG, XTAL_4MHz, ctc_intf )
 	MCFG_TIMER_DRIVER_ADD_PERIODIC("z80ctc_timer", mtx_state, ctc_tick, attotime::from_hz(XTAL_4MHz/13))
 	MCFG_CENTRONICS_PRINTER_ADD(CENTRONICS_TAG, standard_centronics)
-	MCFG_SNAPSHOT_ADD("snapshot", mtx, "mtb", 0.5)
-	MCFG_CASSETTE_ADD(CASSETTE_TAG, mtx_cassette_interface)
+	MCFG_SNAPSHOT_ADD("snapshot", mtx_state, mtx, "mtb", 0.5)
+	MCFG_CASSETTE_ADD("cassette", mtx_cassette_interface)
 	MCFG_TIMER_DRIVER_ADD_PERIODIC("cassette_timer", mtx_state, cassette_tick, attotime::from_hz(44100))
 
 	/* internal ram */

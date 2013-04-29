@@ -21,16 +21,15 @@ class palm_state : public driver_device
 {
 public:
 	palm_state(const machine_config &mconfig, device_type type, const char *tag)
-		: driver_device(mconfig, type, tag)
-		, m_maincpu(*this, "maincpu")
-		, m_lsi(*this, MC68328_TAG)
-		, m_dac(*this, "dac")
-		, m_ram(*this, RAM_TAG)
-		, m_io_penx(*this, "PENX")
-		, m_io_peny(*this, "PENY")
-		, m_io_penb(*this, "PENB")
-		, m_io_portd(*this, "PORTD")
-	{ }
+		: driver_device(mconfig, type, tag),
+		m_maincpu(*this, "maincpu"),
+		m_lsi(*this, MC68328_TAG),
+		m_dac(*this, "dac"),
+		m_ram(*this, RAM_TAG),
+		m_io_penx(*this, "PENX"),
+		m_io_peny(*this, "PENY"),
+		m_io_penb(*this, "PENB"),
+		m_io_portd(*this, "PORTD") { }
 
 	required_device<cpu_device> m_maincpu;
 	required_device<mc68328_device> m_lsi;
@@ -146,7 +145,7 @@ void palm_state::machine_start()
 void palm_state::machine_reset()
 {
 	// Copy boot ROM
-	UINT8* bios = machine().root_device().memregion("bios")->base();
+	UINT8* bios = memregion("bios")->base();
 	memset(m_ram->pointer(), 0, m_ram->size());
 	memcpy(m_ram->pointer(), bios, 0x20000);
 

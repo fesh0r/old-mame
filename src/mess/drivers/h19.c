@@ -49,7 +49,7 @@ public:
 			m_maincpu(*this, "maincpu"),
 			m_crtc(*this, "crtc"),
 			m_ace(*this, "ins8250"),
-			m_beep(*this, BEEPER_TAG),
+			m_beep(*this, "beeper"),
 			m_p_videoram(*this, "p_videoram")
 	{ }
 
@@ -87,7 +87,7 @@ READ8_MEMBER( h19_state::h19_80_r )
 READ8_MEMBER( h19_state::h19_a0_r )
 {
 // keyboard status
-	machine().device("maincpu")->execute().set_input_line(0, CLEAR_LINE);
+	m_maincpu->set_input_line(0, CLEAR_LINE);
 	return 0x7f; // says that a key is ready and no modifier keys are pressed
 }
 
@@ -337,7 +337,7 @@ static MC6845_UPDATE_ROW( h19_update_row )
 
 WRITE_LINE_MEMBER(h19_state::h19_ace_irq)
 {
-	machine().device("maincpu")->execute().set_input_line(0, (state ? HOLD_LINE : CLEAR_LINE));
+	m_maincpu->set_input_line(0, (state ? HOLD_LINE : CLEAR_LINE));
 }
 
 static const ins8250_interface h19_ace_interface =
@@ -387,7 +387,7 @@ GFXDECODE_END
 WRITE8_MEMBER( h19_state::h19_kbd_put )
 {
 	m_term_data = data;
-	machine().device("maincpu")->execute().set_input_line(0, HOLD_LINE);
+	m_maincpu->set_input_line(0, HOLD_LINE);
 }
 
 static ASCII_KEYBOARD_INTERFACE( keyboard_intf )
@@ -419,7 +419,7 @@ static MACHINE_CONFIG_START( h19, h19_state )
 
 	/* sound hardware */
 	MCFG_SPEAKER_STANDARD_MONO("mono")
-	MCFG_SOUND_ADD(BEEPER_TAG, BEEP, 0)
+	MCFG_SOUND_ADD("beeper", BEEP, 0)
 	MCFG_SOUND_ROUTE(ALL_OUTPUTS, "mono", 1.00)
 MACHINE_CONFIG_END
 

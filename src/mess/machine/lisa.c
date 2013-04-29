@@ -940,9 +940,8 @@ NVRAM_HANDLER(lisa)
 }
 
 #ifdef UNUSED_FUNCTION
-void init_lisa1(void)
+void lisa_state::init_lisa1(void)
 {
-	lisa_state *state = machine.driver_data<lisa_state>();
 	m_model = lisa1;
 	m_features.has_fast_timers = 0;
 	m_features.floppy_hardware = twiggy;
@@ -1004,7 +1003,7 @@ void lisa_state::machine_reset()
 	m_rom_ptr = memregion("maincpu")->base() + ROM_OFFSET;
 	m_videoROM_ptr = memregion("gfx1")->base();
 
-//  m_maincpu->memory().space(AS_PROGRAM).set_direct_update_handler(direct_update_delegate_create_static(lisa_OPbaseoverride, *machine()));
+//  m_maincpu->space(AS_PROGRAM).set_direct_update_handler(direct_update_delegate_create_static(lisa_OPbaseoverride, *machine()));
 //  m68k_set_reset_callback(m_maincpu, /*lisa_reset_instr_callback*/NULL);
 
 	/* init MMU */

@@ -39,8 +39,8 @@ public:
 	m_maincpu(*this, "maincpu"),
 	m_crtc(*this, "crtc"),
 	m_usart(*this, "usart"),
-	m_cass(*this, CASSETTE_TAG),
-	m_beep(*this, BEEPER_TAG),
+	m_cass(*this, "cassette"),
+	m_beep(*this, "beeper"),
 	m_p_ram(*this, "p_ram"),
 	m_p_videoram(*this, "p_videoram"){ }
 
@@ -437,9 +437,9 @@ static MACHINE_CONFIG_START( alphatro, alphatro_state )
 
 	/* sound hardware */
 	MCFG_SPEAKER_STANDARD_MONO("mono")
-	MCFG_SOUND_ADD(BEEPER_TAG, BEEP, 0)
+	MCFG_SOUND_ADD("beeper", BEEP, 0)
 	MCFG_SOUND_ROUTE(ALL_OUTPUTS, "mono", 1.00)
-	MCFG_SOUND_WAVE_ADD(WAVE_TAG, CASSETTE_TAG)
+	MCFG_SOUND_WAVE_ADD(WAVE_TAG, "cassette")
 	MCFG_SOUND_ROUTE(ALL_OUTPUTS, "mono", 0.25)
 
 
@@ -448,7 +448,7 @@ static MACHINE_CONFIG_START( alphatro, alphatro_state )
 
 	MCFG_I8251_ADD("usart", alphatro_usart_interface)
 
-	MCFG_CASSETTE_ADD(CASSETTE_TAG, alphatro_cassette_interface)
+	MCFG_CASSETTE_ADD("cassette", alphatro_cassette_interface)
 
 	MCFG_RAM_ADD("ram")
 	MCFG_RAM_DEFAULT_SIZE("64K")

@@ -183,7 +183,7 @@ public:
 	tutor_state(const machine_config &mconfig, device_type type, const char *tag)
 		: driver_device(mconfig, type, tag),
 	m_maincpu(*this, "maincpu"),
-	m_cass(*this, CASSETTE_TAG),
+	m_cass(*this, "cassette"),
 	m_centronics(*this, "centronics")
 	{ }
 
@@ -231,7 +231,7 @@ DRIVER_INIT_MEMBER(tutor_state,tutor)
 {
 	m_tape_interrupt_timer = machine().scheduler().timer_alloc(timer_expired_delegate(FUNC(tutor_state::tape_interrupt_handler),this));
 
-	membank("bank1")->configure_entry(0, machine().root_device().memregion("maincpu")->base() + basic_base);
+	membank("bank1")->configure_entry(0, memregion("maincpu")->base() + basic_base);
 	membank("bank1")->configure_entry(1, memregion("maincpu")->base() + cartridge_base);
 	membank("bank1")->set_entry(0);
 }
@@ -301,7 +301,7 @@ READ8_MEMBER( tutor_state::key_r )
 DEVICE_IMAGE_LOAD_MEMBER( tutor_state, tutor_cart )
 {
 	UINT32 size;
-	UINT8 *ptr = image.device().machine().root_device().memregion("maincpu")->base();
+	UINT8 *ptr = memregion("maincpu")->base();
 
 	if (image.software_entry() == NULL)
 	{
@@ -320,7 +320,7 @@ DEVICE_IMAGE_LOAD_MEMBER( tutor_state, tutor_cart )
 
 DEVICE_IMAGE_UNLOAD_MEMBER( tutor_state, tutor_cart )
 {
-	memset(image.device().machine().root_device().memregion("maincpu")->base() + cartridge_base, 0, 0x6000);
+	memset(memregion("maincpu")->base() + cartridge_base, 0, 0x6000);
 }
 
 /*
@@ -406,7 +406,7 @@ WRITE8_MEMBER( tutor_state::tutor_mapper_w )
 TIMER_CALLBACK_MEMBER(tutor_state::tape_interrupt_handler)
 {
 	//assert(m_tape_interrupt_enable);
-	machine().device("maincpu")->execute().set_input_line(1, (m_cass->input() > 0.0) ? ASSERT_LINE : CLEAR_LINE);
+	m_maincpu->set_input_line(1, (m_cass->input() > 0.0) ? ASSERT_LINE : CLEAR_LINE);
 }
 
 /* CRU handler */
@@ -442,7 +442,7 @@ WRITE8_MEMBER( tutor_state::tutor_cassette_w )
 				else
 				{
 					m_tape_interrupt_timer->adjust(attotime::never);
-					machine().device("maincpu")->execute().set_input_line(1, CLEAR_LINE);
+					m_maincpu->set_input_line(1, CLEAR_LINE);
 				}
 			}
 			break;
@@ -773,12 +773,12 @@ static MACHINE_CONFIG_START( tutor, tutor_state )
 	MCFG_SOUND_ADD("sn76489a", SN76489A, 3579545)   /* 3.579545 MHz */
 	MCFG_SOUND_CONFIG(psg_intf)
 	MCFG_SOUND_ROUTE(ALL_OUTPUTS, "mono", 0.75)
-	MCFG_SOUND_WAVE_ADD(WAVE_TAG, CASSETTE_TAG)
+	MCFG_SOUND_WAVE_ADD(WAVE_TAG, "cassette")
 	MCFG_SOUND_ROUTE(ALL_OUTPUTS, "mono", 0.25)
 
 	MCFG_CENTRONICS_PRINTER_ADD("centronics", standard_centronics)
 
-	MCFG_CASSETTE_ADD( CASSETTE_TAG, default_cassette_interface )
+	MCFG_CASSETTE_ADD( "cassette", default_cassette_interface )
 
 	/* cartridge */
 	MCFG_CARTSLOT_ADD("cart")
@@ -795,7 +795,7 @@ static MACHINE_CONFIG_DERIVED( pyuutajr, tutor )
 	MCFG_CPU_MODIFY("maincpu")
 	MCFG_CPU_PROGRAM_MAP(pyuutajr_mem)
 	//MCFG_DEVICE_REMOVE("centronics")
-	//MCFG_DEVICE_REMOVE(CASSETTE_TAG)
+	//MCFG_DEVICE_REMOVE("cassette")
 MACHINE_CONFIG_END
 
 /*

@@ -184,7 +184,8 @@ class multfish_state : public driver_device
 {
 public:
 	multfish_state(const machine_config &mconfig, device_type type, const char *tag)
-		: driver_device(mconfig, type, tag) { }
+		: driver_device(mconfig, type, tag),
+		m_maincpu(*this, "maincpu") { }
 
 	/* Video related */
 
@@ -249,6 +250,7 @@ public:
 	virtual void video_start();
 	DECLARE_MACHINE_RESET(island2a);
 	UINT32 screen_update_multfish(screen_device &screen, bitmap_ind16 &bitmap, const rectangle &cliprect);
+	required_device<cpu_device> m_maincpu;
 };
 
 TILE_GET_INFO_MEMBER(multfish_state::get_multfish_tile_info)
@@ -1012,11 +1014,11 @@ static ADDRESS_MAP_START( multfish_portmap, AS_IO, 8, multfish_state )
 	/* Write ports not hooked up yet */
 	AM_RANGE(0x30, 0x30) AM_WRITE(multfish_lamps1_w)
 		AM_RANGE(0x31, 0x31) AM_WRITE(multfish_counters_w)
-//  AM_RANGE(0x32, 0x32) AM_WRITE_LEGACY(multfish_port32_w)
+//  AM_RANGE(0x32, 0x32) AM_WRITE(multfish_port32_w)
 	AM_RANGE(0x33, 0x33) AM_WRITE(multfish_hopper_w)
 	AM_RANGE(0x34, 0x34) AM_WRITE(multfish_lamps2_w)
 	AM_RANGE(0x35, 0x35) AM_WRITE(multfish_lamps3_w)
-//  AM_RANGE(0x36, 0x36) AM_WRITE_LEGACY(multfish_port36_w)
+//  AM_RANGE(0x36, 0x36) AM_WRITE(multfish_port36_w)
 	AM_RANGE(0x37, 0x37) AM_WRITE(watchdog_reset_w)
 	AM_RANGE(0x38, 0x38) AM_DEVWRITE_LEGACY("aysnd", ay8910_address_w)
 	AM_RANGE(0x39, 0x39) AM_DEVWRITE_LEGACY("aysnd", ay8910_data_w)

@@ -47,7 +47,11 @@ class sothello_state : public driver_device
 public:
 	sothello_state(const machine_config &mconfig, device_type type, const char *tag)
 		: driver_device(mconfig, type, tag),
-			m_v9938(*this, "v9938") { }
+			m_v9938(*this, "v9938") ,
+		m_maincpu(*this, "maincpu"),
+		m_soundcpu(*this, "soundcpu"),
+		m_subcpu(*this, "sub"),
+		m_msm(*this, "msm") { }
 
 	required_device<v9938_device> m_v9938;
 
@@ -75,6 +79,10 @@ public:
 	DECLARE_WRITE_LINE_MEMBER(irqhandler);
 	DECLARE_WRITE_LINE_MEMBER(adpcm_int);
 	DECLARE_WRITE_LINE_MEMBER(sothello_vdp_interrupt);
+	required_device<cpu_device> m_maincpu;
+	required_device<cpu_device> m_soundcpu;
+	required_device<cpu_device> m_subcpu;
+	required_device<msm5205_device> m_msm;
 };
 
 
@@ -105,13 +113,13 @@ WRITE8_MEMBER(sothello_state::bank_w)
 
 TIMER_CALLBACK_MEMBER(sothello_state::subcpu_suspend)
 {
-	machine().device<cpu_device>("sub")->suspend(SUSPEND_REASON_HALT, 1);
+	m_subcpu->suspend(SUSPEND_REASON_HALT, 1);
 }
 
 TIMER_CALLBACK_MEMBER(sothello_state::subcpu_resume)
 {
-	machine().device<cpu_device>("sub")->resume(SUSPEND_REASON_HALT);
-	machine().device("sub")->execute().set_input_line(INPUT_LINE_NMI, PULSE_LINE);
+	m_subcpu->resume(SUSPEND_REASON_HALT);
+	m_subcpu->set_input_line(INPUT_LINE_NMI, PULSE_LINE);
 }
 
 READ8_MEMBER(sothello_state::subcpu_halt_set)
@@ -166,15 +174,14 @@ ADDRESS_MAP_END
 
 WRITE8_MEMBER(sothello_state::msm_cfg_w)
 {
-	device_t *device = machine().device("msm");
 /*
      bit 0 = RESET
      bit 1 = 4B/3B 0
      bit 2 = S2    1
      bit 3 = S1    2
 */
-	msm5205_playmode_w(device, BITSWAP8((data>>1), 7,6,5,4,3,0,1,2));
-	msm5205_reset_w(device,data&1);
+	msm5205_playmode_w(m_msm, BITSWAP8((data>>1), 7,6,5,4,3,0,1,2));
+	msm5205_reset_w(m_msm,data&1);
 }
 
 WRITE8_MEMBER(sothello_state::msm_data_w)
@@ -195,7 +202,7 @@ WRITE8_MEMBER(sothello_state::soundcpu_busyflag_reset_w)
 
 WRITE8_MEMBER(sothello_state::soundcpu_int_clear_w)
 {
-	machine().device("soundcpu")->execute().set_input_line(0, CLEAR_LINE );
+	m_soundcpu->set_input_line(0, CLEAR_LINE );
 }
 
 static ADDRESS_MAP_START( soundcpu_mem_map, AS_PROGRAM, 8, sothello_state )
@@ -218,7 +225,7 @@ ADDRESS_MAP_END
 static void unlock_shared_ram(address_space &space)
 {
 	sothello_state *state = space.machine().driver_data<sothello_state>();
-	if(!space.machine().device<cpu_device>("sub")->suspended(SUSPEND_REASON_HALT))
+	if(!state->m_subcpu->suspended(SUSPEND_REASON_HALT))
 	{
 		state->m_subcpu_status|=1;
 	}
@@ -313,12 +320,12 @@ INPUT_PORTS_END
 
 WRITE_LINE_MEMBER(sothello_state::irqhandler)
 {
-	machine().device("sub")->execute().set_input_line(0, state ? ASSERT_LINE : CLEAR_LINE);
+	m_subcpu->set_input_line(0, state ? ASSERT_LINE : CLEAR_LINE);
 }
 
 WRITE_LINE_MEMBER(sothello_state::sothello_vdp_interrupt)
 {
-	machine().device("maincpu")->execute().set_input_line(0, (state ? HOLD_LINE : CLEAR_LINE));
+	m_maincpu->set_input_line(0, (state ? HOLD_LINE : CLEAR_LINE));
 }
 
 TIMER_DEVICE_CALLBACK_MEMBER(sothello_state::sothello_interrupt)
@@ -329,8 +336,8 @@ TIMER_DEVICE_CALLBACK_MEMBER(sothello_state::sothello_interrupt)
 WRITE_LINE_MEMBER(sothello_state::adpcm_int)
 {
 	/* only 4 bits are used */
-	msm5205_data_w(machine().device("msm"), m_msm_data & 0x0f );
-	machine().device("soundcpu")->execute().set_input_line(0, ASSERT_LINE );
+	msm5205_data_w(m_msm, m_msm_data & 0x0f );
+	m_soundcpu->set_input_line(0, ASSERT_LINE );
 }
 
 

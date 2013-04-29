@@ -15,21 +15,20 @@ class poly88_state : public driver_device
 {
 public:
 	poly88_state(const machine_config &mconfig, device_type type, const char *tag)
-		: driver_device(mconfig, type, tag)
-		, m_video_ram(*this, "video_ram")
-		, m_maincpu(*this, "maincpu")
-		, m_uart(*this, "uart")
-		, m_sercas(*this, "sercas")
-		, m_cassette(*this, CASSETTE_TAG)
-		, m_linec(*this, "LINEC")
-		, m_line0(*this, "LINE0")
-		, m_line1(*this, "LINE1")
-		, m_line2(*this, "LINE2")
-		, m_line3(*this, "LINE3")
-		, m_line4(*this, "LINE4")
-		, m_line5(*this, "LINE5")
-		, m_line6(*this, "LINE6")
-	{ }
+		: driver_device(mconfig, type, tag),
+		m_video_ram(*this, "video_ram"),
+		m_maincpu(*this, "maincpu"),
+		m_uart(*this, "uart"),
+		m_sercas(*this, "sercas"),
+		m_cassette(*this, "cassette"),
+		m_linec(*this, "LINEC"),
+		m_line0(*this, "LINE0"),
+		m_line1(*this, "LINE1"),
+		m_line2(*this, "LINE2"),
+		m_line3(*this, "LINE3"),
+		m_line4(*this, "LINE4"),
+		m_line5(*this, "LINE5"),
+		m_line6(*this, "LINE6") { }
 
 	required_shared_ptr<UINT8> m_video_ram;
 	UINT8 *m_FNT;
@@ -55,7 +54,7 @@ public:
 	TIMER_CALLBACK_MEMBER(setup_machine_state);
 	DECLARE_WRITE_LINE_MEMBER(poly88_usart_rxready);
 	IRQ_CALLBACK_MEMBER(poly88_irq_callback);
-
+	DECLARE_SNAPSHOT_LOAD_MEMBER( poly88 );
 protected:
 	required_device<cpu_device> m_maincpu;
 	required_device<i8251_device> m_uart;
@@ -69,12 +68,12 @@ protected:
 	required_ioport m_line4;
 	required_ioport m_line5;
 	required_ioport m_line6;
+	UINT8 row_number(UINT8 code);
 };
 
 
 /*----------- defined in machine/poly88.c -----------*/
 extern const i8251_interface poly88_usart_interface;
 
-extern SNAPSHOT_LOAD( poly88 );
 
 #endif /* POLY88_H_ */

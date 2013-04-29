@@ -90,7 +90,8 @@ class pachifev_state : public driver_device
 {
 public:
 	pachifev_state(const machine_config &mconfig, device_type type, const char *tag)
-		: driver_device(mconfig, type, tag) { }
+		: driver_device(mconfig, type, tag),
+		m_maincpu(*this, "maincpu") { }
 
 	/* controls related */
 	int m_power;
@@ -108,6 +109,7 @@ public:
 	virtual void machine_start();
 	virtual void machine_reset();
 	INTERRUPT_GEN_MEMBER(pachifev_vblank_irq);
+	required_device<cpu_device> m_maincpu;
 };
 
 WRITE8_MEMBER(pachifev_state::controls_w)
@@ -272,15 +274,15 @@ WRITE_LINE_MEMBER(pachifev_state::pf_adpcm_int)
 	if (m_adpcm_pos >= 0x4000 || m_adpcm_idle)
 	{
 		m_adpcm_idle = 1;
-		msm5205_reset_w(machine().device("msm"),1);
+		msm5205_reset_w(m_msm,1);
 		m_trigger = 0;
 	}
 	else
 	{
-		UINT8 *ROM = machine().root_device().memregion("adpcm")->base();
+		UINT8 *ROM = memregion("adpcm")->base();
 
 		m_adpcm_data = ((m_trigger ? (ROM[m_adpcm_pos] & 0x0f) : (ROM[m_adpcm_pos] & 0xf0)>>4) );
-		msm5205_data_w(machine().device("msm"),m_adpcm_data & 0xf);
+		msm5205_data_w(m_msm,m_adpcm_data & 0xf);
 		m_trigger^=1;
 		if(m_trigger == 0)
 		{

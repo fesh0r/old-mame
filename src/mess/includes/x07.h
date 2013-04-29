@@ -160,9 +160,9 @@ public:
 		: driver_device(mconfig, type, tag),
 			m_maincpu(*this, "maincpu"),
 			m_printer(*this, "printer"),
-			m_beep(*this, BEEPER_TAG),
+			m_beep(*this, "beeper"),
 			m_ram(*this, RAM_TAG),
-			m_cassette(*this, CASSETTE_TAG)
+			m_cassette(*this, "cassette")
 	{ }
 
 	required_device<cpu_device> m_maincpu;

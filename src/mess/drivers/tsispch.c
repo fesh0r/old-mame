@@ -170,7 +170,7 @@ static GENERIC_TERMINAL_INTERFACE( tsispch_terminal_intf )
 *****************************************************************************/
 WRITE_LINE_MEMBER(tsispch_state::pic8259_set_int_line)
 {
-	machine().device("maincpu")->execute().set_input_line(0, state ? HOLD_LINE : CLEAR_LINE);
+	m_maincpu->set_input_line(0, state ? HOLD_LINE : CLEAR_LINE);
 }
 
 static const struct pic8259_interface pic8259_config =
@@ -208,9 +208,8 @@ WRITE8_MEMBER( tsispch_state::peripheral_w )
 	unknown and seemingly unused bits as well.
 	see the top of the file for more info.
 	*/
-	tsispch_state *state = machine().driver_data<tsispch_state>();
-	state->m_paramReg = data;
-	machine().device("dsp")->execute().set_input_line(INPUT_LINE_RESET, BIT(data,6)?CLEAR_LINE:ASSERT_LINE);
+	m_paramReg = data;
+	m_dsp->set_input_line(INPUT_LINE_RESET, BIT(data,6)?CLEAR_LINE:ASSERT_LINE);
 #ifdef DEBUG_PARAM
 	//fprintf(stderr,"8086: Parameter Reg written: UNK7: %d, DSPRST6: %d; UNK5: %d; LED4: %d; LED3: %d; LED2: %d; LED1: %d; DSPIRQMASK: %d\n", BIT(data,7), BIT(data,6), BIT(data,5), BIT(data,4), BIT(data,3), BIT(data,2), BIT(data,1), BIT(data,0));
 	logerror("8086: Parameter Reg written: UNK7: %d, DSPRST6: %d; UNK5: %d; LED4: %d; LED3: %d; LED2: %d; LED1: %d; DSPIRQMASK: %d\n", BIT(data,7), BIT(data,6), BIT(data,5), BIT(data,4), BIT(data,3), BIT(data,2), BIT(data,1), BIT(data,0));
@@ -272,14 +271,14 @@ void tsispch_state::machine_reset()
 	int i;
 	for (i=0; i<32; i++) m_infifo[i] = 0;
 	m_infifo_tail_ptr = m_infifo_head_ptr = 0;
-	machine().device("maincpu")->execute().set_irq_acknowledge_callback(device_irq_acknowledge_delegate(FUNC(tsispch_state::irq_callback),this));
+	m_maincpu->set_irq_acknowledge_callback(device_irq_acknowledge_delegate(FUNC(tsispch_state::irq_callback),this));
 	fprintf(stderr,"machine reset\n");
 }
 
 DRIVER_INIT_MEMBER(tsispch_state,prose2k)
 {
-	UINT8 *dspsrc = (UINT8 *)(*machine().root_device().memregion("dspprgload"));
-	UINT32 *dspprg = (UINT32 *)(*machine().root_device().memregion("dspprg"));
+	UINT8 *dspsrc = (UINT8 *)(*memregion("dspprgload"));
+	UINT32 *dspprg = (UINT32 *)(*memregion("dspprg"));
 	fprintf(stderr,"driver init\n");
 	// unpack 24 bit 7720 data into 32 bit space and shuffle it so it can run as 7725 code
 	// data format as-is in dspsrc: (L = always 0, X = doesn't matter)
@@ -320,7 +319,7 @@ DRIVER_INIT_MEMBER(tsispch_state,prose2k)
 			dspprg++;
 		}
 	m_paramReg = 0x00; // on power up, all leds on, reset to upd7720 is high
-	machine().device("dsp")->execute().set_input_line(INPUT_LINE_RESET, ASSERT_LINE); // starts in reset
+	m_dsp->set_input_line(INPUT_LINE_RESET, ASSERT_LINE); // starts in reset
 }
 
 /******************************************************************************

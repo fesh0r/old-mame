@@ -345,7 +345,7 @@ READ8_MEMBER(apc_state::apc_kbd_r)
 		case 0: res = m_keyb.data; pic8259_ir4_w(machine().device("pic8259_master"), 0); break; // according to the source, reading there acks the irq
 		case 1: res = m_keyb.status; break;
 		case 2: res = m_keyb.sig; break; // bit 0: CTRL bit 1: function key (or reversed)
-		case 3: res = machine().root_device().ioport("KEY_MOD")->read() & 0xff; break; // sh
+		case 3: res = ioport("KEY_MOD")->read() & 0xff; break; // sh
 	}
 
 	return res;
@@ -754,7 +754,7 @@ IRQ_CALLBACK_MEMBER(apc_state::irq_callback)
 
 void apc_state::machine_start()
 {
-	machine().device("maincpu")->execute().set_irq_acknowledge_callback(device_irq_acknowledge_delegate(FUNC(apc_state::irq_callback),this));
+	m_maincpu->set_irq_acknowledge_callback(device_irq_acknowledge_delegate(FUNC(apc_state::irq_callback),this));
 
 	m_fdc->set_rate(500000);
 	m_fdc->setup_intrq_cb(upd765a_device::line_cb(FUNC(apc_state::fdc_irq), this));
@@ -887,7 +887,7 @@ WRITE_LINE_MEMBER(apc_state::apc_master_set_int_line)
 {
 	//printf("%02x\n",interrupt);
 //  printf("irq %d\n",state);
-	machine().device("maincpu")->execute().set_input_line(0, state ? HOLD_LINE : CLEAR_LINE);
+	m_maincpu->set_input_line(0, state ? HOLD_LINE : CLEAR_LINE);
 }
 
 READ8_MEMBER(apc_state::get_slave_ack)

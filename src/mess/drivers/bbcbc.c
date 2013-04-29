@@ -103,7 +103,7 @@ INPUT_PORTS_END
 
 WRITE_LINE_MEMBER(bbcbc_state::tms_interrupt)
 {
-	machine().device("maincpu")->execute().set_input_line(0, state ? ASSERT_LINE : CLEAR_LINE);
+	m_maincpu->set_input_line(0, state ? ASSERT_LINE : CLEAR_LINE);
 }
 
 static TMS9928A_INTERFACE(tms9129_interface)
@@ -134,7 +134,7 @@ static const z80_daisy_config bbcbc_daisy_chain[] =
 
 DEVICE_IMAGE_LOAD_MEMBER( bbcbc_state, bbcbc_cart )
 {
-	UINT8 *cart = machine().root_device().memregion("maincpu" )->base() + 0x4000;
+	UINT8 *cart = memregion("maincpu" )->base() + 0x4000;
 
 	if ( image.software_entry() == NULL )
 	{

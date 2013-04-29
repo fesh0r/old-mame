@@ -499,11 +499,7 @@ void cps_state::fcrash_render_sprites( bitmap_ind16 &bitmap, const rectangle &cl
 	int num_sprites = machine().gfx[2]->elements();
 	int last_sprite_offset = 0x1ffc;
 	UINT16 *sprite_ram = m_gfxram;
-
-	// sprite base registers need hooking up properly.. on fcrash it is NOT cps1_cps_a_regs[0]
-	//  on kodb, it might still be, unless that's just a leftover and it writes somewhere else too
-//  if (m_cps_a_regs[0] & 0x00ff) base = 0x10c8/2;
-//  printf("cps1_cps_a_regs %04x\n", m_cps_a_regs[0]);
+	UINT16 tileno,flipx,flipy,colour,xpos,ypos;
 
 	/* if we have separate sprite ram, use it */
 	if (m_bootleg_sprite_ram) sprite_ram = m_bootleg_sprite_ram;
@@ -512,25 +508,23 @@ void cps_state::fcrash_render_sprites( bitmap_ind16 &bitmap, const rectangle &cl
 	for (pos = 0x1ffc - base; pos >= 0x0000; pos -= 4)
 		if (sprite_ram[base + pos - 1] == m_sprite_list_end_marker) last_sprite_offset = pos;
 
-	for (pos = last_sprite_offset; pos >= 0x0000; pos -= 4)
+	/* If we are using bootleg sprite ram, the index must be less than 0x2000 */
+	if (((base + last_sprite_offset) < 0x2000) || (!m_bootleg_sprite_ram))
 	{
-		int tileno;
-		int xpos;
-		int ypos;
-		int flipx, flipy;
-		int colour;
+		for (pos = last_sprite_offset; pos >= 0x0000; pos -= 4)
+		{
+			tileno = sprite_ram[base + pos];
+			if (tileno >= num_sprites) continue; /* don't render anything outside our tiles */
+			xpos   = sprite_ram[base + pos + 2] & 0x1ff;
+			ypos   = sprite_ram[base + pos - 1] & 0x1ff;
+			flipx  = sprite_ram[base + pos + 1] & 0x20;
+			flipy  = sprite_ram[base + pos + 1] & 0x40;
+			colour = sprite_ram[base + pos + 1] & 0x1f;
+			ypos   = 256 - ypos - 16;
+			xpos   = xpos + m_sprite_x_offset + 49;
 
-		tileno = sprite_ram[base + pos];
-		if (tileno >= num_sprites) continue; /* don't render anything outside our tiles */
-		xpos   = sprite_ram[base + pos + 2] & 0x1ff;
-		ypos   = sprite_ram[base + pos - 1] & 0x1ff;
-		flipx  = sprite_ram[base + pos + 1] & 0x20;
-		flipy  = sprite_ram[base + pos + 1] & 0x40;
-		colour = sprite_ram[base + pos + 1] & 0x1f;
-		ypos   = 256 - ypos;
-		xpos  += m_sprite_x_offset;
-
-		pdrawgfx_transpen(bitmap, cliprect, machine().gfx[2], tileno, colour, flipx, flipy, xpos + 49, ypos - 16, machine().priority_bitmap, 0x02, 15);
+			pdrawgfx_transpen(bitmap, cliprect, machine().gfx[2], tileno, colour, flipx, flipy, xpos, ypos, machine().priority_bitmap, 0x02, 15);
+		}
 	}
 }
 
@@ -1356,8 +1350,6 @@ MACHINE_START_MEMBER(cps_state,fcrash)
 
 	membank("bank1")->configure_entries(0, 8, &ROM[0x10000], 0x4000);
 
-	m_maincpu = machine().device<cpu_device>("maincpu");
-	m_audiocpu = machine().device<cpu_device>("audiocpu");
 	m_msm_1 = machine().device<msm5205_device>("msm1");
 	m_msm_2 = machine().device<msm5205_device>("msm2");
 
@@ -1390,9 +1382,6 @@ MACHINE_START_MEMBER(cps_state,sgyxz)
 
 MACHINE_START_MEMBER(cps_state,kodb)
 {
-	m_maincpu = machine().device<cpu_device>("maincpu");
-	m_audiocpu = machine().device<cpu_device>("audiocpu");
-
 	m_layer_enable_reg = 0x20;
 	m_layer_mask_reg[0] = 0x2e;
 	m_layer_mask_reg[1] = 0x2c;
@@ -1427,8 +1416,6 @@ MACHINE_START_MEMBER(cps_state, sf2mdt)
 
 	membank("bank1")->configure_entries(0, 8, &ROM[0x10000], 0x4000);
 
-	m_maincpu = machine().device<cpu_device>("maincpu");
-	m_audiocpu = machine().device<cpu_device>("audiocpu");
 	m_msm_1 = machine().device<msm5205_device>("msm1");
 	m_msm_2 = machine().device<msm5205_device>("msm2");
 
@@ -1456,8 +1443,6 @@ MACHINE_START_MEMBER(cps_state, knightsb)
 
 	membank("bank1")->configure_entries(0, 16, &ROM[0x10000], 0x4000);
 
-	m_maincpu = machine().device<cpu_device>("maincpu");
-	m_audiocpu = machine().device<cpu_device>("audiocpu");
 	m_msm_1 = machine().device<msm5205_device>("msm1");
 	m_msm_2 = machine().device<msm5205_device>("msm2");
 	m_layer_enable_reg = 0x30;
@@ -1479,8 +1464,6 @@ MACHINE_START_MEMBER(cps_state, sf2m1)
 
 	membank("bank1")->configure_entries(0, 8, &ROM[0x10000], 0x4000);
 
-	m_maincpu = machine().device<cpu_device>("maincpu");
-	m_audiocpu = machine().device<cpu_device>("audiocpu");
 	m_layer_enable_reg = 0x26;
 	m_layer_mask_reg[0] = 0x28;
 	m_layer_mask_reg[1] = 0x2a;
@@ -1797,15 +1780,15 @@ ROM_END
 
 DRIVER_INIT_MEMBER(cps_state, kodb)
 {
-	machine().device("maincpu")->memory().space(AS_PROGRAM).install_read_port(0x800000, 0x800007, "IN1");
-	machine().device("maincpu")->memory().space(AS_PROGRAM).install_read_handler(0x800018, 0x80001f, read16_delegate(FUNC(cps_state::cps1_dsw_r),this));
-	machine().device("maincpu")->memory().space(AS_PROGRAM).install_write_handler(0x800180, 0x800187, write16_delegate(FUNC(cps_state::cps1_soundlatch_w),this));
-	machine().device("maincpu")->memory().space(AS_PROGRAM).install_write_handler(0x980000, 0x98002f, write16_delegate(FUNC(cps_state::kodb_layer_w),this));
+	m_maincpu->space(AS_PROGRAM).install_read_port(0x800000, 0x800007, "IN1");
+	m_maincpu->space(AS_PROGRAM).install_read_handler(0x800018, 0x80001f, read16_delegate(FUNC(cps_state::cps1_dsw_r),this));
+	m_maincpu->space(AS_PROGRAM).install_write_handler(0x800180, 0x800187, write16_delegate(FUNC(cps_state::cps1_soundlatch_w),this));
+	m_maincpu->space(AS_PROGRAM).install_write_handler(0x980000, 0x98002f, write16_delegate(FUNC(cps_state::kodb_layer_w),this));
 
 	/* the original game alternates between 2 sprite ram areas to achieve flashing sprites - the bootleg doesn't do the write to the register to achieve this
 	mapping both sprite ram areas to the same bootleg sprite ram - similar to how sf2mdt works */
-	m_bootleg_sprite_ram = (UINT16*)machine().device("maincpu")->memory().space(AS_PROGRAM).install_ram(0x900000, 0x903fff);
-	machine().device("maincpu")->memory().space(AS_PROGRAM).install_ram(0x904000, 0x907fff, m_bootleg_sprite_ram); /* both of these need to be mapped */
+	m_bootleg_sprite_ram = (UINT16*)m_maincpu->space(AS_PROGRAM).install_ram(0x900000, 0x903fff);
+	m_maincpu->space(AS_PROGRAM).install_ram(0x904000, 0x907fff, m_bootleg_sprite_ram); /* both of these need to be mapped */
 
 	DRIVER_INIT_CALL(cps1);
 }
@@ -1934,9 +1917,9 @@ ROM_END
 
 DRIVER_INIT_MEMBER(cps_state, cawingbl)
 {
-	machine().device("maincpu")->memory().space(AS_PROGRAM).install_read_port(0x882000, 0x882001, "IN1");
-	machine().device("maincpu")->memory().space(AS_PROGRAM).install_write_handler(0x882006, 0x882007, write16_delegate(FUNC(cps_state::cawingbl_soundlatch_w),this));
-	machine().device("maincpu")->memory().space(AS_PROGRAM).install_read_handler(0x882008, 0x88200f, read16_delegate(FUNC(cps_state::cps1_dsw_r),this));
+	m_maincpu->space(AS_PROGRAM).install_read_port(0x882000, 0x882001, "IN1");
+	m_maincpu->space(AS_PROGRAM).install_write_handler(0x882006, 0x882007, write16_delegate(FUNC(cps_state::cawingbl_soundlatch_w),this));
+	m_maincpu->space(AS_PROGRAM).install_read_handler(0x882008, 0x88200f, read16_delegate(FUNC(cps_state::cps1_dsw_r),this));
 
 	DRIVER_INIT_CALL(cps1);
 }
@@ -1947,9 +1930,6 @@ DRIVER_INIT_MEMBER(cps_state, cawingbl)
 
 MACHINE_START_MEMBER(cps_state, dinopic)
 {
-	m_maincpu = machine().device<cpu_device>("maincpu");
-	//m_audiocpu = machine().device<cpu_device>("audiocpu");
-
 	m_layer_enable_reg = 0x0a;
 	m_layer_mask_reg[0] = 0x0c;
 	m_layer_mask_reg[1] = 0x0e;
@@ -2107,7 +2087,7 @@ ROM_END
 
 DRIVER_INIT_MEMBER(cps_state, dinopic)
 {
-	m_bootleg_sprite_ram = (UINT16*)machine().device("maincpu")->memory().space(AS_PROGRAM).install_ram(0x990000, 0x993fff);
+	m_bootleg_sprite_ram = (UINT16*)m_maincpu->space(AS_PROGRAM).install_ram(0x990000, 0x993fff);
 	DRIVER_INIT_CALL(cps1);
 }
 
@@ -2196,9 +2176,6 @@ ROM_END
 
 MACHINE_START_MEMBER(cps_state, punipic)
 {
-	m_maincpu = machine().device<cpu_device>("maincpu");
-	//m_audiocpu = machine().device<cpu_device>("audiocpu");
-
 	m_layer_enable_reg = 0x12;
 	m_layer_mask_reg[0] = 0x14;
 	m_layer_mask_reg[1] = 0x16;
@@ -2567,17 +2544,17 @@ DRIVER_INIT_MEMBER(cps_state, sf2mdt)
 		rom[i + 6] = tmp;
 	}
 
-	machine().device("maincpu")->memory().space(AS_PROGRAM).install_write_handler(0x708100, 0x7081ff, write16_delegate(FUNC(cps_state::sf2mdt_layer_w),this));
+	m_maincpu->space(AS_PROGRAM).install_write_handler(0x708100, 0x7081ff, write16_delegate(FUNC(cps_state::sf2mdt_layer_w),this));
 	DRIVER_INIT_CALL(sf2mdta);
 }
 
 DRIVER_INIT_MEMBER(cps_state, sf2mdta)
 {
 	/* bootleg sprite ram */
-	m_bootleg_sprite_ram = (UINT16*)machine().device("maincpu")->memory().space(AS_PROGRAM).install_ram(0x700000, 0x703fff);
-	machine().device("maincpu")->memory().space(AS_PROGRAM).install_ram(0x704000, 0x707fff, m_bootleg_sprite_ram); /* both of these need to be mapped - see the "Magic Delta Turbo" text on the title screen */
+	m_bootleg_sprite_ram = (UINT16*)m_maincpu->space(AS_PROGRAM).install_ram(0x700000, 0x703fff);
+	m_maincpu->space(AS_PROGRAM).install_ram(0x704000, 0x707fff, m_bootleg_sprite_ram); /* both of these need to be mapped - see the "Magic Delta Turbo" text on the title screen */
 
-	m_bootleg_work_ram = (UINT16*)machine().device("maincpu")->memory().space(AS_PROGRAM).install_ram(0xfc0000, 0xfcffff); /* this has moved */
+	m_bootleg_work_ram = (UINT16*)m_maincpu->space(AS_PROGRAM).install_ram(0xfc0000, 0xfcffff); /* this has moved */
 
 	DRIVER_INIT_CALL(cps1);
 }
@@ -2588,9 +2565,6 @@ DRIVER_INIT_MEMBER(cps_state, sf2mdta)
 
 MACHINE_START_MEMBER(cps_state, slampic)
 {
-	m_maincpu = machine().device<cpu_device>("maincpu");
-	//m_audiocpu = machine().device<cpu_device>("audiocpu");
-
 	m_layer_enable_reg = 0x16;
 	m_layer_mask_reg[0] = 0x00;
 	m_layer_mask_reg[1] = 0x02;

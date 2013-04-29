@@ -13,8 +13,6 @@
 #include "imagedev/snapquik.h"
 #include "lynx.lh"
 
-static QUICKLOAD_LOAD( lynx );
-
 static ADDRESS_MAP_START( lynx_mem , AS_PROGRAM, 8, lynx_state )
 	AM_RANGE(0x0000, 0xfbff) AM_RAM AM_SHARE("mem_0000")
 	AM_RANGE(0xfc00, 0xfcff) AM_RAM AM_SHARE("mem_fc00")
@@ -89,7 +87,7 @@ static MACHINE_CONFIG_START( lynx, lynx_state )
 	MCFG_SOUND_ROUTE(ALL_OUTPUTS, "mono", 0.50)
 
 	/* devices */
-	MCFG_QUICKLOAD_ADD("quickload", lynx, "o", 0)
+	MCFG_QUICKLOAD_ADD("quickload", lynx_state, lynx, "o", 0)
 
 	MCFG_FRAGMENT_ADD(lynx_cartslot)
 MACHINE_CONFIG_END
@@ -135,12 +133,11 @@ ROM_START(lynx2)
 ROM_END
 
 
-static QUICKLOAD_LOAD( lynx )
+QUICKLOAD_LOAD_MEMBER( lynx_state, lynx )
 {
-	device_t *cpu = image.device().machine().device("maincpu");
-	address_space &space = image.device().machine().device("maincpu")->memory().space(AS_PROGRAM);
+	address_space &space = m_maincpu->space(AS_PROGRAM);
 	UINT8 *data = NULL;
-	UINT8 *rom = image.device().machine().root_device().memregion("maincpu")->base();
+	UINT8 *rom = memregion("maincpu")->base();
 	UINT8 header[10]; // 80 08 dw Start dw Len B S 9 3
 	UINT16 start, length;
 	int i;
@@ -174,7 +171,7 @@ static QUICKLOAD_LOAD( lynx )
 	space.write_byte(0x1fc, start & 0xff);
 	space.write_byte(0x1fd, start >> 8);
 
-	cpu->state().set_pc(start);
+	m_maincpu->set_pc(start);
 
 	return IMAGE_INIT_PASS;
 }

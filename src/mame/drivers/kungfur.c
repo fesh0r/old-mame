@@ -66,7 +66,10 @@ class kungfur_state : public driver_device
 {
 public:
 	kungfur_state(const machine_config &mconfig, device_type type, const char *tag)
-		: driver_device(mconfig, type, tag) { }
+		: driver_device(mconfig, type, tag),
+		m_maincpu(*this, "maincpu"),
+		m_adpcm1(*this, "adpcm1"),
+		m_adpcm2(*this, "adpcm2") { }
 
 	UINT8 m_latch[3];
 	UINT8 m_control;
@@ -86,6 +89,9 @@ public:
 	INTERRUPT_GEN_MEMBER(kungfur_irq);
 	DECLARE_WRITE_LINE_MEMBER(kfr_adpcm1_int);
 	DECLARE_WRITE_LINE_MEMBER(kfr_adpcm2_int);
+	required_device<cpu_device> m_maincpu;
+	required_device<msm5205_device> m_adpcm1;
+	required_device<msm5205_device> m_adpcm2;
 };
 
 
@@ -158,19 +164,19 @@ WRITE8_MEMBER(kungfur_state::kungfur_control_w)
 	// d0-d3: N/C
 	// d4: irq ack
 	if (~data & 0x10)
-		machine().device("maincpu")->execute().set_input_line(M6809_IRQ_LINE, CLEAR_LINE);
+		m_maincpu->set_input_line(M6809_IRQ_LINE, CLEAR_LINE);
 
 	// d5: ?
 	// d6-d7: sound trigger (edge)
 	if ((data ^ m_control) & 0x40)
 	{
-		msm5205_reset_w(machine().device("adpcm1"), data >> 6 & 1);
+		msm5205_reset_w(m_adpcm1, data >> 6 & 1);
 		m_adpcm_pos[0] = m_adpcm_data[0] * 0x400;
 		m_adpcm_sel[0] = 0;
 	}
 	if ((data ^ m_control) & 0x80)
 	{
-		msm5205_reset_w(machine().device("adpcm2"), data >> 7 & 1);
+		msm5205_reset_w(m_adpcm2, data >> 7 & 1);
 		m_adpcm_pos[1] = m_adpcm_data[1] * 0x400;
 		m_adpcm_sel[1] = 0;
 	}
@@ -195,7 +201,7 @@ WRITE_LINE_MEMBER(kungfur_state::kfr_adpcm1_int)
 	UINT8 *ROM = memregion("adpcm1")->base();
 	UINT8 data = ROM[m_adpcm_pos[0] & 0x1ffff];
 
-	msm5205_data_w(machine().device("adpcm1"), m_adpcm_sel[0] ? data & 0xf : data >> 4 & 0xf);
+	msm5205_data_w(m_adpcm1, m_adpcm_sel[0] ? data & 0xf : data >> 4 & 0xf);
 	m_adpcm_pos[0] += m_adpcm_sel[0];
 	m_adpcm_sel[0] ^= 1;
 }
@@ -205,7 +211,7 @@ WRITE_LINE_MEMBER(kungfur_state::kfr_adpcm2_int)
 	UINT8 *ROM = memregion("adpcm2")->base();
 	UINT8 data = ROM[m_adpcm_pos[1] & 0x3ffff];
 
-	msm5205_data_w(machine().device("adpcm2"), m_adpcm_sel[1] ? data & 0xf : data >> 4 & 0xf);
+	msm5205_data_w(m_adpcm2, m_adpcm_sel[1] ? data & 0xf : data >> 4 & 0xf);
 	m_adpcm_pos[1] += m_adpcm_sel[1];
 	m_adpcm_sel[1] ^= 1;
 }

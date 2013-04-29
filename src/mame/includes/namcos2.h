@@ -95,15 +95,22 @@ class namcos2_shared_state : public driver_device
 public:
 	namcos2_shared_state(const machine_config &mconfig, device_type type, const char *tag)
 		: driver_device(mconfig, type, tag),
+			m_dspmaster(*this, "dspmaster"),
+			m_dspslave(*this, "dspslave"),
 			m_c68(*this, "c68"),
 			m_gametype(0),
 			m_c169_roz_videoram(*this, "rozvideoram", 0),
 			m_c169_roz_gfxbank(0),
 			m_c169_roz_mask(NULL),
 			m_c355_obj_gfxbank(0),
-			m_c355_obj_palxor(0)
-	{ }
+			m_c355_obj_palxor(0),
+			m_maincpu(*this, "maincpu"),
+			m_audiocpu(*this, "audiocpu"),
+			m_slave(*this, "slave"),
+			m_mcu(*this, "mcu") { }
 
+	optional_device<cpu_device> m_dspmaster;
+	optional_device<cpu_device> m_dspslave;
 	optional_device<m37450_device> m_c68;
 
 	// game type helpers
@@ -208,6 +215,10 @@ public:
 	/* TODO: this should belong to namcos21_state */
 	DECLARE_WRITE16_MEMBER( namcos21_68k_gpu_C148_w );
 	DECLARE_READ16_MEMBER( namcos21_68k_gpu_C148_r );
+	required_device<cpu_device> m_maincpu;
+	optional_device<cpu_device> m_audiocpu;
+	optional_device<cpu_device> m_slave;
+	optional_device<cpu_device> m_mcu;
 };
 
 class namcos2_state : public namcos2_shared_state

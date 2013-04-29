@@ -5,19 +5,24 @@
 *************************************************************************/
 
 #include "video/decospr.h"
+#include "video/deco16ic.h"
 
 class cbuster_state : public driver_device
 {
 public:
 	cbuster_state(const machine_config &mconfig, device_type type, const char *tag)
-		: driver_device(mconfig, type, tag) ,
+		: driver_device(mconfig, type, tag),
 		m_ram(*this, "ram"),
 		m_pf1_rowscroll(*this, "pf1_rowscroll"),
 		m_pf2_rowscroll(*this, "pf2_rowscroll"),
 		m_pf3_rowscroll(*this, "pf3_rowscroll"),
 		m_pf4_rowscroll(*this, "pf4_rowscroll"),
 		m_spriteram16(*this, "spriteram16"),
-		m_sprgen(*this, "spritegen")
+		m_sprgen(*this, "spritegen"),
+		m_maincpu(*this, "maincpu"),
+		m_audiocpu(*this, "audiocpu"),
+		m_deco_tilegen1(*this, "tilegen1"),
+		m_deco_tilegen2(*this, "tilegen2")
 	{ }
 
 	/* memory pointers */
@@ -36,10 +41,10 @@ public:
 	int       m_pri;
 
 	/* devices */
-	cpu_device *m_maincpu;
-	cpu_device *m_audiocpu;
-	device_t *m_deco_tilegen1;
-	device_t *m_deco_tilegen2;
+	required_device<cpu_device> m_maincpu;
+	required_device<cpu_device> m_audiocpu;
+	required_device<deco16ic_device> m_deco_tilegen1;
+	required_device<deco16ic_device> m_deco_tilegen2;
 	DECLARE_WRITE16_MEMBER(twocrude_control_w);
 	DECLARE_READ16_MEMBER(twocrude_control_r);
 	DECLARE_WRITE16_MEMBER(twocrude_palette_24bit_rg_w);

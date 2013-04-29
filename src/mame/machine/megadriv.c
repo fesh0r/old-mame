@@ -1125,24 +1125,20 @@ void md_base_state::megadriv_init_common()
 		membank("bank1")->set_base(m_genz80.z80_prgram);
 	}
 
-	machine().device("maincpu")->execute().set_irq_acknowledge_callback(device_irq_acknowledge_delegate(FUNC(md_base_state::genesis_int_callback),this));
+	m_maincpu->set_irq_acknowledge_callback(device_irq_acknowledge_delegate(FUNC(md_base_state::genesis_int_callback),this));
 
 	vdp_get_word_from_68k_mem = vdp_get_word_from_68k_mem_default;
 
 	if (machine().device("sega32x"))
 		printf("32X found 'sega32x'\n");
-	if (machine().device("svp"))
-	{
-		printf("SVP (cpu) found 'svp'\n");
-		vdp_get_word_from_68k_mem = vdp_get_word_from_68k_mem_delayed;
-	}
+
 	if (machine().device("segacd"))
 	{
 		printf("SegaCD found 'segacd'\n");
 		vdp_get_word_from_68k_mem = vdp_get_word_from_68k_mem_delayed;
 	}
 
-	m68k_set_tas_callback(machine().device("maincpu"), megadriv_tas_callback);
+	m68k_set_tas_callback(m_maincpu, megadriv_tas_callback);
 
 	m_megadrive_io_read_data_port_ptr = read8_delegate(FUNC(md_base_state::megadrive_io_read_data_port_3button),this);
 	m_megadrive_io_write_data_port_ptr = write16_delegate(FUNC(md_base_state::megadrive_io_write_data_port_3button),this);

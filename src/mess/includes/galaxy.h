@@ -16,12 +16,11 @@ class galaxy_state : public driver_device
 {
 public:
 	galaxy_state(const machine_config &mconfig, device_type type, const char *tag)
-		: driver_device(mconfig, type, tag)
-		, m_maincpu(*this, "maincpu")
-		, m_cassette(*this, CASSETTE_TAG)
-		, m_ram(*this, RAM_TAG)
-		, m_region_gfx1(*this, "gfx1")
-	{ }
+		: driver_device(mconfig, type, tag),
+		m_maincpu(*this, "maincpu"),
+		m_cassette(*this, "cassette"),
+		m_ram(*this, RAM_TAG),
+		m_region_gfx1(*this, "gfx1") { }
 
 	int m_interrupts_enabled;
 	UINT8 m_latch_value;
@@ -43,16 +42,15 @@ public:
 	TIMER_CALLBACK_MEMBER(gal_video);
 	IRQ_CALLBACK_MEMBER(galaxy_irq_callback);
 	void galaxy_set_timer();
-protected:
+	void galaxy_setup_snapshot (const UINT8 * data, UINT32 size);
 	required_device<cpu_device> m_maincpu;
+	DECLARE_SNAPSHOT_LOAD_MEMBER( galaxy );
+protected:
 	required_device<cassette_image_device> m_cassette;
 	required_device<ram_device> m_ram;
 	required_memory_region m_region_gfx1;
 	ioport_port *m_io_ports[8];
 };
 
-
-/*----------- defined in machine/galaxy.c -----------*/
-SNAPSHOT_LOAD( galaxy );
 
 #endif /* GALAXY_H_ */

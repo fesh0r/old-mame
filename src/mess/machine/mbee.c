@@ -42,7 +42,7 @@ WRITE8_MEMBER( mbee_state::pio_port_b_w )
     d1 cass out and (on 256tc) keyboard irq
     d0 cass in */
 
-	m_cass->output((data & 0x02) ? -1.0 : +1.0);
+	m_cassette->output((data & 0x02) ? -1.0 : +1.0);
 
 	speaker_level_w(m_speaker, BIT(data, 6));
 };
@@ -51,7 +51,7 @@ READ8_MEMBER( mbee_state::pio_port_b_r )
 {
 	UINT8 data = 0;
 
-	if (m_cass->input() > 0.03) data |= 1;
+	if (m_cassette->input() > 0.03) data |= 1;
 
 	data |= m_clock_pulse;
 	data |= m_mbee256_key_available;
@@ -565,7 +565,7 @@ INTERRUPT_GEN_MEMBER(mbee_state::mbee_interrupt)
 // Due to the uncertainly and hackage here, this is commented out for now - Robbbert - 05-Oct-2010
 #if 0
 
-	//address_space &space = machine().device("maincpu")->memory().space(AS_PROGRAM);
+	//address_space &space = m_maincpu->space(AS_PROGRAM);
 	/* The printer status connects to the pio ASTB pin, and the printer changing to not
 	    busy should signal an interrupt routine at B61C, (next line) but this doesn't work.
 	    The line below does what the interrupt should be doing. */
@@ -750,13 +750,11 @@ DRIVER_INIT_MEMBER(mbee_state,mbeett)
 
 ************************************************************/
 
-QUICKLOAD_LOAD( mbee )
+QUICKLOAD_LOAD_MEMBER( mbee_state, mbee )
 {
-	mbee_state *state = image.device().machine().driver_data<mbee_state>();
-	device_t *cpu = image.device().machine().device("maincpu");
-	address_space &space = image.device().machine().device("maincpu")->memory().space(AS_PROGRAM);
+	address_space &space = m_maincpu->space(AS_PROGRAM);
 	UINT16 i, j;
-	UINT8 data, sw = image.device().machine().root_device().ioport("CONFIG")->read() & 1;   /* reading the dipswitch: 1 = autorun */
+	UINT8 data, sw = ioport("CONFIG")->read() & 1;   /* reading the dipswitch: 1 = autorun */
 
 	if (!mame_stricmp(image.filetype(), "mwb"))
 	{
@@ -771,7 +769,7 @@ QUICKLOAD_LOAD( mbee )
 				return IMAGE_INIT_FAIL;
 			}
 
-			if ((j < state->m_size) || (j > 0xefff))
+			if ((j < m_size) || (j > 0xefff))
 				space.write_byte(j, data);
 			else
 			{
@@ -783,7 +781,7 @@ QUICKLOAD_LOAD( mbee )
 		if (sw)
 		{
 			space.write_word(0xa2,0x801e);  /* fix warm-start vector to get around some copy-protections */
-			cpu->state().set_pc(0x801e);
+			m_maincpu->set_pc(0x801e);
 		}
 		else
 			space.write_word(0xa2,0x8517);
@@ -801,7 +799,7 @@ QUICKLOAD_LOAD( mbee )
 				return IMAGE_INIT_FAIL;
 			}
 
-			if ((j < state->m_size) || (j > 0xefff))
+			if ((j < m_size) || (j > 0xefff))
 				space.write_byte(j, data);
 			else
 			{
@@ -810,7 +808,7 @@ QUICKLOAD_LOAD( mbee )
 			}
 		}
 
-		if (sw) cpu->state().set_pc(0x100);
+		if (sw) m_maincpu->set_pc(0x100);
 	}
 
 	return IMAGE_INIT_PASS;
@@ -818,10 +816,10 @@ QUICKLOAD_LOAD( mbee )
 
 
 /*-------------------------------------------------
-    QUICKLOAD_LOAD( mbee_z80bin )
+    QUICKLOAD_LOAD_MEMBER( mbee_state, mbee_z80bin )
 -------------------------------------------------*/
 
-QUICKLOAD_LOAD( mbee_z80bin )
+QUICKLOAD_LOAD_MEMBER( mbee_state, mbee_z80bin )
 {
 	UINT16 execute_address, start_addr, end_addr;
 	int autorun;
@@ -834,17 +832,16 @@ QUICKLOAD_LOAD( mbee_z80bin )
 	if (execute_address != 0xffff)
 	{
 		/* check to see if autorun is on (I hate how this works) */
-		autorun = image.device().machine().root_device().ioport("CONFIG")->read_safe(0xFF) & 1;
+		autorun = ioport("CONFIG")->read_safe(0xFF) & 1;
 
-		device_t *cpu = image.device().machine().device("maincpu");
-		address_space &space = image.device().machine().device("maincpu")->memory().space(AS_PROGRAM);
+		address_space &space = m_maincpu->space(AS_PROGRAM);
 
 		space.write_word(0xa6, execute_address);            /* fix the EXEC command */
 
 		if (autorun)
 		{
 			space.write_word(0xa2, execute_address);        /* fix warm-start vector to get around some copy-protections */
-			cpu->state().set_pc(execute_address);
+			m_maincpu->set_pc(execute_address);
 		}
 		else
 		{

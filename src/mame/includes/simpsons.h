@@ -1,9 +1,16 @@
+#include "sound/k053260.h"
 
 class simpsons_state : public driver_device
 {
 public:
 	simpsons_state(const machine_config &mconfig, device_type type, const char *tag)
-		: driver_device(mconfig, type, tag) { }
+		: driver_device(mconfig, type, tag),
+		m_maincpu(*this, "maincpu"),
+		m_audiocpu(*this, "audiocpu"),
+		m_k053260(*this, "k053260"),
+		m_k052109(*this, "k052109"),
+		m_k053246(*this, "k053246"),
+		m_k053251(*this, "k053251") { }
 
 	/* memory pointers */
 	UINT8 *    m_ram;
@@ -22,12 +29,12 @@ public:
 	//int        m_nmi_enabled;
 
 	/* devices */
-	cpu_device *m_maincpu;
-	cpu_device *m_audiocpu;
-	device_t *m_k053260;
-	device_t *m_k052109;
-	device_t *m_k053246;
-	device_t *m_k053251;
+	required_device<cpu_device> m_maincpu;
+	required_device<cpu_device> m_audiocpu;
+	required_device<k053260_device> m_k053260;
+	required_device<k052109_device> m_k052109;
+	required_device<k053247_device> m_k053246;
+	required_device<k053251_device> m_k053251;
 	DECLARE_WRITE8_MEMBER(z80_bankswitch_w);
 	DECLARE_WRITE8_MEMBER(z80_arm_nmi_w);
 	DECLARE_WRITE8_MEMBER(simpsons_eeprom_w);

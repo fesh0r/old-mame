@@ -187,7 +187,7 @@ WRITE16_MEMBER(dec0_state::dec0_control_w)
 			if (ACCESSING_BITS_0_7)
 			{
 				soundlatch_byte_w(space, 0, data & 0xff);
-				machine().device("audiocpu")->execute().set_input_line(INPUT_LINE_NMI, PULSE_LINE);
+				m_audiocpu->set_input_line(INPUT_LINE_NMI, PULSE_LINE);
 			}
 			break;
 
@@ -196,7 +196,7 @@ WRITE16_MEMBER(dec0_state::dec0_control_w)
 			break;
 
 		case 8: /* Interrupt ack (VBL - IRQ 6) */
-			machine().device("maincpu")->execute().set_input_line(6, CLEAR_LINE);
+			m_maincpu->set_input_line(6, CLEAR_LINE);
 			break;
 
 		case 0xa: /* Mix Psel(?). */
@@ -226,7 +226,7 @@ WRITE16_MEMBER(dec0_automat_state::automat_control_w)
 			if (ACCESSING_BITS_0_7)
 			{
 				soundlatch_byte_w(space, 0, data & 0xff);
-				machine().device("audiocpu")->execute().set_input_line(0, HOLD_LINE);
+				m_audiocpu->set_input_line(0, HOLD_LINE);
 			}
 			break;
 
@@ -259,7 +259,7 @@ WRITE16_MEMBER(dec0_state::slyspy_control_w)
 			if (ACCESSING_BITS_0_7)
 			{
 				soundlatch_byte_w(space, 0, data & 0xff);
-				machine().device("audiocpu")->execute().set_input_line(INPUT_LINE_NMI, PULSE_LINE);
+				m_audiocpu->set_input_line(INPUT_LINE_NMI, PULSE_LINE);
 			}
 			break;
 		case 2:
@@ -273,7 +273,7 @@ WRITE16_MEMBER(dec0_state::midres_sound_w)
 	if (ACCESSING_BITS_0_7)
 	{
 		soundlatch_byte_w(space, 0, data & 0xff);
-		machine().device("audiocpu")->execute().set_input_line(INPUT_LINE_NMI, PULSE_LINE);
+		m_audiocpu->set_input_line(INPUT_LINE_NMI, PULSE_LINE);
 	}
 }
 
@@ -421,7 +421,7 @@ READ16_MEMBER(dec0_state::slyspy_state_r)
 
 void dec0_state::slyspy_set_protection_map( int type)
 {
-	address_space& space = machine().device("maincpu")->memory().space(AS_PROGRAM);
+	address_space& space = m_maincpu->space(AS_PROGRAM);
 
 	deco_bac06_device *tilegen1 = (deco_bac06_device*)m_tilegen1;
 	deco_bac06_device *tilegen2 = (deco_bac06_device*)m_tilegen2;
@@ -1296,12 +1296,12 @@ GFXDECODE_END
 
 WRITE_LINE_MEMBER(dec0_state::sound_irq)
 {
-	machine().device("audiocpu")->execute().set_input_line(0, state); /* IRQ */
+	m_audiocpu->set_input_line(0, state); /* IRQ */
 }
 
 WRITE_LINE_MEMBER(dec0_state::sound_irq2)
 {
-	machine().device("audiocpu")->execute().set_input_line(1, state); /* IRQ2 */
+	m_audiocpu->set_input_line(1, state); /* IRQ2 */
 }
 
 static const ym3812_interface ym3812_config =
@@ -1388,12 +1388,12 @@ WRITE_LINE_MEMBER(dec0_automat_state::automat_vclk_cb)
 {
 	if (m_automat_msm5205_vclk_toggle == 0)
 	{
-		msm5205_data_w(machine().device("msm"), m_automat_adpcm_byte & 0xf);
+		msm5205_data_w(m_msm, m_automat_adpcm_byte & 0xf);
 	}
 	else
 	{
-		msm5205_data_w(machine().device("msm"), m_automat_adpcm_byte >> 4);
-		//device->machine().device("audiocpu")->execute().set_input_line(INPUT_LINE_NMI, PULSE_LINE); // gives some scratch samples but breaks other sounds too
+		msm5205_data_w(m_msm, m_automat_adpcm_byte >> 4);
+		//device->m_audiocpu->set_input_line(INPUT_LINE_NMI, PULSE_LINE); // gives some scratch samples but breaks other sounds too
 	}
 
 	m_automat_msm5205_vclk_toggle ^= 1;
@@ -3076,10 +3076,10 @@ ROM_END
 
 DRIVER_INIT_MEMBER(dec0_state,midresb)
 {
-	machine().device("maincpu")->memory().space(AS_PROGRAM).install_read_handler(0x00180000, 0x0018000f, read16_delegate(FUNC(dec0_state::dec0_controls_r),this));
-	machine().device("maincpu")->memory().space(AS_PROGRAM).install_read_handler(0x001a0000, 0x001a000f, read16_delegate(FUNC(dec0_state::dec0_rotary_r),this));
+	m_maincpu->space(AS_PROGRAM).install_read_handler(0x00180000, 0x0018000f, read16_delegate(FUNC(dec0_state::dec0_controls_r),this));
+	m_maincpu->space(AS_PROGRAM).install_read_handler(0x001a0000, 0x001a000f, read16_delegate(FUNC(dec0_state::dec0_rotary_r),this));
 
-	machine().device("maincpu")->memory().space(AS_PROGRAM).install_write_handler(0x00180014, 0x00180015, write16_delegate(FUNC(dec0_state::midres_sound_w),this));
+	m_maincpu->space(AS_PROGRAM).install_write_handler(0x00180014, 0x00180015, write16_delegate(FUNC(dec0_state::midres_sound_w),this));
 }
 
 READ16_MEMBER(dec0_state::ffantasybl_242024_r)
@@ -3102,10 +3102,10 @@ READ16_MEMBER(dec0_state::ffantasybl_vblank_r)
 
 DRIVER_INIT_MEMBER(dec0_state,ffantasybl)
 {
-	machine().device("maincpu")->memory().space(AS_PROGRAM).install_ram(0x24c880, 0x24cbff); // what is this? layer 3-related??
+	m_maincpu->space(AS_PROGRAM).install_ram(0x24c880, 0x24cbff); // what is this? layer 3-related??
 
-	machine().device("maincpu")->memory().space(AS_PROGRAM).install_read_handler(0x00242024, 0x00242025, read16_delegate(FUNC(dec0_state::ffantasybl_242024_r),this));
-	machine().device("maincpu")->memory().space(AS_PROGRAM).install_read_handler(0x00ff87ee, 0x00ff87ef, read16_delegate(FUNC(dec0_state::ffantasybl_vblank_r),this));
+	m_maincpu->space(AS_PROGRAM).install_read_handler(0x00242024, 0x00242025, read16_delegate(FUNC(dec0_state::ffantasybl_242024_r),this));
+	m_maincpu->space(AS_PROGRAM).install_read_handler(0x00ff87ee, 0x00ff87ef, read16_delegate(FUNC(dec0_state::ffantasybl_vblank_r),this));
 }
 
 /******************************************************************************/

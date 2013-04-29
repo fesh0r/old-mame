@@ -742,11 +742,11 @@ static ACIA6850_INTERFACE( bbc_acia6850_interface )
 {
 	0,
 	0,
-	DEVCB_NULL,
-	DEVCB_NULL,
-	DEVCB_NULL,
-	DEVCB_NULL,
-	DEVCB_NULL,
+	DEVCB_DRIVER_LINE_MEMBER(bbc_state,bbc_rxd_r),
+	DEVCB_DRIVER_LINE_MEMBER(bbc_state,bbc_txd_w),
+	DEVCB_DRIVER_LINE_MEMBER(bbc_state,bbc_cts_r),
+	DEVCB_DRIVER_LINE_MEMBER(bbc_state,bbc_rts_w),
+	DEVCB_DRIVER_LINE_MEMBER(bbc_state,bbc_dcd_r),
 	DEVCB_DRIVER_LINE_MEMBER(bbc_state,bbcb_acia6850_irq_w)
 };
 
@@ -871,7 +871,7 @@ static MACHINE_CONFIG_START( bbca, bbc_state )
 //  MCFG_SOUND_ADD("tms5220", TMS5220, tms5220_interface)
 
 	/* cassette */
-	MCFG_CASSETTE_ADD( CASSETTE_TAG, bbc_cassette_interface )
+	MCFG_CASSETTE_ADD( "cassette", bbc_cassette_interface )
 
 	/* software list */
 	MCFG_SOFTWARE_LIST_ADD("cass_ls_a","bbca_cass")
@@ -969,7 +969,7 @@ static MACHINE_CONFIG_START( bbcm, bbc_state )
 	MCFG_CENTRONICS_PRINTER_ADD("centronics", bbcb_centronics_config)
 
 	/* cassette */
-	MCFG_CASSETTE_ADD( CASSETTE_TAG, bbc_cassette_interface )
+	MCFG_CASSETTE_ADD( "cassette", bbc_cassette_interface )
 
 	/* software list */
 	MCFG_SOFTWARE_LIST_ADD("cass_ls_m","bbcm_cass")

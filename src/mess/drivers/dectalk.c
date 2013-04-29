@@ -235,7 +235,10 @@ class dectalk_state : public driver_device
 public:
 	dectalk_state(const machine_config &mconfig, device_type type, const char *tag)
 		: driver_device(mconfig, type, tag),
-			m_terminal(*this, TERMINAL_TAG) { }
+		m_terminal(*this, TERMINAL_TAG) ,
+		m_maincpu(*this, "maincpu"),
+		m_dsp(*this, "dsp"),
+		m_dac(*this, "dac") { }
 
 	UINT8 m_data[8]; // hack to prevent gcc bitching about struct pointers. not used.
 	UINT8 m_x2214_sram[256]; // NVRAM chip's temp sram space
@@ -283,15 +286,19 @@ public:
 	void dectalk_x2212_recall(  );
 	void dectalk_semaphore_w ( UINT16 data );
 	UINT16 dectalk_outfifo_r (  );
+	required_device<cpu_device> m_maincpu;
+	required_device<cpu_device> m_dsp;
+	required_device<dac_device> m_dac;
 };
 
 
 /* Devices */
 static void duart_irq_handler(device_t *device, int state, UINT8 vector)
 {
-	device->machine().device("maincpu")->execute().set_input_line_and_vector(M68K_IRQ_6, state, M68K_INT_ACK_AUTOVECTOR);
-	//device->machine().device("maincpu")->execute().set_input_line_and_vector(M68K_IRQ_6, CLEAR_LINE, M68K_INT_ACK_AUTOVECTOR);
-	//device->machine().device("maincpu")->execute().set_input_line_and_vector(M68K_IRQ_6, HOLD_LINE, vector);
+	dectalk_state *drvstate = device->machine().driver_data<dectalk_state>();
+	drvstate->m_maincpu->set_input_line_and_vector(M68K_IRQ_6, state, M68K_INT_ACK_AUTOVECTOR);
+	//drvstate->m_maincpu->set_input_line_and_vector(M68K_IRQ_6, CLEAR_LINE, M68K_INT_ACK_AUTOVECTOR);
+	//drvstate->m_maincpu->set_input_line_and_vector(M68K_IRQ_6, HOLD_LINE, vector);
 };
 
 static UINT8 duart_input(device_t *device)
@@ -299,7 +306,7 @@ static UINT8 duart_input(device_t *device)
 	dectalk_state *state = device->machine().driver_data<dectalk_state>();
 	UINT8 data = 0;
 	data |= state->m_duart_inport&0xF;
-	data |= (device->machine().root_device().ioport("duart_in")->read()&0xF0);
+	data |= (state->ioport("duart_in")->read()&0xF0);
 	if ((state->m_hack_self_test == 1) && (state->ioport("hacks")->read()&0x01)) data |= 0x10; // hack to prevent hang if selftest disable bit is kept low past the first read; i suppose the proper use of this bit was an incremental switch, or perhaps its expecting an interrupt later from serial in or tone in? added a dipswitch to disable the hack for testing
 		state->m_hack_self_test = 1;
 	return data;
@@ -338,9 +345,9 @@ void dectalk_state::dectalk_outfifo_check ()
 {
 	// check if output fifo is full; if it isn't, set the int on the dsp
 	if (((m_outfifo_head_ptr-1)&0xF) != m_outfifo_tail_ptr)
-	machine().device("dsp")->execute().set_input_line(0, ASSERT_LINE); // TMS32010 INT
+		m_dsp->set_input_line(0, ASSERT_LINE); // TMS32010 INT
 	else
-	machine().device("dsp")->execute().set_input_line(0, CLEAR_LINE); // TMS32010 INT
+		m_dsp->set_input_line(0, CLEAR_LINE); // TMS32010 INT
 }
 
 void dectalk_state::dectalk_clear_all_fifos(  )
@@ -385,10 +392,10 @@ void dectalk_state::dectalk_semaphore_w ( UINT16 data )
 #ifdef VERBOSE
 		logerror("speech int fired!\n");
 #endif
-		machine().device("maincpu")->execute().set_input_line_and_vector(M68K_IRQ_5, ASSERT_LINE, M68K_INT_ACK_AUTOVECTOR);
+		m_maincpu->set_input_line_and_vector(M68K_IRQ_5, ASSERT_LINE, M68K_INT_ACK_AUTOVECTOR);
 	}
 	else
-	machine().device("maincpu")->execute().set_input_line_and_vector(M68K_IRQ_5, CLEAR_LINE, M68K_INT_ACK_AUTOVECTOR);
+	m_maincpu->set_input_line_and_vector(M68K_IRQ_5, CLEAR_LINE, M68K_INT_ACK_AUTOVECTOR);
 }
 
 // read the output fifo and set the interrupt line active on the dsp
@@ -419,7 +426,7 @@ static void dectalk_reset(device_t *device)
 	state->dectalk_clear_all_fifos(); // speech reset clears the fifos, though we have to do it explicitly here since we're not actually in the m68k_spcflags_w function.
 	state->dectalk_semaphore_w(0); // on the original dectalk pcb revision, this is a semaphore for the INPUT fifo, later dec hacked on a check for the 3 output fifo chips to see if they're in sync, and set both of these latches if true.
 	state->m_spc_error_latch = 0; // spc error latch is cleared on /reset
-	device->machine().device("dsp")->execute().set_input_line(INPUT_LINE_RESET, ASSERT_LINE); // speech reset forces the CLR line active on the tms32010
+	state->m_dsp->set_input_line(INPUT_LINE_RESET, ASSERT_LINE); // speech reset forces the CLR line active on the tms32010
 	state->m_tlc_tonedetect = 0; // TODO, needed for selftest pass
 	state->m_tlc_ringdetect = 0; // TODO
 	state->m_tlc_dtmf = 0; // TODO
@@ -430,7 +437,7 @@ static void dectalk_reset(device_t *device)
 void dectalk_state::machine_reset()
 {
 	/* hook the RESET line, which resets a slew of other components */
-	m68k_set_reset_callback(machine().device("maincpu"), dectalk_reset);
+	m68k_set_reset_callback(m_maincpu, dectalk_reset);
 }
 
 /* Begin 68k i/o handlers */
@@ -514,7 +521,7 @@ WRITE16_MEMBER(dectalk_state::m68k_spcflags_w)// 68k write to the speech flags (
 		logerror(" | 0x01: initialize speech: fifos reset, clear error+semaphore latches and dsp reset\n");
 #endif
 		dectalk_clear_all_fifos();
-		machine().device("dsp")->execute().set_input_line(INPUT_LINE_RESET, ASSERT_LINE); // speech reset forces the CLR line active on the tms32010
+		m_dsp->set_input_line(INPUT_LINE_RESET, ASSERT_LINE); // speech reset forces the CLR line active on the tms32010
 		// clear the two speech side latches
 		m_spc_error_latch = 0;
 		dectalk_semaphore_w(0);
@@ -524,7 +531,7 @@ WRITE16_MEMBER(dectalk_state::m68k_spcflags_w)// 68k write to the speech flags (
 #ifdef SPC_LOG_68K
 		logerror(" | 0x01 = 0: initialize speech off, dsp running\n");
 #endif
-		machine().device("dsp")->execute().set_input_line(INPUT_LINE_RESET, CLEAR_LINE); // speech reset deassert clears the CLR line on the tms32010
+		m_dsp->set_input_line(INPUT_LINE_RESET, CLEAR_LINE); // speech reset deassert clears the CLR line on the tms32010
 	}
 	if ((data&0x2) == 0x2) // bit 1 - clear error and semaphore latches
 	{
@@ -545,7 +552,7 @@ WRITE16_MEMBER(dectalk_state::m68k_spcflags_w)// 68k write to the speech flags (
 #ifdef SPC_LOG_68K
 			logerror("    speech int fired!\n");
 #endif
-			machine().device("maincpu")->execute().set_input_line_and_vector(M68K_IRQ_5, ASSERT_LINE, M68K_INT_ACK_AUTOVECTOR); // set int because semaphore was set
+			m_maincpu->set_input_line_and_vector(M68K_IRQ_5, ASSERT_LINE, M68K_INT_ACK_AUTOVECTOR); // set int because semaphore was set
 		}
 	}
 	else // data&0x40 == 0
@@ -553,7 +560,7 @@ WRITE16_MEMBER(dectalk_state::m68k_spcflags_w)// 68k write to the speech flags (
 #ifdef SPC_LOG_68K
 		logerror(" | 0x40 = 0: speech int disabled\n");
 #endif
-		machine().device("maincpu")->execute().set_input_line_and_vector(M68K_IRQ_5, CLEAR_LINE, M68K_INT_ACK_AUTOVECTOR); // clear int because int is now disabled
+		m_maincpu->set_input_line_and_vector(M68K_IRQ_5, CLEAR_LINE, M68K_INT_ACK_AUTOVECTOR); // clear int because int is now disabled
 	}
 }
 
@@ -585,7 +592,7 @@ WRITE16_MEMBER(dectalk_state::m68k_tlcflags_w)// dtmf flags write
 #ifdef TLC_LOG
 			logerror("    TLC int fired!\n");
 #endif
-			machine().device("maincpu")->execute().set_input_line_and_vector(M68K_IRQ_4, ASSERT_LINE, M68K_INT_ACK_AUTOVECTOR); // set int because tone detect was set
+			m_maincpu->set_input_line_and_vector(M68K_IRQ_4, ASSERT_LINE, M68K_INT_ACK_AUTOVECTOR); // set int because tone detect was set
 		}
 	}
 	else // data&0x40 == 0
@@ -594,7 +601,7 @@ WRITE16_MEMBER(dectalk_state::m68k_tlcflags_w)// dtmf flags write
 		logerror(" | 0x40 = 0: tone detect int disabled\n");
 #endif
 	if (((data&0x4000)!=0x4000) || (m_tlc_ringdetect == 0)) // check to be sure we don't disable int if both ints fired at once
-		machine().device("maincpu")->execute().set_input_line_and_vector(M68K_IRQ_4, CLEAR_LINE, M68K_INT_ACK_AUTOVECTOR); // clear int because int is now disabled
+		m_maincpu->set_input_line_and_vector(M68K_IRQ_4, CLEAR_LINE, M68K_INT_ACK_AUTOVECTOR); // clear int because int is now disabled
 	}
 	if ((data&0x100) == 0x100) // bit 8: answer phone relay enable
 	{
@@ -618,7 +625,7 @@ WRITE16_MEMBER(dectalk_state::m68k_tlcflags_w)// dtmf flags write
 #ifdef TLC_LOG
 			logerror("    TLC int fired!\n");
 #endif
-			machine().device("maincpu")->execute().set_input_line_and_vector(M68K_IRQ_4, ASSERT_LINE, M68K_INT_ACK_AUTOVECTOR); // set int because tone detect was set
+			m_maincpu->set_input_line_and_vector(M68K_IRQ_4, ASSERT_LINE, M68K_INT_ACK_AUTOVECTOR); // set int because tone detect was set
 		}
 	}
 	else // data&0x4000 == 0
@@ -627,7 +634,7 @@ WRITE16_MEMBER(dectalk_state::m68k_tlcflags_w)// dtmf flags write
 		logerror(" | 0x4000 = 0: ring detect int disabled\n");
 #endif
 	if (((data&0x40)!=0x40) || (m_tlc_tonedetect == 0)) // check to be sure we don't disable int if both ints fired at once
-		machine().device("maincpu")->execute().set_input_line_and_vector(M68K_IRQ_4, CLEAR_LINE, M68K_INT_ACK_AUTOVECTOR); // clear int because int is now disabled
+		m_maincpu->set_input_line_and_vector(M68K_IRQ_4, CLEAR_LINE, M68K_INT_ACK_AUTOVECTOR); // clear int because int is now disabled
 	}
 }
 
@@ -675,7 +682,7 @@ WRITE16_MEMBER(dectalk_state::spc_outfifo_data_w)
 #ifdef SPC_LOG_DSP
 	logerror("dsp: SPC outfifo write, data = %04X, fifo head was: %02X; fifo tail: %02X\n", data, m_outfifo_head_ptr, m_outfifo_tail_ptr);
 #endif
-	machine().device("dsp")->execute().set_input_line(0, CLEAR_LINE); //TMS32010 INT (cleared because LDCK inverts the IR line, clearing int on any outfifo write... for a moment at least.)
+	m_dsp->set_input_line(0, CLEAR_LINE); //TMS32010 INT (cleared because LDCK inverts the IR line, clearing int on any outfifo write... for a moment at least.)
 	// if fifo is full (head ptr = tail ptr-1), do not increment the head ptr and do not store the data
 	if (((m_outfifo_tail_ptr-1)&0xF) == m_outfifo_head_ptr)
 	{
@@ -726,7 +733,7 @@ static ADDRESS_MAP_START(m68k_mem, AS_PROGRAM, 16, dectalk_state )
 	ADDRESS_MAP_UNMAP_HIGH
 	AM_RANGE(0x000000, 0x03ffff) AM_ROM AM_MIRROR(0x740000) /* ROM */
 	AM_RANGE(0x080000, 0x093fff) AM_RAM AM_MIRROR(0x760000) /* RAM */
-	//AM_RANGE(0x094000, 0x0943ff) AM_READWRITE_LEGACY(led_sw_nvr_read, led_sw_nv_write) AM_MIRROR(0x763C00) /* LED array and Xicor X2212 NVRAM */
+	//AM_RANGE(0x094000, 0x0943ff) AM_READWRITE(led_sw_nvr_read, led_sw_nv_write) AM_MIRROR(0x763C00) /* LED array and Xicor X2212 NVRAM */
 	AM_RANGE(0x094000, 0x0943ff) AM_WRITE8(led_write, 0x00FF) AM_MIRROR(0x763C00) /* LED array */
 	AM_RANGE(0x094000, 0x0943ff) AM_READWRITE8(nvram_read, nvram_write, 0xFF00) AM_MIRROR(0x763C00) /* Xicor X2212 NVRAM */
 	AM_RANGE(0x098000, 0x09801f) AM_DEVREADWRITE8_LEGACY("duart68681", duart68681_r, duart68681_w, 0xff) AM_MIRROR(0x763FE0) /* DUART */
@@ -781,13 +788,12 @@ INPUT_PORTS_END
 TIMER_CALLBACK_MEMBER(dectalk_state::outfifo_read_cb)
 {
 	UINT16 data;
-	dac_device *speaker = machine().device<dac_device>("dac");
 	data = dectalk_outfifo_r();
 #ifdef VERBOSE
 	if (data!= 0x8000) logerror("sample output: %04X\n", data);
 #endif
 	machine().scheduler().timer_set(attotime::from_hz(10000), timer_expired_delegate(FUNC(dectalk_state::outfifo_read_cb),this));
-	speaker->write_signed16(data);
+	m_dac->write_signed16(data);
 	// hack for break key, requires hacked up duart core so disabled for now
 	// also it doesn't work well, the setup menu is badly corrupt
 	/*device_t *duart = machine().device("duart68681");

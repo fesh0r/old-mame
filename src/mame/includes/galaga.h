@@ -1,16 +1,19 @@
 #include "sound/discrete.h"
+#include "sound/samples.h"
 
 class galaga_state : public driver_device
 {
 public:
 	galaga_state(const machine_config &mconfig, device_type type, const char *tag)
-		: driver_device(mconfig, type, tag) ,
+		: driver_device(mconfig, type, tag),
 		m_videoram(*this, "videoram"),
 		m_galaga_ram1(*this, "galaga_ram1"),
 		m_galaga_ram2(*this, "galaga_ram2"),
 		m_galaga_ram3(*this, "galaga_ram3"),
-		m_galaga_starcontrol(*this, "starcontrol")
-		{ }
+		m_galaga_starcontrol(*this, "starcontrol"),
+		m_maincpu(*this, "maincpu"),
+		m_subcpu(*this, "sub"),
+		m_subcpu2(*this, "sub2") { }
 
 	/* memory pointers */
 	optional_shared_ptr<UINT8> m_videoram;
@@ -71,6 +74,9 @@ public:
 	};
 
 	static struct star m_star_seed_tab[];
+	required_device<cpu_device> m_maincpu;
+	required_device<cpu_device> m_subcpu;
+	required_device<cpu_device> m_subcpu2;
 };
 
 class xevious_state : public galaga_state
@@ -84,7 +90,9 @@ public:
 		m_xevious_fg_colorram(*this, "fg_colorram"),
 		m_xevious_bg_colorram(*this, "bg_colorram"),
 		m_xevious_fg_videoram(*this, "fg_videoram"),
-		m_xevious_bg_videoram(*this, "bg_videoram") { }
+		m_xevious_bg_videoram(*this, "bg_videoram"),
+		m_samples(*this, "samples"),
+		m_subcpu3(*this, "sub3") { }
 
 	required_shared_ptr<UINT8> m_xevious_sr1;
 	required_shared_ptr<UINT8> m_xevious_sr2;
@@ -93,6 +101,7 @@ public:
 	required_shared_ptr<UINT8> m_xevious_bg_colorram;
 	required_shared_ptr<UINT8> m_xevious_fg_videoram;
 	required_shared_ptr<UINT8> m_xevious_bg_videoram;
+	optional_device<samples_device> m_samples;
 
 	INT32 m_xevious_bs[2];
 	DECLARE_DRIVER_INIT(xevious);
@@ -139,6 +148,8 @@ public:
 	char m_battles_customio_command_count;
 	char m_battles_customio_data;
 	char m_battles_sound_played;
+
+	optional_device<cpu_device> m_subcpu3;
 };
 
 

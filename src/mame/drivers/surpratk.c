@@ -180,11 +180,6 @@ void surpratk_state::machine_start()
 
 	m_generic_paletteram_8.allocate(0x1000);
 
-	m_maincpu = machine().device<cpu_device>("maincpu");
-	m_k053244 = machine().device("k053244");
-	m_k053251 = machine().device("k053251");
-	m_k052109 = machine().device("k052109");
-
 	save_item(NAME(m_videobank));
 	save_item(NAME(m_sprite_colorbase));
 	save_item(NAME(m_layer_colorbase));
@@ -195,7 +190,7 @@ void surpratk_state::machine_reset()
 {
 	int i;
 
-	konami_configure_set_lines(machine().device("maincpu"), surpratk_banking);
+	konami_configure_set_lines(m_maincpu, surpratk_banking);
 
 	for (i = 0; i < 3; i++)
 	{

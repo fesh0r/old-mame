@@ -25,9 +25,9 @@ public:
 		: driver_device(mconfig, type, tag),
 			m_maincpu(*this, "maincpu"),
 			m_pio(*this, "z80pio"),
-			m_cass(*this, CASSETTE_TAG),
+			m_cassette(*this, "cassette"),
 			m_wave(*this, WAVE_TAG),
-			m_speaker(*this, SPEAKER_TAG),
+			m_speaker(*this, "speaker"),
 			m_centronics(*this, "centronics"),
 			m_6845(*this, "crtc"),
 			m_io_dsw(*this, "DSW"),
@@ -96,7 +96,7 @@ public:
 	TIMER_CALLBACK_MEMBER(super80_halfspeed);
 	required_device<cpu_device> m_maincpu;
 	required_device<z80pio_device> m_pio;
-	required_device<cassette_image_device> m_cass;
+	required_device<cassette_image_device> m_cassette;
 	required_device<wave_device> m_wave;
 	required_device<speaker_sound_device> m_speaker;
 	required_device<centronics_device> m_centronics;
@@ -111,6 +111,10 @@ public:
 	required_ioport m_io_x6;
 	required_ioport m_io_x7;
 	required_ioport m_io_config;
+	void palette_set_colors_rgb(const UINT8 *colors);
+	void super80_cassette_motor( UINT8 data );
+	void driver_init_common(  );
+	DECLARE_QUICKLOAD_LOAD_MEMBER( super80 );
 };
 
 
@@ -120,4 +124,3 @@ MC6845_UPDATE_ROW( super80v_update_row );
 /*----------- defined in machine/super80.c -----------*/
 
 extern const z80pio_interface super80_pio_intf;
-QUICKLOAD_LOAD( super80 );

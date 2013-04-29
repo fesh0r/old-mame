@@ -85,6 +85,12 @@ deerhunt,wschamp:
 - offset tilemap sprite during demo. In deerhunt intro, the hunter should zoom
   in to the deer. In wschamp intro the GPS unit should zoom to the high scores.
 
+wschampb:
+- dumps of the program roms matched the hand written checksum for each chip, but
+  the boot screen reports NG for both roms. - Is this correct and a bug from the
+  original release? Is that why the next bug fix release is v1.01? IE: such a
+  a minor increase in the version number.
+
 trophyh:
 - mame hangs for around 15 seconds every now and then, at scene changes.
   This is probably due to a couple of frames with an odd or corrupt sprites list,
@@ -110,6 +116,7 @@ reelquak:
 #include "machine/eeprom.h"
 #include "machine/nvram.h"
 #include "machine/ticket.h"
+#include "machine/mcf5206e.h"
 
 /***************************************************************************
 
@@ -176,18 +183,14 @@ ADDRESS_MAP_END
 
 READ16_MEMBER(seta2_state::gundamex_eeprom_r)
 {
-	device_t *device = machine().device("eeprom");
-	eeprom_device *eeprom = downcast<eeprom_device *>(device);
-	return ((eeprom->read_bit() & 1)) << 3;
+	return ((m_eeprom->read_bit() & 1)) << 3;
 }
 
 WRITE16_MEMBER(seta2_state::gundamex_eeprom_w)
 {
-	device_t *device = machine().device("eeprom");
-	eeprom_device *eeprom = downcast<eeprom_device *>(device);
-	eeprom->set_clock_line((data & 0x2) ? ASSERT_LINE : CLEAR_LINE);
-	eeprom->write_bit(data & 0x1);
-	eeprom->set_cs_line((data & 0x4) ? CLEAR_LINE : ASSERT_LINE);
+	m_eeprom->set_clock_line((data & 0x2) ? ASSERT_LINE : CLEAR_LINE);
+	m_eeprom->write_bit(data & 0x1);
+	m_eeprom->set_cs_line((data & 0x4) ? CLEAR_LINE : ASSERT_LINE);
 }
 
 static ADDRESS_MAP_START( gundamex_map, AS_PROGRAM, 16, seta2_state )
@@ -543,31 +546,6 @@ READ16_MEMBER(seta2_state::spriteram16_word_r)
 
 // Main CPU
 
-// ColdFire peripherals
-
-enum {
-	CF_PPDAT    =   0x1c8/4,
-	CF_MBSR     =   0x1ec/4
-};
-
-WRITE32_MEMBER(seta2_state::coldfire_regs_w)
-{
-	COMBINE_DATA( &m_coldfire_regs[offset] );
-}
-
-READ32_MEMBER(seta2_state::coldfire_regs_r)
-{
-	switch( offset )
-	{
-		case CF_MBSR:
-			return machine().rand();
-
-		case CF_PPDAT:
-			return ioport("BATTERY")->read() << 16;
-	}
-
-	return m_coldfire_regs[offset];
-}
 
 READ32_MEMBER(seta2_state::funcube_debug_r)
 {
@@ -582,21 +560,19 @@ READ32_MEMBER(seta2_state::funcube_debug_r)
 
 READ32_MEMBER(seta2_state::oki_read)
 {
-	device_t *device = machine().device("oki");
-	return downcast<okim9810_device *>(device)->read_status() << 16;
+	return m_oki->read_status() << 16;
 }
 WRITE32_MEMBER(seta2_state::oki_write)
 {
-	device_t *device = machine().device("oki");
 	if (ACCESSING_BITS_0_7)
 	{
 		const UINT8 tmp = (data & 0x000000ff);
-		downcast<okim9810_device *>(device)->write_TMP_register(tmp);
+		m_oki->write_TMP_register(tmp);
 	}
 	else if (ACCESSING_BITS_16_23)
 	{
 		const UINT8 cmd = (data & 0x00ff0000) >> 16;
-		downcast<okim9810_device *>(device)->write_command(cmd);
+		m_oki->write_command(cmd);
 	}
 }
 
@@ -615,7 +591,7 @@ static ADDRESS_MAP_START( funcube_map, AS_PROGRAM, 32, seta2_state )
 
 	AM_RANGE( 0x00c00000, 0x00c002ff ) AM_READWRITE(funcube_nvram_dword_r, funcube_nvram_dword_w )
 
-	AM_RANGE(0xf0000000, 0xf00001ff ) AM_READWRITE(coldfire_regs_r, coldfire_regs_w ) AM_SHARE("coldfire_regs") // Module
+	AM_RANGE(0xf0000000, 0xf00001ff) AM_DEVREADWRITE("maincpu_onboard", mcf5206e_peripheral_device, seta2_coldfire_regs_r, seta2_coldfire_regs_w) // technically this can be moved with MBAR
 	AM_RANGE(0xffffe000, 0xffffffff ) AM_RAM    // SRAM
 ADDRESS_MAP_END
 
@@ -634,7 +610,7 @@ static ADDRESS_MAP_START( funcube2_map, AS_PROGRAM, 32, seta2_state )
 
 	AM_RANGE( 0x00c00000, 0x00c002ff ) AM_READWRITE(funcube_nvram_dword_r, funcube_nvram_dword_w )
 
-	AM_RANGE(0xf0000000, 0xf00001ff ) AM_READWRITE(coldfire_regs_r, coldfire_regs_w ) AM_SHARE("coldfire_regs") // Module
+	AM_RANGE(0xf0000000, 0xf00001ff) AM_DEVREADWRITE("maincpu_onboard", mcf5206e_peripheral_device, seta2_coldfire_regs_r, seta2_coldfire_regs_w) // technically this can be moved with MBAR
 	AM_RANGE(0xffffe000, 0xffffffff ) AM_RAM    // SRAM
 ADDRESS_MAP_END
 
@@ -2212,6 +2188,8 @@ static MACHINE_CONFIG_START( funcube, seta2_state )
 	MCFG_CPU_IO_MAP(funcube_sub_io)
 	MCFG_CPU_PERIODIC_INT_DRIVER(seta2_state, funcube_sub_timer_irq,  60*10)
 
+	MCFG_MCF5206E_PERIPHERAL_ADD("maincpu_onboard")
+
 	MCFG_NVRAM_ADD_0FILL("nvram")
 
 	MCFG_MACHINE_RESET_OVERRIDE(seta2_state, funcube )
@@ -3326,7 +3304,7 @@ ROM_START( turkhunt ) /* V1.0 is currently the only known version */
 	ROM_LOAD( "asx905m01.u18", 0x100000, 0x400000, CRC(8d9dd9a9) SHA1(1fc2f3688d2c24c720dca7357bca6bf5f4016c53) )
 ROM_END
 
-ROM_START( wschamp ) /* Wing Shootiong Championship V2.00 (01/23/2002) */
+ROM_START( wschamp ) /* Wing Shooting Championship V2.00 (01/23/2002) */
 	ROM_REGION( 0x200000, "maincpu", 0 )    // TMP68301 Code
 	ROM_LOAD16_BYTE( "as1006e03.u06", 0x000000, 0x100000, CRC(0ad01677) SHA1(63e09b9f7cc8b781af1756f86caa0cc0962ae584) ) /* checksum 421E printed on label */
 	ROM_LOAD16_BYTE( "as1007e03.u07", 0x000001, 0x100000, CRC(572624f0) SHA1(0c2f67daa22f4edd66a2be990dc6cd999faff0fa) ) /* checksum A48F printed on label */
@@ -3342,10 +3320,26 @@ ROM_START( wschamp ) /* Wing Shootiong Championship V2.00 (01/23/2002) */
 	ROM_LOAD( "as1005m01.u18", 0x100000, 0x400000, CRC(e4b137b8) SHA1(4d8d15073c51f7d383282cc5755ae5b2eab6226c) )
 ROM_END
 
-ROM_START( wschampa ) /* Wing Shootiong Championship V1.01 */
+ROM_START( wschampa ) /* Wing Shooting Championship V1.01 */
 	ROM_REGION( 0x200000, "maincpu", 0 )    // TMP68301 Code
 	ROM_LOAD16_BYTE( "as1006e02.u06", 0x000000, 0x100000, CRC(d3d3b2b5) SHA1(2d036d795b40a4ed78bb9f7751f875cfc76276a9) ) /* checksum 31EF printed on label */
 	ROM_LOAD16_BYTE( "as1007e02.u07", 0x000001, 0x100000, CRC(78ede6d9) SHA1(e6d10f52cd4c6bf97288df44911f23bb64fc012c) ) /* checksum 615E printed on label */
+
+	ROM_REGION( 0x2000000, "sprites", 0 )   // Sprites
+	ROM_LOAD( "as1001m01.u38", 0x0000000, 0x800000, CRC(92595579) SHA1(75a7131aedb18b7103677340c3cca7c91aaca2bf) )
+	ROM_LOAD( "as1002m01.u39", 0x0800000, 0x800000, CRC(16c2bb08) SHA1(63926464c8bd8db7d05905a953765e645942beb4) )
+	ROM_LOAD( "as1003m01.u40", 0x1000000, 0x800000, CRC(89618858) SHA1(a8bd07f233482e8f5a256af7ff9577648eb58ef4) )
+	ROM_LOAD( "as1004m01.u41", 0x1800000, 0x800000, CRC(500c0909) SHA1(73ff27d46b9285f34a50a81c21c54437f21e1939) )
+
+	ROM_REGION( 0x500000, "x1snd", 0 )  // Samples
+	// Leave 1MB empty (addressable by the chip)
+	ROM_LOAD( "as1005m01.u18", 0x100000, 0x400000, CRC(e4b137b8) SHA1(4d8d15073c51f7d383282cc5755ae5b2eab6226c) )
+ROM_END
+
+ROM_START( wschampb ) /* Wing Shooting Championship V1.00, dumps match listed checksum but shows as "NG" on boot screen - need to verify correct at some point if possible */
+	ROM_REGION( 0x200000, "maincpu", 0 )    // TMP68301 Code
+	ROM_LOAD16_BYTE( "as10u6.u06", 0x000000, 0x100000, CRC(70a18bef) SHA1(3fb2e8a4db790dd732115d7d3d991b2d6c54feb9) ) /* checksum 3F38 & 10/26 16:00 hand written on label */
+	ROM_LOAD16_BYTE( "as10u7.u07", 0x000001, 0x100000, CRC(cf23be7d) SHA1(b9130757466ff0d41d261b1c2435d36d2452df54) ) /* checksum 1537 & 10/26 16:00 hand written on label */
 
 	ROM_REGION( 0x2000000, "sprites", 0 )   // Sprites
 	ROM_LOAD( "as1001m01.u38", 0x0000000, 0x800000, CRC(92595579) SHA1(75a7131aedb18b7103677340c3cca7c91aaca2bf) )
@@ -3393,6 +3387,7 @@ GAME( 2000, deerhunte,deerhunt, samshoot, deerhunt, driver_device, 0,        ROT
 GAME( 2001, turkhunt, 0,        samshoot, turkhunt, driver_device, 0,        ROT0, "Sammy USA Corporation", "Turkey Hunting USA V1.0",                      GAME_NO_COCKTAIL | GAME_IMPERFECT_GRAPHICS )
 GAME( 2001, wschamp,  0,        samshoot, wschamp, driver_device,  0,        ROT0, "Sammy USA Corporation", "Wing Shooting Championship V2.00",             GAME_NO_COCKTAIL | GAME_IMPERFECT_GRAPHICS )
 GAME( 2001, wschampa, wschamp,  samshoot, wschamp, driver_device,  0,        ROT0, "Sammy USA Corporation", "Wing Shooting Championship V1.01",             GAME_NO_COCKTAIL | GAME_IMPERFECT_GRAPHICS )
+GAME( 2001, wschampb, wschamp,  samshoot, wschamp, driver_device,  0,        ROT0, "Sammy USA Corporation", "Wing Shooting Championship V1.00",             GAME_NO_COCKTAIL | GAME_IMPERFECT_GRAPHICS )
 GAME( 2002, trophyh,  0,        samshoot, trophyh, driver_device,  0,        ROT0, "Sammy USA Corporation", "Trophy Hunting - Bear & Moose V1.0",           GAME_NO_COCKTAIL | GAME_IMPERFECT_GRAPHICS )
 GAME( 2000, funcube,  0,        funcube,  funcube, seta2_state,  funcube,  ROT0, "Namco",                 "Funcube (v1.5)",                               GAME_NO_COCKTAIL )
 GAME( 2001, funcube2, 0,        funcube2, funcube, seta2_state,  funcube2, ROT0, "Namco",                 "Funcube 2 (v1.1)",                             GAME_NO_COCKTAIL )

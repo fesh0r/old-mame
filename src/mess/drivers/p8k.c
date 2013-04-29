@@ -107,6 +107,10 @@ public:
 	DECLARE_WRITE_LINE_MEMBER( p8k_16_daisy_interrupt );
 	DECLARE_WRITE16_MEMBER( pk8_16_sio_0_serial_transmit );
 	DECLARE_WRITE16_MEMBER( pk8_16_sio_1_serial_transmit );
+	DECLARE_READ8_MEMBER(memory_read_byte);
+	DECLARE_WRITE8_MEMBER(memory_write_byte);
+	DECLARE_READ8_MEMBER(io_read_byte);
+	DECLARE_WRITE8_MEMBER(io_write_byte);
 };
 
 /***************************************************************************
@@ -228,7 +232,7 @@ static GENERIC_TERMINAL_INTERFACE( terminal_intf )
 
 WRITE_LINE_MEMBER( p8k_state::p8k_daisy_interrupt )
 {
-	machine().device("maincpu")->execute().set_input_line(0, state);
+	m_maincpu->set_input_line(0, state);
 }
 
 /* Z80 DMA */
@@ -241,18 +245,39 @@ WRITE_LINE_MEMBER( p8k_state::p8k_dma_irq_w )
 	p8k_daisy_interrupt(state);
 }
 
-static UINT8 memory_read_byte(address_space &space, offs_t address, UINT8 mem_mask) { return space.read_byte(address); }
-static void memory_write_byte(address_space &space, offs_t address, UINT8 data, UINT8 mem_mask) { space.write_byte(address, data); }
+READ8_MEMBER(p8k_state::memory_read_byte)
+{
+	address_space& prog_space = m_maincpu->space(AS_PROGRAM);
+	return prog_space.read_byte(offset);
+}
+
+WRITE8_MEMBER(p8k_state::memory_write_byte)
+{
+	address_space& prog_space = m_maincpu->space(AS_PROGRAM);
+	return prog_space.write_byte(offset, data);
+}
+
+READ8_MEMBER(p8k_state::io_read_byte)
+{
+	address_space& prog_space = m_maincpu->space(AS_IO);
+	return prog_space.read_byte(offset);
+}
+
+WRITE8_MEMBER(p8k_state::io_write_byte)
+{
+	address_space& prog_space = m_maincpu->space(AS_IO);
+	return prog_space.write_byte(offset, data);
+}
 
 static Z80DMA_INTERFACE( p8k_dma_intf )
 {
 	DEVCB_DRIVER_LINE_MEMBER(p8k_state, p8k_dma_irq_w),
 	DEVCB_CPU_INPUT_LINE("maincpu", INPUT_LINE_IRQ0),
 	DEVCB_NULL,
-	DEVCB_MEMORY_HANDLER("maincpu", PROGRAM, memory_read_byte),
-	DEVCB_MEMORY_HANDLER("maincpu", PROGRAM, memory_write_byte),
-	DEVCB_MEMORY_HANDLER("maincpu", IO, memory_read_byte),
-	DEVCB_MEMORY_HANDLER("maincpu", IO, memory_write_byte)
+	DEVCB_DRIVER_MEMBER(p8k_state, memory_read_byte),
+	DEVCB_DRIVER_MEMBER(p8k_state, memory_write_byte),
+	DEVCB_DRIVER_MEMBER(p8k_state, io_read_byte),
+	DEVCB_DRIVER_MEMBER(p8k_state, io_write_byte)
 };
 
 /* Z80 CTC 0 */
@@ -605,7 +630,7 @@ ADDRESS_MAP_END
 
 static ADDRESS_MAP_START(p8k_16_iomap, AS_IO, 16, p8k_state)
 //  AM_RANGE(0x0fef0, 0x0feff) // clock
-	//AM_RANGE(0x0ff80, 0x0ff87) AM_READWRITE_LEGACY(p8k_16_sio0_r, p8k_16_sio0_w)
+	//AM_RANGE(0x0ff80, 0x0ff87) AM_READWRITE(p8k_16_sio0_r, p8k_16_sio0_w)
 	AM_RANGE(0x0ff80, 0x0ff87) AM_READWRITE(portff82_r,portff82_w)
 	AM_RANGE(0x0ff88, 0x0ff8f) AM_READWRITE(p8k_16_sio1_r, p8k_16_sio1_w)          //"z80sio_1",
 	AM_RANGE(0x0ff90, 0x0ff97) AM_READWRITE(p8k_16_pio0_r, p8k_16_pio0_w)          //"z80pio_0",
@@ -792,7 +817,7 @@ static MACHINE_CONFIG_START( p8k, p8k_state )
 	/* sound hardware */
 	MCFG_SPEAKER_STANDARD_MONO("mono")
 
-	MCFG_SOUND_ADD(BEEPER_TAG, BEEP, 0)
+	MCFG_SOUND_ADD("beeper", BEEP, 0)
 	MCFG_SOUND_ROUTE(ALL_OUTPUTS, "mono", 0.5)
 
 	/* video hardware */
@@ -819,7 +844,7 @@ static MACHINE_CONFIG_START( p8k_16, p8k_state )
 
 	/* sound hardware */
 	MCFG_SPEAKER_STANDARD_MONO("mono")
-	MCFG_SOUND_ADD(BEEPER_TAG, BEEP, 0)
+	MCFG_SOUND_ADD("beeper", BEEP, 0)
 	MCFG_SOUND_ROUTE(ALL_OUTPUTS, "mono", 0.5)
 
 	/* video hardware */

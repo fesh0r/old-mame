@@ -139,31 +139,30 @@ class pc6001_state : public driver_device
 {
 public:
 	pc6001_state(const machine_config &mconfig, device_type type, const char *tag)
-		: driver_device(mconfig, type, tag)
-		, m_ppi(*this, "ppi8255")
-		, m_ram(*this, "ram")
-		, m_maincpu(*this, "maincpu")
-		, m_cassette(*this, CASSETTE_TAG)
-		, m_region_maincpu(*this, "maincpu")
-		, m_region_gfx1(*this, "gfx1")
-		, m_region_cas(*this, "cas")
-		, m_region_cart_img(*this, "cart_img")
-		, m_io_mode4_dsw(*this, "MODE4_DSW")
-		, m_io_p1(*this, "P1")
-		, m_io_p2(*this, "P2")
-		, m_io_key1(*this, "key1")
-		, m_io_key2(*this, "key2")
-		, m_io_key3(*this, "key3")
-		, m_io_key_modifiers(*this, "key_modifiers")
-		, m_bank1(*this, "bank1")
-		, m_bank2(*this, "bank2")
-		, m_bank3(*this, "bank3")
-		, m_bank4(*this, "bank4")
-		, m_bank5(*this, "bank5")
-		, m_bank6(*this, "bank6")
-		, m_bank7(*this, "bank7")
-		, m_bank8(*this, "bank8")
-	{ }
+		: driver_device(mconfig, type, tag),
+		m_ppi(*this, "ppi8255"),
+		m_ram(*this, "ram"),
+		m_maincpu(*this, "maincpu"),
+		m_cassette(*this, "cassette"),
+		m_region_maincpu(*this, "maincpu"),
+		m_region_gfx1(*this, "gfx1"),
+		m_region_cas(*this, "cas"),
+		m_region_cart_img(*this, "cart_img"),
+		m_io_mode4_dsw(*this, "MODE4_DSW"),
+		m_io_p1(*this, "P1"),
+		m_io_p2(*this, "P2"),
+		m_io_key1(*this, "key1"),
+		m_io_key2(*this, "key2"),
+		m_io_key3(*this, "key3"),
+		m_io_key_modifiers(*this, "key_modifiers"),
+		m_bank1(*this, "bank1"),
+		m_bank2(*this, "bank2"),
+		m_bank3(*this, "bank3"),
+		m_bank4(*this, "bank4"),
+		m_bank5(*this, "bank5"),
+		m_bank6(*this, "bank6"),
+		m_bank7(*this, "bank7"),
+		m_bank8(*this, "bank8") { }
 
 	required_device<i8255_device> m_ppi;
 
@@ -2389,8 +2388,8 @@ static MACHINE_CONFIG_START( pc6001, pc6001_state )
 	MCFG_CARTSLOT_EXTENSION_LIST("bin")
 	MCFG_CARTSLOT_NOT_MANDATORY
 
-//  MCFG_CASSETTE_ADD(CASSETTE_TAG,pc6001_cassette_interface)
-	MCFG_CARTSLOT_ADD(CASSETTE_TAG)
+//  MCFG_CASSETTE_ADD("cassette",pc6001_cassette_interface)
+	MCFG_CARTSLOT_ADD("cassette")
 	MCFG_CARTSLOT_EXTENSION_LIST("cas,p6")
 	MCFG_CARTSLOT_NOT_MANDATORY
 	MCFG_CARTSLOT_INTERFACE("pc6001_cass")
@@ -2400,7 +2399,7 @@ static MACHINE_CONFIG_START( pc6001, pc6001_state )
 	MCFG_SOUND_ADD("ay8910", AY8910, PC6001_MAIN_CLOCK/4)
 	MCFG_SOUND_CONFIG(pc6001_ay_interface)
 	MCFG_SOUND_ROUTE(ALL_OUTPUTS, "mono", 1.00)
-//  MCFG_SOUND_WAVE_ADD(WAVE_TAG, CASSETTE_TAG)
+//  MCFG_SOUND_WAVE_ADD(WAVE_TAG, "cassette")
 //  MCFG_SOUND_ROUTE(ALL_OUTPUTS, "mono", 0.25)
 
 	/* TODO: accurate timing on this */

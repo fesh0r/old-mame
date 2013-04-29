@@ -90,7 +90,7 @@ TIMER_CALLBACK_MEMBER(dc_cons_state::atapi_xfer_end )
 		ddtdata.channel= -1;    // not used
 		ddtdata.mode= -1;       // copy from/to buffer
 		printf("ATAPI: DMA one sector to %x, %x remaining\n", atapi_xferbase, atapi_xferlen);
-		sh4_dma_ddt(machine().device("maincpu"), &ddtdata);
+		sh4_dma_ddt(m_maincpu, &ddtdata);
 
 		atapi_xferbase += 2048;
 	}
@@ -112,7 +112,7 @@ TIMER_CALLBACK_MEMBER(dc_cons_state::atapi_xfer_end )
 		atapi_regs[ATAPI_REG_COUNTLOW] = atapi_xferlen & 0xff;
 		atapi_regs[ATAPI_REG_COUNTHIGH] = (atapi_xferlen>>8)&0xff;
 
-		atapi_timer->adjust(machine().device<cpu_device>("maincpu")->cycles_to_attotime((ATAPI_CYCLES_PER_SECTOR * (atapi_xferlen/2048))));
+		atapi_timer->adjust(m_maincpu->cycles_to_attotime((ATAPI_CYCLES_PER_SECTOR * (atapi_xferlen/2048))));
 	}
 	else
 	{
@@ -685,7 +685,7 @@ WRITE64_MEMBER(dc_cons_state::dc_mess_g1_ctrl_w )
 			}
 
 			atapi_xferbase = g1bus_regs[SB_GDSTAR];
-			atapi_timer->adjust(machine().device<cpu_device>("maincpu")->cycles_to_attotime((ATAPI_CYCLES_PER_SECTOR * (atapi_xferlen/2048))));
+			atapi_timer->adjust(m_maincpu->cycles_to_attotime((ATAPI_CYCLES_PER_SECTOR * (atapi_xferlen/2048))));
 		}
 		break;
 	}

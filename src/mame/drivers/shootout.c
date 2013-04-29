@@ -50,7 +50,7 @@ WRITE8_MEMBER(shootout_state::shootout_bankswitch_w)
 WRITE8_MEMBER(shootout_state::sound_cpu_command_w)
 {
 	soundlatch_byte_w( space, offset, data );
-	machine().device("audiocpu")->execute().set_input_line(INPUT_LINE_NMI, PULSE_LINE );
+	m_audiocpu->set_input_line(INPUT_LINE_NMI, PULSE_LINE );
 }
 
 WRITE8_MEMBER(shootout_state::shootout_flipscreen_w)
@@ -109,7 +109,7 @@ ADDRESS_MAP_END
 
 INPUT_CHANGED_MEMBER(shootout_state::coin_inserted)
 {
-	machine().device("maincpu")->execute().set_input_line(INPUT_LINE_NMI, newval ? ASSERT_LINE : CLEAR_LINE);
+	m_maincpu->set_input_line(INPUT_LINE_NMI, newval ? ASSERT_LINE : CLEAR_LINE);
 }
 
 static INPUT_PORTS_START( shootout )
@@ -231,12 +231,12 @@ GFXDECODE_END
 
 WRITE_LINE_MEMBER(shootout_state::shootout_snd_irq)
 {
-	machine().device("audiocpu")->execute().set_input_line(0, state);
+	m_audiocpu->set_input_line(0, state);
 }
 
 WRITE_LINE_MEMBER(shootout_state::shootout_snd2_irq)
 {
-	machine().device("maincpu")->execute().set_input_line(0, state);
+	m_maincpu->set_input_line(0, state);
 }
 
 static const ym2203_interface ym2203_config =

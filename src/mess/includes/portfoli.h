@@ -33,7 +33,7 @@ public:
 			m_lcdc(*this, HD61830_TAG),
 			m_ppi(*this, M82C55A_TAG),
 			m_uart(*this, M82C50A_TAG),
-			m_speaker(*this, SPEAKER_TAG),
+			m_speaker(*this, "speaker"),
 			m_timer_tick(*this, TIMER_TICK_TAG),
 			m_rom(*this, M80C88A_TAG),
 			m_char_rom(*this, HD61830_TAG),
@@ -46,7 +46,8 @@ public:
 			m_y6(*this, "Y6"),
 			m_y7(*this, "Y7"),
 			m_battery(*this, "BATTERY"),
-			m_contrast(*this, "contrast")
+			m_contrast(*this, "contrast"),
+			m_ram(*this, RAM_TAG)
 	{ }
 
 	required_device<cpu_device> m_maincpu;
@@ -113,6 +114,7 @@ public:
 	DECLARE_READ8_MEMBER(hd61830_rd_r);
 	IRQ_CALLBACK_MEMBER(portfolio_int_ack);
 	DECLARE_DEVICE_IMAGE_LOAD_MEMBER( portfolio_cart );
+	required_device<ram_device> m_ram;
 };
 
 #endif

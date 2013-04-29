@@ -217,7 +217,9 @@ class maygayv1_state : public driver_device
 {
 public:
 	maygayv1_state(const machine_config &mconfig, device_type type, const char *tag)
-		: driver_device(mconfig, type, tag) { }
+		: driver_device(mconfig, type, tag),
+		m_maincpu(*this, "maincpu"),
+		m_soundcpu(*this, "soundcpu") { }
 
 	int m_vsync_latch_preset;
 	UINT8 m_p1;
@@ -246,6 +248,8 @@ public:
 	INTERRUPT_GEN_MEMBER(vsync_interrupt);
 	DECLARE_WRITE8_MEMBER(data_from_i8031);
 	DECLARE_READ8_MEMBER(data_to_i8031);
+	required_device<cpu_device> m_maincpu;
+	required_device<cpu_device> m_soundcpu;
 };
 
 
@@ -679,7 +683,7 @@ WRITE16_MEMBER(maygayv1_state::vsync_int_ctrl)
 
 	// Active low
 	if (!(m_vsync_latch_preset))
-		machine().device("maincpu")->execute().set_input_line(3, CLEAR_LINE);
+		m_maincpu->set_input_line(3, CLEAR_LINE);
 }
 
 static ADDRESS_MAP_START( main_map, AS_PROGRAM, 16, maygayv1_state )
@@ -936,8 +940,9 @@ INPUT_PORTS_END
 
 static void duart_irq_handler(device_t *device, int state, UINT8 vector)
 {
-	device->machine().device("maincpu")->execute().set_input_line_and_vector(5, state, vector);
-//  device->machine().device("maincpu")->execute().set_input_line(5, state ? ASSERT_LINE : CLEAR_LINE);
+	maygayv1_state *drvstate = device->machine().driver_data<maygayv1_state>();
+	drvstate->m_maincpu->set_input_line_and_vector(5, state, vector);
+//  drvstate->m_maincpu->set_input_line(5, state ? ASSERT_LINE : CLEAR_LINE);
 };
 
 
@@ -947,7 +952,7 @@ static void duart_tx(device_t *device, int channel, UINT8 data)
 	if (channel == 0)
 	{
 		state->m_d68681_val = data;
-		device->machine().device("soundcpu")->execute().set_input_line(MCS51_RX_LINE, ASSERT_LINE);  // ?
+		state->m_soundcpu->set_input_line(MCS51_RX_LINE, ASSERT_LINE);  // ?
 	}
 
 };
@@ -1011,8 +1016,8 @@ void maygayv1_state::machine_start()
 
 //  duart_68681_init(DUART_CLOCK, duart_irq_handler, duart_tx);
 
-	i8051_set_serial_tx_callback(machine().device("soundcpu"), write8_delegate(FUNC(maygayv1_state::data_from_i8031),this));
-	i8051_set_serial_rx_callback(machine().device("soundcpu"), read8_delegate(FUNC(maygayv1_state::data_to_i8031),this));
+	i8051_set_serial_tx_callback(m_soundcpu, write8_delegate(FUNC(maygayv1_state::data_from_i8031),this));
+	i8051_set_serial_rx_callback(m_soundcpu, read8_delegate(FUNC(maygayv1_state::data_to_i8031),this));
 }
 
 void maygayv1_state::machine_reset()
@@ -1028,7 +1033,7 @@ void maygayv1_state::machine_reset()
 INTERRUPT_GEN_MEMBER(maygayv1_state::vsync_interrupt)
 {
 	if (m_vsync_latch_preset)
-		machine().device("maincpu")->execute().set_input_line(3, ASSERT_LINE);
+		m_maincpu->set_input_line(3, ASSERT_LINE);
 }
 
 

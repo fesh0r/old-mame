@@ -721,11 +721,6 @@ static const ym2203_interface ym2203_config =
 
 MACHINE_START_MEMBER(bublbobl_state,common)
 {
-	m_maincpu = machine().device<cpu_device>("maincpu");
-	m_mcu = machine().device("mcu");
-	m_audiocpu = machine().device<cpu_device>("audiocpu");
-	m_slave = machine().device("slave");
-
 	save_item(NAME(m_sound_nmi_enable));
 	save_item(NAME(m_pending_nmi));
 	save_item(NAME(m_sound_status));
@@ -1557,7 +1552,7 @@ DRIVER_INIT_MEMBER(bublbobl_state,tokiob)
 {
 	DRIVER_INIT_CALL(tokio);
 
-	machine().device("maincpu")->memory().space(AS_PROGRAM).install_read_handler(0xfe00, 0xfe00, read8_delegate(FUNC(bublbobl_state::tokiob_mcu_r),this) );
+	m_maincpu->space(AS_PROGRAM).install_read_handler(0xfe00, 0xfe00, read8_delegate(FUNC(bublbobl_state::tokiob_mcu_r),this) );
 }
 
 DRIVER_INIT_MEMBER(bublbobl_state,dland)

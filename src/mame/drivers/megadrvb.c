@@ -750,13 +750,13 @@ DRIVER_INIT_MEMBER(md_boot_state,aladmdb)
 	 * Game does a check @ 1afc00 with work RAM fff57c that makes it play like the original console version (i.e. 8 energy hits instead of 2)
 	 */
 	#if ENERGY_CONSOLE_MODE
-	UINT16 *rom = (UINT16 *)machine().root_device().memregion("maincpu")->base();
+	UINT16 *rom = (UINT16 *)memregion("maincpu")->base();
 	rom[0x1afc08/2] = 0x6600;
 	#endif
 
 	// 220000 = writes to mcu? 330000 = reads?
-	machine().device("maincpu")->memory().space(AS_PROGRAM).install_write_handler(0x220000, 0x220001, write16_delegate(FUNC(md_boot_state::aladmdb_w),this));
-	machine().device("maincpu")->memory().space(AS_PROGRAM).install_read_handler(0x330000, 0x330001, read16_delegate(FUNC(md_boot_state::aladmdb_r),this));
+	m_maincpu->space(AS_PROGRAM).install_write_handler(0x220000, 0x220001, write16_delegate(FUNC(md_boot_state::aladmdb_w),this));
+	m_maincpu->space(AS_PROGRAM).install_read_handler(0x330000, 0x330001, read16_delegate(FUNC(md_boot_state::aladmdb_r),this));
 
 	DRIVER_INIT_CALL(megadrij);
 }
@@ -765,7 +765,7 @@ DRIVER_INIT_MEMBER(md_boot_state,aladmdb)
 // after this decode look like intentional changes
 DRIVER_INIT_MEMBER(md_boot_state,mk3mdb)
 {
-	UINT8 *rom = machine().root_device().memregion("maincpu")->base();
+	UINT8 *rom = memregion("maincpu")->base();
 
 	for (int x = 0x000001; x < 0x100001; x += 2)
 	{
@@ -804,7 +804,7 @@ DRIVER_INIT_MEMBER(md_boot_state,mk3mdb)
 	rom[0x07] = 0x02;
 	rom[0x06] = 0x10;
 
-	machine().device("maincpu")->memory().space(AS_PROGRAM).install_read_handler(0x770070, 0x770075, read16_delegate(FUNC(md_boot_state::mk3mdb_dsw_r),this));
+	m_maincpu->space(AS_PROGRAM).install_read_handler(0x770070, 0x770075, read16_delegate(FUNC(md_boot_state::mk3mdb_dsw_r),this));
 
 	DRIVER_INIT_CALL(megadriv);
 	// 6 button game, so overwrite 3 button io handlers
@@ -814,13 +814,13 @@ DRIVER_INIT_MEMBER(md_boot_state,mk3mdb)
 
 DRIVER_INIT_MEMBER(md_boot_state,ssf2mdb)
 {
-	machine().device("maincpu")->memory().space(AS_PROGRAM).nop_write(0xA130F0, 0xA130FF); // custom banking is disabled (!)
-	machine().device("maincpu")->memory().space(AS_PROGRAM).install_read_bank(0x400000, 0x5fffff, "bank5");
-	machine().device("maincpu")->memory().space(AS_PROGRAM).unmap_write(0x400000, 0x5fffff);
+	m_maincpu->space(AS_PROGRAM).nop_write(0xA130F0, 0xA130FF); // custom banking is disabled (!)
+	m_maincpu->space(AS_PROGRAM).install_read_bank(0x400000, 0x5fffff, "bank5");
+	m_maincpu->space(AS_PROGRAM).unmap_write(0x400000, 0x5fffff);
 
-	machine().root_device().membank("bank5")->set_base(machine().root_device().memregion( "maincpu" )->base() + 0x400000 );
+	membank("bank5")->set_base(memregion( "maincpu" )->base() + 0x400000 );
 
-	machine().device("maincpu")->memory().space(AS_PROGRAM).install_read_handler(0x770070, 0x770075, read16_delegate(FUNC(md_boot_state::ssf2mdb_dsw_r),this));
+	m_maincpu->space(AS_PROGRAM).install_read_handler(0x770070, 0x770075, read16_delegate(FUNC(md_boot_state::ssf2mdb_dsw_r),this));
 
 	DRIVER_INIT_CALL(megadrij);
 	// 6 button game, so overwrite 3 button io handlers
@@ -830,7 +830,7 @@ DRIVER_INIT_MEMBER(md_boot_state,ssf2mdb)
 
 DRIVER_INIT_MEMBER(md_boot_state,srmdb)
 {
-	UINT8* rom = machine().root_device().memregion("maincpu")->base();
+	UINT8* rom = memregion("maincpu")->base();
 
 	for (int x = 0x00001; x < 0x40000; x += 2)
 	{
@@ -851,18 +851,18 @@ DRIVER_INIT_MEMBER(md_boot_state,srmdb)
 	rom[0x06] = 0xd2;
 	rom[0x07] = 0x00;
 
-	machine().device("maincpu")->memory().space(AS_PROGRAM).install_read_handler(0x770070, 0x770075, read16_delegate(FUNC(md_boot_state::srmdb_dsw_r),this));
+	m_maincpu->space(AS_PROGRAM).install_read_handler(0x770070, 0x770075, read16_delegate(FUNC(md_boot_state::srmdb_dsw_r),this));
 
 	DRIVER_INIT_CALL(megadriv);
 }
 
 DRIVER_INIT_MEMBER(md_boot_state,topshoot)
 {
-	machine().device("maincpu")->memory().space(AS_PROGRAM).install_read_handler(0x200050, 0x200051, read16_delegate(FUNC(md_boot_state::topshoot_200051_r),this));
-	machine().device("maincpu")->memory().space(AS_PROGRAM).install_read_port(0x200042, 0x200043, "IN0");
-	machine().device("maincpu")->memory().space(AS_PROGRAM).install_read_port(0x200044, 0x200045, "IN1");
-	machine().device("maincpu")->memory().space(AS_PROGRAM).install_read_port(0x200046, 0x200047, "IN2");
-	machine().device("maincpu")->memory().space(AS_PROGRAM).install_read_port(0x200048, 0x200049, "IN3");
+	m_maincpu->space(AS_PROGRAM).install_read_handler(0x200050, 0x200051, read16_delegate(FUNC(md_boot_state::topshoot_200051_r),this));
+	m_maincpu->space(AS_PROGRAM).install_read_port(0x200042, 0x200043, "IN0");
+	m_maincpu->space(AS_PROGRAM).install_read_port(0x200044, 0x200045, "IN1");
+	m_maincpu->space(AS_PROGRAM).install_read_port(0x200046, 0x200047, "IN2");
+	m_maincpu->space(AS_PROGRAM).install_read_port(0x200048, 0x200049, "IN3");
 
 	DRIVER_INIT_CALL(megadriv);
 }

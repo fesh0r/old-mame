@@ -192,10 +192,10 @@ static MACHINE_CONFIG_START( electron, electron_state )
 	MCFG_VIDEO_ATTRIBUTES(VIDEO_UPDATE_SCANLINE)
 
 	MCFG_SPEAKER_STANDARD_MONO( "mono" )
-	MCFG_SOUND_ADD( BEEPER_TAG, BEEP, 0 )
+	MCFG_SOUND_ADD( "beeper", BEEP, 0 )
 	MCFG_SOUND_ROUTE( ALL_OUTPUTS, "mono", 1.00 )
 
-	MCFG_CASSETTE_ADD( CASSETTE_TAG, electron_cassette_interface )
+	MCFG_CASSETTE_ADD( "cassette", electron_cassette_interface )
 MACHINE_CONFIG_END
 
 

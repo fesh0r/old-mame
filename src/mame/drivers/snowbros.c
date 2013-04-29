@@ -107,17 +107,17 @@ void snowbros_state::screen_eof_snowbros(screen_device &screen, bool state)
 
 WRITE16_MEMBER(snowbros_state::snowbros_irq4_ack_w)
 {
-	machine().device("maincpu")->execute().set_input_line(4, CLEAR_LINE);
+	m_maincpu->set_input_line(4, CLEAR_LINE);
 }
 
 WRITE16_MEMBER(snowbros_state::snowbros_irq3_ack_w)
 {
-	machine().device("maincpu")->execute().set_input_line(3, CLEAR_LINE);
+	m_maincpu->set_input_line(3, CLEAR_LINE);
 }
 
 WRITE16_MEMBER(snowbros_state::snowbros_irq2_ack_w)
 {
-	machine().device("maincpu")->execute().set_input_line(2, CLEAR_LINE);
+	m_maincpu->set_input_line(2, CLEAR_LINE);
 }
 
 TIMER_DEVICE_CALLBACK_MEMBER(snowbros_state::snowbros_irq)
@@ -136,8 +136,7 @@ TIMER_DEVICE_CALLBACK_MEMBER(snowbros_state::snowbros_irq)
 
 TIMER_DEVICE_CALLBACK_MEMBER(snowbros_state::snowbros3_irq)
 {
-	okim6295_device *adpcm = machine().device<okim6295_device>("oki");
-	int status = adpcm->read_status();
+	int status = m_oki->read_status();
 	int scanline = param;
 
 	if(scanline == 240)
@@ -153,8 +152,8 @@ TIMER_DEVICE_CALLBACK_MEMBER(snowbros_state::snowbros3_irq)
 	{
 		if ((status&0x08)==0x00)
 		{
-			adpcm->write_command(0x80|m_sb3_music);
-			adpcm->write_command(0x00|0x82);
+			m_oki->write_command(0x80|m_sb3_music);
+			m_oki->write_command(0x00|0x82);
 		}
 
 	}
@@ -162,7 +161,7 @@ TIMER_DEVICE_CALLBACK_MEMBER(snowbros_state::snowbros3_irq)
 	{
 		if ((status&0x08)==0x08)
 		{
-			adpcm->write_command(0x40);     /* Stop playing music */
+			m_oki->write_command(0x40);     /* Stop playing music */
 		}
 	}
 
@@ -182,7 +181,7 @@ WRITE16_MEMBER(snowbros_state::snowbros_68000_sound_w)
 	if (ACCESSING_BITS_0_7)
 	{
 		soundlatch_byte_w(space, offset, data & 0xff);
-		machine().device("soundcpu")->execute().set_input_line(INPUT_LINE_NMI, PULSE_LINE);
+		m_soundcpu->set_input_line(INPUT_LINE_NMI, PULSE_LINE);
 	}
 }
 
@@ -328,7 +327,7 @@ WRITE16_MEMBER(snowbros_state::twinadv_68000_sound_w)
 	if (ACCESSING_BITS_0_7)
 	{
 		soundlatch_byte_w(space, offset, data & 0xff);
-		machine().device("soundcpu")->execute().set_input_line(INPUT_LINE_NMI, PULSE_LINE);
+		m_soundcpu->set_input_line(INPUT_LINE_NMI, PULSE_LINE);
 	}
 }
 
@@ -351,12 +350,11 @@ ADDRESS_MAP_END
 
 WRITE8_MEMBER(snowbros_state::twinadv_oki_bank_w)
 {
-	device_t *device = machine().device("oki");
 	int bank = (data &0x02)>>1;
 
 	if (data&0xfd) logerror ("Unused bank bits! %02x\n",data);
 
-	downcast<okim6295_device *>(device)->set_bank_base(bank * 0x40000);
+	m_oki->set_bank_base(bank * 0x40000);
 }
 
 static ADDRESS_MAP_START( twinadv_sound_io_map, AS_IO, 8, snowbros_state )
@@ -471,12 +469,10 @@ void snowbros_state::sb3_play_sound (okim6295_device *oki, int data)
 
 WRITE16_MEMBER(snowbros_state::sb3_sound_w)
 {
-	device_t *device = machine().device("oki");
-	okim6295_device *oki = downcast<okim6295_device *>(device);
 	if (data == 0x00fe)
 	{
 		m_sb3_music_is_playing = 0;
-		oki->write_command(0x78);       /* Stop sounds */
+		m_oki->write_command(0x78);       /* Stop sounds */
 	}
 	else /* the alternating 0x00-0x2f or 0x30-0x5f might be something to do with the channels */
 	{
@@ -484,7 +480,7 @@ WRITE16_MEMBER(snowbros_state::sb3_sound_w)
 
 		if (data <= 0x21)
 		{
-			sb3_play_sound(oki, data);
+			sb3_play_sound(m_oki, data);
 		}
 
 		if (data>=0x22 && data<=0x31)
@@ -494,7 +490,7 @@ WRITE16_MEMBER(snowbros_state::sb3_sound_w)
 
 		if ((data>=0x30) && (data<=0x51))
 		{
-			sb3_play_sound(oki, data-0x30);
+			sb3_play_sound(m_oki, data-0x30);
 		}
 
 		if (data>=0x52 && data<=0x5f)
@@ -1493,7 +1489,7 @@ GFXDECODE_END
 /* handler called by the 3812/2151 emulator when the internal timers cause an IRQ */
 WRITE_LINE_MEMBER(snowbros_state::irqhandler)
 {
-	machine().device("soundcpu")->execute().set_input_line(0, state ? ASSERT_LINE : CLEAR_LINE);
+	m_soundcpu->set_input_line(0, state ? ASSERT_LINE : CLEAR_LINE);
 }
 
 /* SnowBros Sound */
@@ -2258,12 +2254,12 @@ ROM_START( 4in1boot ) /* snow bros, tetris, hyperman 1, pacman 2 */
 	ROM_LOAD( "u78", 0x000000, 0x200000, CRC(6c1fbc9c) SHA1(067f32cae89fd4d57b90be659d2d648e557c11df) )
 ROM_END
 
-ROM_START( snowbros3 )
+ROM_START( snowbro3 )
 	ROM_REGION( 0x40000, "maincpu", 0 ) /* 68000 code */
 	ROM_LOAD16_BYTE( "ur4",  0x00000, 0x20000, CRC(19c13ffd) SHA1(4f9db70354bd410b7bcafa96be4591de8dc33d90) )
 	ROM_LOAD16_BYTE( "ur3",  0x00001, 0x20000, CRC(3f32fa15) SHA1(1402c173c1df142ff9dd7b859689c075813a50e5) )
 
-	/* the sound is driven by a PIC? */
+	/* the sound is driven by an MCU */
 	ROM_REGION( 0x10000, "cpu2", 0 )
 	ROM_LOAD( "sound.mcu", 0x00000, 0x10000 , NO_DUMP )
 
@@ -2278,6 +2274,28 @@ ROM_START( snowbros3 )
 	ROM_LOAD( "us5",     0x00000, 0x20000, CRC(7c6368ef) SHA1(53393c570c605f7582b61c630980041e2ed32e2d) )
 	ROM_CONTINUE(0x80000,0x60000)
 ROM_END
+
+ROM_START( ballboy )
+	ROM_REGION( 0x40000, "maincpu", 0 ) /* 68000 code */
+	ROM_LOAD16_BYTE( "27c010.ur4",  0x00000, 0x20000, CRC(5fb51b99) SHA1(07e12a3bb51fbb3f192b81497460231c7b609290) )
+	ROM_LOAD16_BYTE( "27c010.ur3",  0x00001, 0x20000, CRC(a9c1fdda) SHA1(efb7eaab993f99d89d3b9c159c3b8eb18ace9c2c) )
+
+	/* the sound is driven by an MCU */
+	ROM_REGION( 0x10000, "cpu2", 0 )
+	ROM_LOAD( "sound.mcu", 0x00000, 0x10000 , NO_DUMP )
+
+	ROM_REGION( 0x80000, "gfx1", 0 )
+	ROM_LOAD( "27c040.ua5",        0x000000, 0x80000, CRC(0604e385) SHA1(96acbc65a8db89a7be100f852dc07ba9a0313167) )   /* 16x16 tiles */
+
+	ROM_REGION( 0x400000, "gfx2", 0 ) /* 16x16 BG Tiles */
+	ROM_LOAD( "27c160.un7",        0x000000, 0x200000, CRC(4a79da4c) SHA1(59207d116d39b9ee25c51affe520f5fdff34e536) )
+	ROM_LOAD( "27c160.un8",        0x200000, 0x200000, CRC(bfef8c44) SHA1(86930cfcaedbd111d5b985e87a76d2211d2ce2ec) )
+
+	ROM_REGION( 0x100000, "oki", 0 )    /* OKIM6295 samples */
+	ROM_LOAD( "27c040.us5",     0x00000, 0x20000, CRC(7c6368ef) SHA1(53393c570c605f7582b61c630980041e2ed32e2d) )
+	ROM_CONTINUE(0x80000,0x60000)
+ROM_END
+
 
 /*
 
@@ -2332,7 +2350,7 @@ DRIVER_INIT_MEMBER(snowbros_state,moremorp)
 //      m_hyperpac_ram[0xf000/2 + i] = PROTDATA[i];
 
 	/* explicit check in the code */
-	machine().device("maincpu")->memory().space(AS_PROGRAM).install_read_handler(0x200000, 0x200001, read16_delegate(FUNC(snowbros_state::moremorp_0a_read),this));
+	m_maincpu->space(AS_PROGRAM).install_read_handler(0x200000, 0x200001, read16_delegate(FUNC(snowbros_state::moremorp_0a_read),this));
 }
 
 
@@ -2731,7 +2749,7 @@ DRIVER_INIT_MEMBER(snowbros_state,4in1boot)
 		memcpy(src,buffer,len);
 		auto_free(machine(), buffer);
 	}
-	machine().device("maincpu")->memory().space(AS_PROGRAM).install_read_handler(0x200000, 0x200001, read16_delegate(FUNC(snowbros_state::_4in1_02_read),this));
+	m_maincpu->space(AS_PROGRAM).install_read_handler(0x200000, 0x200001, read16_delegate(FUNC(snowbros_state::_4in1_02_read),this));
 }
 
 DRIVER_INIT_MEMBER(snowbros_state,snowbro3)
@@ -2758,7 +2776,7 @@ READ16_MEMBER(snowbros_state::_3in1_read)
 
 DRIVER_INIT_MEMBER(snowbros_state,3in1semi)
 {
-	machine().device("maincpu")->memory().space(AS_PROGRAM).install_read_handler(0x200000, 0x200001, read16_delegate(FUNC(snowbros_state::_3in1_read),this));
+	m_maincpu->space(AS_PROGRAM).install_read_handler(0x200000, 0x200001, read16_delegate(FUNC(snowbros_state::_3in1_read),this));
 }
 
 READ16_MEMBER(snowbros_state::cookbib3_read)
@@ -2768,7 +2786,7 @@ READ16_MEMBER(snowbros_state::cookbib3_read)
 
 DRIVER_INIT_MEMBER(snowbros_state,cookbib3)
 {
-	machine().device("maincpu")->memory().space(AS_PROGRAM).install_read_handler(0x200000, 0x200001, read16_delegate(FUNC(snowbros_state::cookbib3_read),this));
+	m_maincpu->space(AS_PROGRAM).install_read_handler(0x200000, 0x200001, read16_delegate(FUNC(snowbros_state::cookbib3_read),this));
 }
 
 DRIVER_INIT_MEMBER(snowbros_state,pzlbreak)
@@ -2800,4 +2818,9 @@ GAME( 1997, pzlbreak, 0,        semiprot, pzlbreak, snowbros_state, pzlbreak, RO
 GAME( 1999, moremore, 0,        semiprot, moremore, snowbros_state, moremorp, ROT0, "SemiCom / Exit", "More More", 0 )
 GAME( 1999, moremorp, 0,        semiprot, moremore, snowbros_state, moremorp, ROT0, "SemiCom / Exit", "More More Plus", 0 )
 GAME( 2002, 4in1boot, 0,        _4in1,    4in1boot, snowbros_state, 4in1boot, ROT0, "K1 Soft", "Puzzle King (includes bootleg of Snow Bros.)" , 0)
-GAME( 2002, snowbros3,snowbros, snowbro3, snowbroj, snowbros_state, snowbro3, ROT0, "Syrmex", "Snow Brothers 3 - Magical Adventure", GAME_IMPERFECT_SOUND ) // its basically snowbros code?...
+
+// The Korean games database shows an earlier version of this called Ball Boy with a different title screen to the version of Ball Boy we have
+// http://mamedev.emulab.it/undumped/images/Ballboy.jpg
+// it is possible this 'ball boy' is the original bootleg, with snwobro3 being a hack of that, and the ballboy set we have a further hack of that
+GAME( 2002, snowbro3, 0,        snowbro3, snowbroj, snowbros_state, snowbro3, ROT0, "Syrmex", "Snow Brothers 3 - Magical Adventure", GAME_IMPERFECT_SOUND ) // hacked from SnowBros code but released as an original game
+GAME( 2003, ballboy,  snowbro3, snowbro3, snowbroj, snowbros_state, snowbro3, ROT0, "bootleg", "Ball Boy", GAME_IMPERFECT_SOUND )

@@ -425,9 +425,6 @@ GFXDECODE_END
 
 void cop01_state::machine_start()
 {
-	m_maincpu = machine().device<cpu_device>("maincpu");
-	m_audiocpu = machine().device<cpu_device>("audiocpu");
-
 	save_item(NAME(m_pulse));
 	save_item(NAME(m_timer));
 	save_item(NAME(m_vreg));

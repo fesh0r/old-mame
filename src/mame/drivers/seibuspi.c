@@ -855,7 +855,7 @@ READ32_MEMBER(seibuspi_state::sound_fifo_status_r)
 
 READ32_MEMBER(seibuspi_state::spi_int_r)
 {
-	machine().device("maincpu")->execute().set_input_line(0,CLEAR_LINE );
+	m_maincpu->set_input_line(0,CLEAR_LINE );
 	return 0xffffffff;
 }
 
@@ -866,22 +866,18 @@ READ32_MEMBER(seibuspi_state::spi_unknown_r)
 
 WRITE32_MEMBER(seibuspi_state::eeprom_w)
 {
-	device_t *device = machine().device("eeprom");
-	okim6295_device *oki2 = machine().device<okim6295_device>("oki2");
-
 	// tile banks
 	if( ACCESSING_BITS_16_23 ) {
 		rf2_set_layer_banks(data >> 16);
 
-		eeprom_device *eeprom = downcast<eeprom_device *>(device);
-		eeprom->write_bit((data & 0x800000) ? 1 : 0);
-		eeprom->set_clock_line((data & 0x400000) ? ASSERT_LINE : CLEAR_LINE);
-		eeprom->set_cs_line((data & 0x200000) ? CLEAR_LINE : ASSERT_LINE);
+		m_eeprom->write_bit((data & 0x800000) ? 1 : 0);
+		m_eeprom->set_clock_line((data & 0x400000) ? ASSERT_LINE : CLEAR_LINE);
+		m_eeprom->set_cs_line((data & 0x200000) ? CLEAR_LINE : ASSERT_LINE);
 	}
 
 	// oki banking
-	if (oki2 != NULL)
-		oki2->set_bank_base((data & 0x4000000) ? 0x40000 : 0);
+	if (m_oki2 != NULL)
+		m_oki2->set_bank_base((data & 0x4000000) ? 0x40000 : 0);
 }
 
 WRITE32_MEMBER(seibuspi_state::z80_prg_fifo_w)
@@ -903,9 +899,9 @@ logerror("z80 data = %08x mask = %08x\n",data,mem_mask);
 	if( ACCESSING_BITS_0_7 ) {
 		if( data & 0x1 ) {
 			m_z80_prg_fifo_pos = 0;
-			machine().device("soundcpu")->execute().set_input_line(INPUT_LINE_RESET, CLEAR_LINE );
+			m_soundcpu->set_input_line(INPUT_LINE_RESET, CLEAR_LINE );
 		} else {
-			machine().device("soundcpu")->execute().set_input_line(INPUT_LINE_RESET, ASSERT_LINE );
+			m_soundcpu->set_input_line(INPUT_LINE_RESET, ASSERT_LINE );
 		}
 	}
 }
@@ -1094,18 +1090,16 @@ WRITE8_MEMBER(seibuspi_state::flashrom_write)
 WRITE_LINE_MEMBER(seibuspi_state::irqhandler)
 {
 	if (state)
-		machine().device("soundcpu")->execute().set_input_line_and_vector(0, ASSERT_LINE, 0xd7);    // IRQ is RST10
+		m_soundcpu->set_input_line_and_vector(0, ASSERT_LINE, 0xd7);    // IRQ is RST10
 	else
-		machine().device("soundcpu")->execute().set_input_line(0, CLEAR_LINE);
+		m_soundcpu->set_input_line(0, CLEAR_LINE);
 }
 
 WRITE32_MEMBER(seibuspi_state::sys386f2_eeprom_w)
 {
-	device_t *device = machine().device("eeprom");
-	eeprom_device *eeprom = downcast<eeprom_device *>(device);
-	eeprom->write_bit((data & 0x80) ? 1 : 0);
-	eeprom->set_clock_line((data & 0x40) ? ASSERT_LINE : CLEAR_LINE);
-	eeprom->set_cs_line((data & 0x20) ? CLEAR_LINE : ASSERT_LINE);
+	m_eeprom->write_bit((data & 0x80) ? 1 : 0);
+	m_eeprom->set_clock_line((data & 0x40) ? ASSERT_LINE : CLEAR_LINE);
+	m_eeprom->set_cs_line((data & 0x20) ? CLEAR_LINE : ASSERT_LINE);
 }
 
 static const ymf271_interface ymf271_config =
@@ -1810,12 +1804,12 @@ MACHINE_RESET_MEMBER(seibuspi_state,spi)
 	UINT8 *rombase = memregion("user1")->base();
 	UINT8 flash_data = rombase[0x1ffffc];
 
-	machine().device("soundcpu")->execute().set_input_line(INPUT_LINE_RESET, ASSERT_LINE );
-	machine().device("maincpu")->execute().set_irq_acknowledge_callback(device_irq_acknowledge_delegate(FUNC(seibuspi_state::spi_irq_callback),this));
+	m_soundcpu->set_input_line(INPUT_LINE_RESET, ASSERT_LINE );
+	m_maincpu->set_irq_acknowledge_callback(device_irq_acknowledge_delegate(FUNC(seibuspi_state::spi_irq_callback),this));
 
-	machine().device("maincpu")->memory().space(AS_PROGRAM).install_read_handler(0x00000680, 0x00000683, read32_delegate(FUNC(seibuspi_state::sound_fifo_r),this));
-	machine().device("maincpu")->memory().space(AS_PROGRAM).install_write_handler(0x00000688, 0x0000068b, write32_delegate(FUNC(seibuspi_state::z80_prg_fifo_w),this));
-	machine().device("maincpu")->memory().space(AS_PROGRAM).install_write_handler(0x0000068c, 0x0000068f, write32_delegate(FUNC(seibuspi_state::z80_enable_w),this));
+	m_maincpu->space(AS_PROGRAM).install_read_handler(0x00000680, 0x00000683, read32_delegate(FUNC(seibuspi_state::sound_fifo_r),this));
+	m_maincpu->space(AS_PROGRAM).install_write_handler(0x00000688, 0x0000068b, write32_delegate(FUNC(seibuspi_state::z80_prg_fifo_w),this));
+	m_maincpu->space(AS_PROGRAM).install_write_handler(0x0000068c, 0x0000068f, write32_delegate(FUNC(seibuspi_state::z80_enable_w),this));
 
 	membank("bank4")->set_base(m_z80_rom);
 	membank("bank5")->set_base(m_z80_rom);
@@ -1895,10 +1889,10 @@ MACHINE_RESET_MEMBER(seibuspi_state,sxx2f)
 
 	memcpy(m_z80_rom, rom, 0x40000);
 
-	machine().device("maincpu")->memory().space(AS_PROGRAM).install_write_handler(0x0000068c, 0x0000068f, write32_delegate(FUNC(seibuspi_state::eeprom_w),this));
-	machine().device("maincpu")->memory().space(AS_PROGRAM).install_read_handler(0x00000680, 0x00000683, read32_delegate(FUNC(seibuspi_state::sb_coin_r),this));
+	m_maincpu->space(AS_PROGRAM).install_write_handler(0x0000068c, 0x0000068f, write32_delegate(FUNC(seibuspi_state::eeprom_w),this));
+	m_maincpu->space(AS_PROGRAM).install_read_handler(0x00000680, 0x00000683, read32_delegate(FUNC(seibuspi_state::sb_coin_r),this));
 
-	machine().device("maincpu")->execute().set_irq_acknowledge_callback(device_irq_acknowledge_delegate(FUNC(seibuspi_state::spi_irq_callback),this));
+	m_maincpu->set_irq_acknowledge_callback(device_irq_acknowledge_delegate(FUNC(seibuspi_state::spi_irq_callback),this));
 
 	m_sb_coin_latch = 0;
 }
@@ -2071,28 +2065,28 @@ void seibuspi_state::init_spi()
 
 DRIVER_INIT_MEMBER(seibuspi_state,rdft)
 {
-	machine().device("maincpu")->memory().space(AS_PROGRAM).install_read_handler(0x00298d0, 0x00298d3, read32_delegate(FUNC(seibuspi_state::rdft_speedup_r),this));
+	m_maincpu->space(AS_PROGRAM).install_read_handler(0x00298d0, 0x00298d3, read32_delegate(FUNC(seibuspi_state::rdft_speedup_r),this));
 
 	init_spi();
 }
 
 DRIVER_INIT_MEMBER(seibuspi_state,senkyu)
 {
-	machine().device("maincpu")->memory().space(AS_PROGRAM).install_read_handler(0x0018cb4, 0x0018cb7, read32_delegate(FUNC(seibuspi_state::senkyu_speedup_r),this));
+	m_maincpu->space(AS_PROGRAM).install_read_handler(0x0018cb4, 0x0018cb7, read32_delegate(FUNC(seibuspi_state::senkyu_speedup_r),this));
 
 	init_spi();
 }
 
 DRIVER_INIT_MEMBER(seibuspi_state,senkyua)
 {
-	machine().device("maincpu")->memory().space(AS_PROGRAM).install_read_handler(0x0018c9c, 0x0018c9f, read32_delegate(FUNC(seibuspi_state::senkyua_speedup_r),this));
+	m_maincpu->space(AS_PROGRAM).install_read_handler(0x0018c9c, 0x0018c9f, read32_delegate(FUNC(seibuspi_state::senkyua_speedup_r),this));
 
 	init_spi();
 }
 
 DRIVER_INIT_MEMBER(seibuspi_state,batlball)
 {
-	machine().device("maincpu")->memory().space(AS_PROGRAM).install_read_handler(0x0018db4, 0x0018db7, read32_delegate(FUNC(seibuspi_state::batlball_speedup_r),this));
+	m_maincpu->space(AS_PROGRAM).install_read_handler(0x0018db4, 0x0018db7, read32_delegate(FUNC(seibuspi_state::batlball_speedup_r),this));
 
 	init_spi();
 }
@@ -2100,21 +2094,21 @@ DRIVER_INIT_MEMBER(seibuspi_state,batlball)
 DRIVER_INIT_MEMBER(seibuspi_state,ejanhs)
 {
 //  idle skip doesn't work properly?
-//  machine().device("maincpu")->memory().space(AS_PROGRAM).install_read_handler(0x002d224, 0x002d227, read32_delegate(FUNC(seibuspi_state::ejanhs_speedup_r),this));
+//  m_maincpu->space(AS_PROGRAM).install_read_handler(0x002d224, 0x002d227, read32_delegate(FUNC(seibuspi_state::ejanhs_speedup_r),this));
 
 	init_spi();
 }
 
 DRIVER_INIT_MEMBER(seibuspi_state,viprp1)
 {
-	machine().device("maincpu")->memory().space(AS_PROGRAM).install_read_handler(0x001e2e0, 0x001e2e3, read32_delegate(FUNC(seibuspi_state::viprp1_speedup_r),this));
+	m_maincpu->space(AS_PROGRAM).install_read_handler(0x001e2e0, 0x001e2e3, read32_delegate(FUNC(seibuspi_state::viprp1_speedup_r),this));
 
 	init_spi();
 }
 
 DRIVER_INIT_MEMBER(seibuspi_state,viprp1o)
 {
-	machine().device("maincpu")->memory().space(AS_PROGRAM).install_read_handler(0x001d49c, 0x001d49f, read32_delegate(FUNC(seibuspi_state::viprp1o_speedup_r),this));
+	m_maincpu->space(AS_PROGRAM).install_read_handler(0x001d49c, 0x001d49f, read32_delegate(FUNC(seibuspi_state::viprp1o_speedup_r),this));
 
 	init_spi();
 }
@@ -2126,12 +2120,12 @@ void seibuspi_state::init_rf2_common()
 	m_flash[0] = machine().device<intel_e28f008sa_device>("flash0");
 	m_flash[1] = machine().device<intel_e28f008sa_device>("flash1");
 
-	machine().device("maincpu")->memory().space(AS_PROGRAM).install_read_handler(0x0282AC, 0x0282AF, read32_delegate(FUNC(seibuspi_state::rf2_speedup_r),this));
+	m_maincpu->space(AS_PROGRAM).install_read_handler(0x0282AC, 0x0282AF, read32_delegate(FUNC(seibuspi_state::rf2_speedup_r),this));
 	seibuspi_rise10_text_decrypt(memregion("gfx1")->base());
 	seibuspi_rise10_bg_decrypt(memregion("gfx2")->base(), memregion("gfx2")->bytes());
 	seibuspi_rise10_sprite_decrypt(memregion("gfx3")->base(), 0x600000);
 
-	machine().device("maincpu")->memory().space(AS_PROGRAM).install_write_handler(0x560, 0x563, write32_delegate(FUNC(seibuspi_state::sprite_dma_start_w),this));
+	m_maincpu->space(AS_PROGRAM).install_write_handler(0x560, 0x563, write32_delegate(FUNC(seibuspi_state::sprite_dma_start_w),this));
 }
 
 DRIVER_INIT_MEMBER(seibuspi_state,rdft2)
@@ -2150,12 +2144,12 @@ void seibuspi_state::init_rfjet_common()
 	m_flash[0] = machine().device<intel_e28f008sa_device>("flash0");
 	m_flash[1] = machine().device<intel_e28f008sa_device>("flash1");
 
-	machine().device("maincpu")->memory().space(AS_PROGRAM).install_read_handler(0x002894c, 0x002894f, read32_delegate(FUNC(seibuspi_state::rfjet_speedup_r),this));
+	m_maincpu->space(AS_PROGRAM).install_read_handler(0x002894c, 0x002894f, read32_delegate(FUNC(seibuspi_state::rfjet_speedup_r),this));
 	seibuspi_rise11_text_decrypt(memregion("gfx1")->base());
 	seibuspi_rise11_bg_decrypt(memregion("gfx2")->base(), memregion("gfx2")->bytes());
 	seibuspi_rise11_sprite_decrypt_rfjet(memregion("gfx3")->base(), 0x800000);
 
-	machine().device("maincpu")->memory().space(AS_PROGRAM).install_write_handler(0x560, 0x563, write32_delegate(FUNC(seibuspi_state::sprite_dma_start_w),this));
+	m_maincpu->space(AS_PROGRAM).install_write_handler(0x560, 0x563, write32_delegate(FUNC(seibuspi_state::sprite_dma_start_w),this));
 }
 
 DRIVER_INIT_MEMBER(seibuspi_state,rfjet)
@@ -2177,7 +2171,7 @@ DRIVER_INIT_MEMBER(seibuspi_state,rfjet2k)
 
 MACHINE_RESET_MEMBER(seibuspi_state,seibu386)
 {
-	machine().device("maincpu")->execute().set_irq_acknowledge_callback(device_irq_acknowledge_delegate(FUNC(seibuspi_state::spi_irq_callback),this));
+	m_maincpu->set_irq_acknowledge_callback(device_irq_acknowledge_delegate(FUNC(seibuspi_state::spi_irq_callback),this));
 }
 
 static MACHINE_CONFIG_START( seibu386, seibuspi_state )

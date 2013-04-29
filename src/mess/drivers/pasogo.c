@@ -398,7 +398,7 @@ void pasogo_state::palette_init()
 UINT32 pasogo_state::screen_update_pasogo(screen_device &screen, bitmap_ind16 &bitmap, const rectangle &cliprect)
 {
 	//static int width=-1,height=-1;
-	UINT8 *rom = machine().root_device().memregion("maincpu")->base()+0xb8000;
+	UINT8 *rom = memregion("maincpu")->base()+0xb8000;
 	static const UINT16 c[]={ 3, 0 };
 	int x,y;
 //  plot_box(bitmap, 0, 0, 64/*bitmap.width*/, bitmap.height, 0);
@@ -455,7 +455,7 @@ UINT32 pasogo_state::screen_update_pasogo(screen_device &screen, bitmap_ind16 &b
 
 INTERRUPT_GEN_MEMBER(pasogo_state::pasogo_interrupt)
 {
-//  machine.device("maincpu")->execute().set_input_line(UPD7810_INTFE1, PULSE_LINE);
+//  m_maincpu->set_input_line(UPD7810_INTFE1, PULSE_LINE);
 }
 
 IRQ_CALLBACK_MEMBER(pasogo_state::pasogo_irq_callback)
@@ -465,7 +465,7 @@ IRQ_CALLBACK_MEMBER(pasogo_state::pasogo_irq_callback)
 
 void pasogo_state::machine_reset()
 {
-	machine().device("maincpu")->execute().set_irq_acknowledge_callback(device_irq_acknowledge_delegate(FUNC(pasogo_state::pasogo_irq_callback),this));
+	m_maincpu->set_irq_acknowledge_callback(device_irq_acknowledge_delegate(FUNC(pasogo_state::pasogo_irq_callback),this));
 }
 
 //static const unsigned i86_address_mask = 0x000fffff;
@@ -492,7 +492,7 @@ static const pit8253_config pc_pit8254_config =
 
 WRITE_LINE_MEMBER(pasogo_state::pasogo_pic8259_set_int_line)
 {
-	machine().device("maincpu")->execute().set_input_line(0, state ? HOLD_LINE : CLEAR_LINE);
+	m_maincpu->set_input_line(0, state ? HOLD_LINE : CLEAR_LINE);
 }
 
 static const pic8259_interface pasogo_pic8259_config =
@@ -550,7 +550,7 @@ DRIVER_INIT_MEMBER(pasogo_state,pasogo)
 {
 	vg230_init();
 	memset(&m_ems, 0, sizeof(m_ems));
-	membank( "bank27" )->set_base( machine().root_device().memregion("user1")->base() + 0x00000 );
+	membank( "bank27" )->set_base( memregion("user1")->base() + 0x00000 );
 	membank( "bank28" )->set_base( memregion("maincpu")->base() + 0xb8000/*?*/ );
 }
 

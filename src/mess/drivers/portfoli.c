@@ -762,7 +762,7 @@ void portfolio_state::machine_start()
 	m_maincpu->set_irq_acknowledge_callback(device_irq_acknowledge_delegate(FUNC(portfolio_state::portfolio_int_ack),this));
 
 	/* memory expansions */
-	switch (machine().device<ram_device>(RAM_TAG)->size())
+	switch (m_ram->size())
 	{
 	case 128 * 1024:
 		program.unmap_readwrite(0x1f000, 0x9efff);
@@ -845,7 +845,7 @@ static MACHINE_CONFIG_START( portfolio, portfolio_state )
 
 	/* sound hardware */
 	MCFG_SPEAKER_STANDARD_MONO("mono")
-	MCFG_SOUND_ADD(SPEAKER_TAG, SPEAKER_SOUND, 0)
+	MCFG_SOUND_ADD("speaker", SPEAKER_SOUND, 0)
 	MCFG_SOUND_ROUTE(ALL_OUTPUTS, "mono", 0.25)
 
 	/* devices */

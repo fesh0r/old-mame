@@ -181,8 +181,13 @@ class zr107_state : public driver_device
 {
 public:
 	zr107_state(const machine_config &mconfig, device_type type, const char *tag)
-		: driver_device(mconfig, type, tag) ,
-		m_workram(*this, "workram"){ }
+		: driver_device(mconfig, type, tag),
+		m_workram(*this, "workram"),
+		m_maincpu(*this, "maincpu"),
+		m_audiocpu(*this, "audiocpu"),
+		m_dsp(*this, "dsp"),
+		m_k001604(*this, "k001604"),
+		m_k056832(*this, "k056832") { }
 
 	UINT8 m_led_reg0;
 	UINT8 m_led_reg1;
@@ -210,6 +215,11 @@ public:
 	UINT32 screen_update_jetwave(screen_device &screen, bitmap_rgb32 &bitmap, const rectangle &cliprect);
 	INTERRUPT_GEN_MEMBER(zr107_vblank);
 	TIMER_CALLBACK_MEMBER(irq_off);
+	required_device<cpu_device> m_maincpu;
+	required_device<cpu_device> m_audiocpu;
+	required_device<cpu_device> m_dsp;
+	optional_device<k001604_device> m_k001604;
+	optional_device<k056832_device> m_k056832;
 };
 
 
@@ -225,15 +235,13 @@ VIDEO_START_MEMBER(zr107_state,jetwave)
 
 UINT32 zr107_state::screen_update_jetwave(screen_device &screen, bitmap_rgb32 &bitmap, const rectangle &cliprect)
 {
-	device_t *k001604 = machine().device("k001604");
-
 	bitmap.fill(machine().pens[0], cliprect);
 
-	k001604_draw_back_layer(k001604, bitmap, cliprect);
+	k001604_draw_back_layer(m_k001604, bitmap, cliprect);
 
 	K001005_draw(bitmap, cliprect);
 
-	k001604_draw_front_layer(k001604, bitmap, cliprect);
+	k001604_draw_front_layer(m_k001604, bitmap, cliprect);
 
 	draw_7segment_led(bitmap, 3, 3, m_led_reg0);
 	draw_7segment_led(bitmap, 9, 3, m_led_reg1);
@@ -262,16 +270,14 @@ static void game_tile_callback(running_machine &machine, int layer, int *code, i
 
 VIDEO_START_MEMBER(zr107_state,zr107)
 {
-	device_t *k056832 = machine().device("k056832");
-
-	k056832_set_layer_offs(k056832, 0, -29, -27);
-	k056832_set_layer_offs(k056832, 1, -29, -27);
-	k056832_set_layer_offs(k056832, 2, -29, -27);
-	k056832_set_layer_offs(k056832, 3, -29, -27);
-	k056832_set_layer_offs(k056832, 4, -29, -27);
-	k056832_set_layer_offs(k056832, 5, -29, -27);
-	k056832_set_layer_offs(k056832, 6, -29, -27);
-	k056832_set_layer_offs(k056832, 7, -29, -27);
+	k056832_set_layer_offs(m_k056832, 0, -29, -27);
+	k056832_set_layer_offs(m_k056832, 1, -29, -27);
+	k056832_set_layer_offs(m_k056832, 2, -29, -27);
+	k056832_set_layer_offs(m_k056832, 3, -29, -27);
+	k056832_set_layer_offs(m_k056832, 4, -29, -27);
+	k056832_set_layer_offs(m_k056832, 5, -29, -27);
+	k056832_set_layer_offs(m_k056832, 6, -29, -27);
+	k056832_set_layer_offs(m_k056832, 7, -29, -27);
 
 	K001006_init(machine());
 	K001005_init(machine());
@@ -279,12 +285,11 @@ VIDEO_START_MEMBER(zr107_state,zr107)
 
 UINT32 zr107_state::screen_update_zr107(screen_device &screen, bitmap_rgb32 &bitmap, const rectangle &cliprect)
 {
-	device_t *k056832 = machine().device("k056832");
 	bitmap.fill(machine().pens[0], cliprect);
 
-	k056832_tilemap_draw(k056832, bitmap, cliprect, 1, 0, 0);
+	k056832_tilemap_draw(m_k056832, bitmap, cliprect, 1, 0, 0);
 	K001005_draw(bitmap, cliprect);
-	k056832_tilemap_draw(k056832, bitmap, cliprect, 0, 0, 0);
+	k056832_tilemap_draw(m_k056832, bitmap, cliprect, 0, 0, 0);
 
 	draw_7segment_led(bitmap, 3, 3, m_led_reg0);
 	draw_7segment_led(bitmap, 9, 3, m_led_reg1);
@@ -344,7 +349,7 @@ WRITE8_MEMBER(zr107_state::sysreg_w)
 			    0x01 = EEPDI
 			*/
 			ioport("EEPROMOUT")->write(data & 0x07, 0xff);
-			machine().device("audiocpu")->execute().set_input_line(INPUT_LINE_RESET, (data & 0x10) ? CLEAR_LINE : ASSERT_LINE);
+			m_audiocpu->set_input_line(INPUT_LINE_RESET, (data & 0x10) ? CLEAR_LINE : ASSERT_LINE);
 			mame_printf_debug("System register 0 = %02X\n", data);
 			break;
 
@@ -360,9 +365,9 @@ WRITE8_MEMBER(zr107_state::sysreg_w)
 			    0x01 = ADDSCLK (ADC SCLK)
 			*/
 			if (data & 0x80)    /* CG Board 1 IRQ Ack */
-				machine().device("maincpu")->execute().set_input_line(INPUT_LINE_IRQ1, CLEAR_LINE);
+				m_maincpu->set_input_line(INPUT_LINE_IRQ1, CLEAR_LINE);
 			if (data & 0x40)    /* CG Board 0 IRQ Ack */
-				machine().device("maincpu")->execute().set_input_line(INPUT_LINE_IRQ0, CLEAR_LINE);
+				m_maincpu->set_input_line(INPUT_LINE_IRQ0, CLEAR_LINE);
 			set_cgboard_id((data >> 4) & 3);
 			ioport("OUT4")->write(data, 0xff);
 			mame_printf_debug("System register 1 = %02X\n", data);
@@ -413,12 +418,12 @@ WRITE32_MEMBER(zr107_state::ccu_w)
 void zr107_state::machine_start()
 {
 	/* set conservative DRC options */
-	ppcdrc_set_options(machine().device("maincpu"), PPCDRC_COMPATIBLE_OPTIONS);
+	ppcdrc_set_options(m_maincpu, PPCDRC_COMPATIBLE_OPTIONS);
 
 	m_sound_irq_timer = machine().scheduler().timer_alloc(timer_expired_delegate(FUNC(zr107_state::irq_off),this));
 
 	/* configure fast RAM regions for DRC */
-	ppcdrc_add_fastram(machine().device("maincpu"), 0x00000000, 0x000fffff, FALSE, m_workram);
+	ppcdrc_add_fastram(m_maincpu, 0x00000000, 0x000fffff, FALSE, m_workram);
 }
 
 static ADDRESS_MAP_START( zr107_map, AS_PROGRAM, 32, zr107_state )
@@ -477,8 +482,8 @@ ADDRESS_MAP_END
 static ADDRESS_MAP_START( sound_memmap, AS_PROGRAM, 16, zr107_state )
 	AM_RANGE(0x000000, 0x01ffff) AM_ROM
 	AM_RANGE(0x100000, 0x103fff) AM_RAM     /* Work RAM */
-	AM_RANGE(0x200000, 0x2004ff) AM_DEVREADWRITE8("konami1", k054539_device, read, write, 0xff00)
-	AM_RANGE(0x200000, 0x2004ff) AM_DEVREADWRITE8("konami2", k054539_device, read, write, 0x00ff)
+	AM_RANGE(0x200000, 0x2004ff) AM_DEVREADWRITE8("k054539_1", k054539_device, read, write, 0xff00)
+	AM_RANGE(0x200000, 0x2004ff) AM_DEVREADWRITE8("k054539_2", k054539_device, read, write, 0x00ff)
 	AM_RANGE(0x400000, 0x40000f) AM_DEVWRITE_LEGACY("k056800", k056800_sound_w)
 	AM_RANGE(0x400010, 0x40001f) AM_DEVREAD_LEGACY("k056800", k056800_sound_r)
 	AM_RANGE(0x580000, 0x580001) AM_WRITENOP
@@ -685,7 +690,7 @@ static const adc083x_interface zr107_adc_interface = {
 
 TIMER_CALLBACK_MEMBER(zr107_state::irq_off)
 {
-	machine().device("audiocpu")->execute().set_input_line(param, CLEAR_LINE);
+	m_audiocpu->set_input_line(param, CLEAR_LINE);
 }
 
 static void sound_irq_callback( running_machine &machine, int irq )
@@ -693,7 +698,7 @@ static void sound_irq_callback( running_machine &machine, int irq )
 	zr107_state *state = machine.driver_data<zr107_state>();
 	int line = (irq == 0) ? INPUT_LINE_IRQ1 : INPUT_LINE_IRQ2;
 
-	machine.device("audiocpu")->execute().set_input_line(line, ASSERT_LINE);
+	state->m_audiocpu->set_input_line(line, ASSERT_LINE);
 	machine.scheduler().timer_set(attotime::from_usec(5), timer_expired_delegate(FUNC(zr107_state::irq_off),state), line);
 }
 
@@ -731,7 +736,7 @@ INTERRUPT_GEN_MEMBER(zr107_state::zr107_vblank)
 
 void zr107_state::machine_reset()
 {
-	machine().device("dsp")->execute().set_input_line(INPUT_LINE_RESET, ASSERT_LINE);
+	m_dsp->set_input_line(INPUT_LINE_RESET, ASSERT_LINE);
 }
 
 static MACHINE_CONFIG_START( zr107, zr107_state )
@@ -771,11 +776,11 @@ static MACHINE_CONFIG_START( zr107, zr107_state )
 
 	MCFG_SPEAKER_STANDARD_STEREO("lspeaker", "rspeaker")
 
-	MCFG_K054539_ADD("konami1", 48000, k054539_config)
+	MCFG_K054539_ADD("k054539_1", 48000, k054539_config)
 	MCFG_SOUND_ROUTE(0, "lspeaker", 0.75)
 	MCFG_SOUND_ROUTE(1, "rspeaker", 0.75)
 
-	MCFG_K054539_ADD("konami2", 48000, k054539_config)
+	MCFG_K054539_ADD("k054539_2", 48000, k054539_config)
 	MCFG_SOUND_ROUTE(0, "lspeaker", 0.75)
 	MCFG_SOUND_ROUTE(1, "rspeaker", 0.75)
 
@@ -828,11 +833,11 @@ static MACHINE_CONFIG_START( jetwave, zr107_state )
 
 	MCFG_SPEAKER_STANDARD_STEREO("lspeaker", "rspeaker")
 
-	MCFG_K054539_ADD("konami1", 48000, k054539_config)
+	MCFG_K054539_ADD("k054539_1", 48000, k054539_config)
 	MCFG_SOUND_ROUTE(0, "lspeaker", 0.75)
 	MCFG_SOUND_ROUTE(1, "rspeaker", 0.75)
 
-	MCFG_K054539_ADD("konami2", 48000, k054539_config)
+	MCFG_K054539_ADD("k054539_2", 48000, k054539_config)
 	MCFG_SOUND_CONFIG(k054539_config)
 	MCFG_SOUND_ROUTE(0, "lspeaker", 0.75)
 	MCFG_SOUND_ROUTE(1, "rspeaker", 0.75)

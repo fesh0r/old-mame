@@ -76,7 +76,7 @@ WRITE16_MEMBER(fantland_state::fantland_nmi_enable_16_w)
 WRITE8_MEMBER(fantland_state::fantland_soundlatch_w)
 {
 	soundlatch_byte_w(space, 0, data);
-	m_audio_cpu->execute().set_input_line(INPUT_LINE_NMI, PULSE_LINE);
+	m_audiocpu->set_input_line(INPUT_LINE_NMI, PULSE_LINE);
 }
 
 WRITE16_MEMBER(fantland_state::fantland_soundlatch_16_w)
@@ -389,10 +389,10 @@ void fantland_state::borntofi_adpcm_int( device_t *device, int voice )
 	}
 }
 
-WRITE_LINE_MEMBER(fantland_state::borntofi_adpcm_int_0) { borntofi_adpcm_int(machine().device("msm1"), 0); }
-WRITE_LINE_MEMBER(fantland_state::borntofi_adpcm_int_1) { borntofi_adpcm_int(machine().device("msm2"), 1); }
-WRITE_LINE_MEMBER(fantland_state::borntofi_adpcm_int_2) { borntofi_adpcm_int(machine().device("msm3"), 2); }
-WRITE_LINE_MEMBER(fantland_state::borntofi_adpcm_int_3) { borntofi_adpcm_int(machine().device("msm4"), 3); }
+WRITE_LINE_MEMBER(fantland_state::borntofi_adpcm_int_0) { borntofi_adpcm_int(m_msm1, 0); }
+WRITE_LINE_MEMBER(fantland_state::borntofi_adpcm_int_1) { borntofi_adpcm_int(m_msm2, 1); }
+WRITE_LINE_MEMBER(fantland_state::borntofi_adpcm_int_2) { borntofi_adpcm_int(m_msm3, 2); }
+WRITE_LINE_MEMBER(fantland_state::borntofi_adpcm_int_3) { borntofi_adpcm_int(m_msm4, 3); }
 
 
 static ADDRESS_MAP_START( borntofi_sound_map, AS_PROGRAM, 8, fantland_state )
@@ -815,8 +815,6 @@ GFXDECODE_END
 
 MACHINE_START_MEMBER(fantland_state,fantland)
 {
-	m_audio_cpu = machine().device("audiocpu");
-
 	save_item(NAME(m_nmi_enable));
 }
 
@@ -880,7 +878,7 @@ MACHINE_CONFIG_END
 
 WRITE_LINE_MEMBER(fantland_state::galaxygn_sound_irq)
 {
-	m_audio_cpu->execute().set_input_line_and_vector(0, state ? ASSERT_LINE : CLEAR_LINE, 0x80/4);
+	m_audiocpu->set_input_line_and_vector(0, state ? ASSERT_LINE : CLEAR_LINE, 0x80/4);
 }
 
 static MACHINE_CONFIG_START( galaxygn, fantland_state )
@@ -945,11 +943,6 @@ MACHINE_START_MEMBER(fantland_state,borntofi)
 {
 	MACHINE_START_CALL_MEMBER(fantland);
 
-	m_msm1 = machine().device("msm1");
-	m_msm2 = machine().device("msm2");
-	m_msm3 = machine().device("msm3");
-	m_msm4 = machine().device("msm4");
-
 	save_item(NAME(m_old_x));
 	save_item(NAME(m_old_y));
 	save_item(NAME(m_old_f));
@@ -982,10 +975,10 @@ MACHINE_RESET_MEMBER(fantland_state,borntofi)
 		m_adpcm_nibble[i] = 0;
 	}
 
-	borntofi_adpcm_stop(machine().device("msm1"), 0);
-	borntofi_adpcm_stop(machine().device("msm2"), 1);
-	borntofi_adpcm_stop(machine().device("msm3"), 2);
-	borntofi_adpcm_stop(machine().device("msm4"), 3);
+	borntofi_adpcm_stop(m_msm1, 0);
+	borntofi_adpcm_stop(m_msm2, 1);
+	borntofi_adpcm_stop(m_msm3, 2);
+	borntofi_adpcm_stop(m_msm4, 3);
 }
 
 static MACHINE_CONFIG_START( borntofi, fantland_state )

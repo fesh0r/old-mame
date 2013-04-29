@@ -134,7 +134,7 @@ UINT32 mpu4dealem_state::screen_update_dealem(screen_device &screen, bitmap_ind1
 
 WRITE_LINE_MEMBER(mpu4dealem_state::dealem_vsync_changed)
 {
-	machine().device("maincpu")->execute().set_input_line(INPUT_LINE_NMI, state);
+	m_maincpu->set_input_line(INPUT_LINE_NMI, state);
 }
 
 
@@ -166,7 +166,7 @@ static ADDRESS_MAP_START( dealem_memmap, AS_PROGRAM, 8, mpu4dealem_state )
 	AM_RANGE(0x0800, 0x0800) AM_DEVWRITE("crtc", mc6845_device, address_w)
 	AM_RANGE(0x0801, 0x0801) AM_DEVREADWRITE("crtc", mc6845_device, register_r, register_w)
 
-/*  AM_RANGE(0x08e0, 0x08e7) AM_READWRITE_LEGACY(68681_duart_r,68681_duart_w) */ //Runs hoppers
+/*  AM_RANGE(0x08e0, 0x08e7) AM_READWRITE(68681_duart_r,68681_duart_w) */ //Runs hoppers
 
 	AM_RANGE(0x0900, 0x0907) AM_DEVREADWRITE("ptm_ic2", ptm6840_device, read, write)/* PTM6840 IC2 */
 

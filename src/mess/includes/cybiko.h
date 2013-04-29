@@ -49,7 +49,7 @@ public:
 		: driver_device(mconfig, type, tag),
 	m_maincpu(*this, "maincpu"),
 	m_crtc(*this, "hd66421"),
-	m_speaker(*this, SPEAKER_TAG),
+	m_speaker(*this, "speaker"),
 	m_rtc(*this, "rtc"),
 	m_ram(*this, RAM_TAG),
 	m_flash1(*this, "flash1")
@@ -90,10 +90,10 @@ public:
 	virtual void machine_reset();
 	virtual void palette_init();
 	void machine_stop_cybiko();
+	DECLARE_QUICKLOAD_LOAD_MEMBER( cybiko );
+	DECLARE_QUICKLOAD_LOAD_MEMBER( cybikoxt );
 };
 
 NVRAM_HANDLER( cybikoxt );
-QUICKLOAD_LOAD( cybiko );
-QUICKLOAD_LOAD( cybikoxt );
 
 #endif /* CYBIKO_H_ */

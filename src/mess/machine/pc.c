@@ -18,7 +18,6 @@
 #include "machine/ins8250.h"
 #include "machine/mc146818.h"
 #include "machine/pic8259.h"
-#include "machine/pc_turbo.h"
 
 #include "video/pc_vga.h"
 #include "video/pc_cga.h"
@@ -31,8 +30,6 @@
 #include "machine/pc_fdc.h"
 #include "machine/upd765.h"
 #include "includes/amstr_pc.h"
-#include "includes/europc.h"
-#include "machine/pcshare.h"
 #include "imagedev/cassette.h"
 #include "sound/speaker.h"
 
@@ -95,7 +92,7 @@ READ8_MEMBER(pc_state::ec1841_memboard_r)
 WRITE8_MEMBER(pc_state::ec1841_memboard_w)
 {
 	pc_state *st = space.machine().driver_data<pc_state>();
-	address_space &program = space.machine().device("maincpu")->memory().space(AS_PROGRAM);
+	address_space &program = st->m_maincpu->space(AS_PROGRAM);
 	running_machine &machine = space.machine();
 	UINT8 current;
 
@@ -342,28 +339,23 @@ const struct pic8259_interface pcjr_pic8259_config =
  *      PC Speaker related
  *
  *************************************************************************/
-UINT8 pc_speaker_get_spk(running_machine &machine)
+UINT8 pc_state::pc_speaker_get_spk()
 {
-	pc_state *st = machine.driver_data<pc_state>();
-	return st->m_pc_spkrdata & st->m_pc_input;
+	return m_pc_spkrdata & m_pc_input;
 }
 
 
-void pc_speaker_set_spkrdata(running_machine &machine, UINT8 data)
+void pc_state::pc_speaker_set_spkrdata(UINT8 data)
 {
-	device_t *speaker = machine.device(SPEAKER_TAG);
-	pc_state *st = machine.driver_data<pc_state>();
-	st->m_pc_spkrdata = data ? 1 : 0;
-	speaker_level_w( speaker, pc_speaker_get_spk(machine) );
+	m_pc_spkrdata = data ? 1 : 0;
+	speaker_level_w( m_speaker, pc_speaker_get_spk() );
 }
 
 
-void pc_speaker_set_input(running_machine &machine, UINT8 data)
+void pc_state::pc_speaker_set_input(UINT8 data)
 {
-	device_t *speaker = machine.device(SPEAKER_TAG);
-	pc_state *st = machine.driver_data<pc_state>();
-	st->m_pc_input = data ? 1 : 0;
-	speaker_level_w( speaker, pc_speaker_get_spk(machine) );
+	m_pc_input = data ? 1 : 0;
+	speaker_level_w( m_speaker, pc_speaker_get_spk() );
 }
 
 
@@ -387,7 +379,7 @@ WRITE_LINE_MEMBER(pc_state::ibm5150_pit8253_out1_changed)
 
 WRITE_LINE_MEMBER(pc_state::ibm5150_pit8253_out2_changed)
 {
-	pc_speaker_set_input( machine(), state );
+	pc_speaker_set_input( state );
 }
 
 
@@ -627,9 +619,10 @@ TIMER_CALLBACK_MEMBER(pc_state::pcjr_keyb_signal_callback)
 
 static void pcjr_set_keyb_int(running_machine &machine, int state)
 {
+	pc_state *drvstate = machine.driver_data<pc_state>();
 	if ( state )
 	{
-		UINT8   data = pc_keyb_read();
+		UINT8   data = drvstate->pc_keyb_read();
 		UINT8   parity = 0;
 		int     i;
 
@@ -664,7 +657,7 @@ static void pcjr_set_keyb_int(running_machine &machine, int state)
 }
 
 
-static void pcjr_keyb_init(running_machine &machine)
+void pc_state::pcjr_keyb_init()
 {
 	pcjr_keyb.transferring = 0;
 	pcjr_keyb.latch = 0;
@@ -781,7 +774,7 @@ READ8_MEMBER(pc_state::ibm5160_ppi_porta_r)
 		 *      01 - color 40x25
 		 * 6-7  The number of floppy disk drives
 		 */
-		data = machine().root_device().ioport("DSW0")->read();
+		data = ioport("DSW0")->read();
 	}
 	else
 	{
@@ -804,13 +797,13 @@ READ8_MEMBER(pc_state::ibm5160_ppi_portc_r)
 	if (m_ppi_portc_switch_high)
 	{
 		/* read hi nibble of S2 */
-		data = (data & 0xf0) | ((machine().root_device().ioport("DSW0")->read() >> 4) & 0x0f);
+		data = (data & 0xf0) | ((ioport("DSW0")->read() >> 4) & 0x0f);
 		PIO_LOG(1,"PIO_C_r (hi)",("$%02x\n", data));
 	}
 	else
 	{
 		/* read lo nibble of S2 */
-		data = (data & 0xf0) | (machine().root_device().ioport("DSW0")->read() & 0x0f);
+		data = (data & 0xf0) | (ioport("DSW0")->read() & 0x0f);
 		PIO_LOG(1,"PIO_C_r (lo)",("$%02x\n", data));
 	}
 
@@ -832,7 +825,7 @@ WRITE8_MEMBER(pc_state::ibm5160_ppi_portb_w)
 	m_ppi_keyboard_clear = data & 0x80;
 	m_ppi_keyb_clock = data & 0x40;
 	pit8253_gate2_w(m_pit8253, BIT(data, 0));
-	pc_speaker_set_spkrdata( machine(), data & 0x02 );
+	pc_speaker_set_spkrdata( data & 0x02 );
 
 	m_ppi_clock_signal = ( m_ppi_keyb_clock ) ? 1 : 0;
 	m_pc_kbdc->clock_write_from_mb(m_ppi_clock_signal);
@@ -874,7 +867,7 @@ READ8_MEMBER(pc_state::pc_ppi_porta_r)
 		 *      01 - color 40x25
 		 * 6-7  The number of floppy disk drives
 		 */
-		data = machine().root_device().ioport("DSW0")->read();
+		data = ioport("DSW0")->read();
 	}
 	else
 	{
@@ -893,7 +886,7 @@ WRITE8_MEMBER(pc_state::pc_ppi_portb_w)
 	m_ppi_keyboard_clear = data & 0x80;
 	m_ppi_keyb_clock = data & 0x40;
 	pit8253_gate2_w(m_pit8253, BIT(data, 0));
-	pc_speaker_set_spkrdata( machine(), data & 0x02 );
+	pc_speaker_set_spkrdata( data & 0x02 );
 	pc_keyb_set_clock( m_ppi_keyb_clock );
 
 	if ( m_ppi_keyboard_clear )
@@ -926,18 +919,18 @@ TIMER_CALLBACK_MEMBER(pc_state::mc1502_keyb_signal_callback)
 {
 	UINT8 key = 0;
 
-	key |= machine().root_device().ioport("Y1")->read();
-	key |= machine().root_device().ioport("Y2")->read();
-	key |= machine().root_device().ioport("Y3")->read();
-	key |= machine().root_device().ioport("Y4")->read();
-	key |= machine().root_device().ioport("Y5")->read();
-	key |= machine().root_device().ioport("Y6")->read();
-	key |= machine().root_device().ioport("Y7")->read();
-	key |= machine().root_device().ioport("Y8")->read();
-	key |= machine().root_device().ioport("Y9")->read();
-	key |= machine().root_device().ioport("Y10")->read();
-	key |= machine().root_device().ioport("Y11")->read();
-	key |= machine().root_device().ioport("Y12")->read();
+	key |= ioport("Y1")->read();
+	key |= ioport("Y2")->read();
+	key |= ioport("Y3")->read();
+	key |= ioport("Y4")->read();
+	key |= ioport("Y5")->read();
+	key |= ioport("Y6")->read();
+	key |= ioport("Y7")->read();
+	key |= ioport("Y8")->read();
+	key |= ioport("Y9")->read();
+	key |= ioport("Y10")->read();
+	key |= ioport("Y11")->read();
+	key |= ioport("Y12")->read();
 //  DBG_LOG(1,"mc1502_k_s_c",("= %02X (%d) %s\n", key, mc1502_keyb.pulsing,
 //      (key || mc1502_keyb.pulsing) ? " will IRQ" : ""));
 
@@ -978,14 +971,14 @@ WRITE8_MEMBER(pc_state::mc1502_ppi_portb_w)
 //  DBG_LOG(2,"mc1502_ppi_portb_w",("( %02X )\n", data));
 	m_ppi_portb = data;
 	pit8253_gate2_w(machine().device("pit8253"), BIT(data, 0));
-	pc_speaker_set_spkrdata( machine(), data & 0x02 );
+	pc_speaker_set_spkrdata( data & 0x02 );
 }
 
 READ8_MEMBER(pc_state::mc1502_ppi_portc_r)
 {
 	int timer2_output = pit8253_get_output( machine().device("pit8253"), 2 );
 	int data = 0xff;
-	double tap_val = (machine().device<cassette_image_device>(CASSETTE_TAG)->input());
+	double tap_val = m_cassette->input();
 
 //  0x80 -- serial RxD
 //  0x40 -- CASS IN, also loops back T2OUT (gated by CASWR)
@@ -1004,18 +997,18 @@ READ8_MEMBER(pc_state::mc1502_kppi_porta_r)
 {
 	UINT8 key = 0;
 
-	if (mc1502_keyb.mask & 0x0001) { key |= machine().root_device().ioport("Y1")->read(); }
-	if (mc1502_keyb.mask & 0x0002) { key |= machine().root_device().ioport("Y2")->read(); }
-	if (mc1502_keyb.mask & 0x0004) { key |= machine().root_device().ioport("Y3")->read(); }
-	if (mc1502_keyb.mask & 0x0008) { key |= machine().root_device().ioport("Y4")->read(); }
-	if (mc1502_keyb.mask & 0x0010) { key |= machine().root_device().ioport("Y5")->read(); }
-	if (mc1502_keyb.mask & 0x0020) { key |= machine().root_device().ioport("Y6")->read(); }
-	if (mc1502_keyb.mask & 0x0040) { key |= machine().root_device().ioport("Y7")->read(); }
-	if (mc1502_keyb.mask & 0x0080) { key |= machine().root_device().ioport("Y8")->read(); }
-	if (mc1502_keyb.mask & 0x0100) { key |= machine().root_device().ioport("Y9")->read(); }
-	if (mc1502_keyb.mask & 0x0200) { key |= machine().root_device().ioport("Y10")->read(); }
-	if (mc1502_keyb.mask & 0x0400) { key |= machine().root_device().ioport("Y11")->read(); }
-	if (mc1502_keyb.mask & 0x0800) { key |= machine().root_device().ioport("Y12")->read(); }
+	if (mc1502_keyb.mask & 0x0001) { key |= ioport("Y1")->read(); }
+	if (mc1502_keyb.mask & 0x0002) { key |= ioport("Y2")->read(); }
+	if (mc1502_keyb.mask & 0x0004) { key |= ioport("Y3")->read(); }
+	if (mc1502_keyb.mask & 0x0008) { key |= ioport("Y4")->read(); }
+	if (mc1502_keyb.mask & 0x0010) { key |= ioport("Y5")->read(); }
+	if (mc1502_keyb.mask & 0x0020) { key |= ioport("Y6")->read(); }
+	if (mc1502_keyb.mask & 0x0040) { key |= ioport("Y7")->read(); }
+	if (mc1502_keyb.mask & 0x0080) { key |= ioport("Y8")->read(); }
+	if (mc1502_keyb.mask & 0x0100) { key |= ioport("Y9")->read(); }
+	if (mc1502_keyb.mask & 0x0200) { key |= ioport("Y10")->read(); }
+	if (mc1502_keyb.mask & 0x0400) { key |= ioport("Y11")->read(); }
+	if (mc1502_keyb.mask & 0x0800) { key |= ioport("Y12")->read(); }
 	key ^= 0xff;
 //  DBG_LOG(2,"mc1502_kppi_porta_r",("= %02X\n", key));
 	return key;
@@ -1046,9 +1039,9 @@ WRITE8_MEMBER(pc_state::pcjr_ppi_portb_w)
 	m_ppi_portb = data;
 	m_ppi_portc_switch_high = data & 0x08;
 	pit8253_gate2_w(machine().device("pit8253"), BIT(data, 0));
-	pc_speaker_set_spkrdata( machine(), data & 0x02 );
+	pc_speaker_set_spkrdata( data & 0x02 );
 
-	machine().device<cassette_image_device>(CASSETTE_TAG)->change_state(( data & 0x08 ) ? CASSETTE_MOTOR_DISABLED : CASSETTE_MOTOR_ENABLED,CASSETTE_MASK_MOTOR);
+	m_cassette->change_state(( data & 0x08 ) ? CASSETTE_MOTOR_DISABLED : CASSETTE_MOTOR_ENABLED,CASSETTE_MASK_MOTOR);
 }
 
 
@@ -1083,12 +1076,12 @@ READ8_MEMBER(pc_state::pcjr_ppi_portc_r)
 
 	data&=~0x80;
 	data &= ~0x04;      /* floppy drive installed */
-	if ( machine().device<ram_device>(RAM_TAG)->size() > 64 * 1024 )    /* more than 64KB ram installed */
+	if ( m_ram->size() > 64 * 1024 )    /* more than 64KB ram installed */
 		data &= ~0x08;
 	data = ( data & ~0x01 ) | ( pcjr_keyb.latch ? 0x01: 0x00 );
 	if ( ! ( m_ppi_portb & 0x08 ) )
 	{
-		double tap_val = (machine().device<cassette_image_device>(CASSETTE_TAG)->input());
+		double tap_val = m_cassette->input();
 
 		if ( tap_val < 0 )
 		{
@@ -1180,7 +1173,7 @@ static void pc_set_irq_line(running_machine &machine,int irq, int state)
 	}
 }
 
-static void pc_set_keyb_int(running_machine &machine, int state)
+void pc_set_keyb_int(running_machine &machine, int state)
 {
 	pc_set_irq_line( machine, 1, state );
 }
@@ -1336,132 +1329,137 @@ READ8_MEMBER(pc_state::mc1502_wd17xx_motor_r)
  * Initialization code
  *
  **********************************************************/
+/*
+   keyboard seams to permanently sent data clocked by the mainboard
+   clock line low for longer means "resync", keyboard sends 0xaa as answer
+   will become automatically 0x00 after a while
+*/
 
-void mess_init_pc_common(running_machine &machine, UINT32 flags, void (*set_keyb_int_func)(running_machine &, int), void (*set_hdc_int_func)(running_machine &,int,int))
+UINT8 pc_state::pc_keyb_read()
 {
-	pc_state *state = machine.driver_data<pc_state>();
+	return m_pc_keyb_data;
+}
+
+TIMER_CALLBACK_MEMBER( pc_state::pc_keyb_timer )
+{
+	if ( m_pc_keyb_on ) {
+		pc_keyboard();
+	} else {
+		/* Clock has been low for more than 5 msec, start diagnostic test */
+		at_keyboard_reset(machine());
+		m_pc_keyb_self_test = 1;
+	}
+}
+
+void pc_state::pc_keyb_set_clock(int on)
+{
+	on = on ? 1 : 0;
+
+	if (m_pc_keyb_on != on)
+	{
+		if (!on)
+			m_pc_keyb_timer->adjust(attotime::from_msec(5));
+		else {
+			if ( m_pc_keyb_self_test ) {
+				/* The self test of the keyboard takes some time. 2 msec seems to work. */
+				/* This still needs to verified against a real keyboard. */
+				m_pc_keyb_timer->adjust(attotime::from_msec( 2 ));
+			} else {
+				m_pc_keyb_timer->reset();
+				m_pc_keyb_self_test = 0;
+			}
+		}
+
+		m_pc_keyb_on = on;
+	}
+}
+
+void pc_state::pc_keyb_clear(void)
+{
+	m_pc_keyb_data = 0;
+	if ( m_pc_keyb_int_cb ) {
+		m_pc_keyb_int_cb(machine(),0);
+	}
+}
+
+void pc_state::pc_keyboard(void)
+{
+	int data;
+
+	at_keyboard_polling();
+
+	if (m_pc_keyb_on)
+	{
+		if ( (data=at_keyboard_read())!=-1) {
+			m_pc_keyb_data = data;
+			//DBG_LOG(1,"KB_scancode",("$%02x\n", m_pc_keyb_data));
+			if ( m_pc_keyb_int_cb ) {
+				m_pc_keyb_int_cb(machine(),1);
+			}
+			m_pc_keyb_self_test = 0;
+		}
+	}
+}
+void pc_state::init_pc_common(void (*set_keyb_int_func)(running_machine &, int))
+{
+	at_keyboard_init(machine(), AT_KEYBOARD_TYPE_PC);
+	at_keyboard_set_scan_code_set(1);
+	m_pc_keyb_int_cb = set_keyb_int_func;
+	m_pc_keyb_timer = machine().scheduler().timer_alloc(timer_expired_delegate(FUNC(pc_state::pc_keyb_timer),this));
+}
+
+void pc_state::mess_init_pc_common(void (*set_keyb_int_func)(running_machine &, int))
+{
 	if ( set_keyb_int_func != NULL )
-		init_pc_common(machine, flags, set_keyb_int_func);
+		init_pc_common(set_keyb_int_func);
 
 	/* MESS managed RAM */
-	if ( machine.device<ram_device>(RAM_TAG)->pointer() )
-		state->membank( "bank10" )->set_base( machine.device<ram_device>(RAM_TAG)->pointer() );
+	if ( m_ram->pointer() )
+		membank( "bank10" )->set_base( m_ram->pointer() );
 }
 
 
 DRIVER_INIT_MEMBER(pc_state,ibm5150)
 {
-	mess_init_pc_common(machine(), PCCOMMON_KEYBOARD_PC, NULL, pc_set_irq_line);
-	pc_rtc_init(machine());
+	mess_init_pc_common(NULL);
+	pc_rtc_init();
 }
 
 
 DRIVER_INIT_MEMBER(pc_state,pccga)
 {
-	mess_init_pc_common(machine(), PCCOMMON_KEYBOARD_PC, NULL, pc_set_irq_line);
-	pc_rtc_init(machine());
+	mess_init_pc_common(NULL);
+	pc_rtc_init();
 }
 
 
 DRIVER_INIT_MEMBER(pc_state,bondwell)
 {
-	mess_init_pc_common(machine(), PCCOMMON_KEYBOARD_PC, NULL, pc_set_irq_line);
-	pc_turbo_setup(machine(), machine().firstcpu, "DSW2", 0x02, 4.77/12, 1);
+	mess_init_pc_common(NULL);
+	pc_turbo_setup(4.77/12, 1);
 }
 
 DRIVER_INIT_MEMBER(pc_state,pcmda)
 {
-	mess_init_pc_common(machine(), PCCOMMON_KEYBOARD_PC, pc_set_keyb_int, pc_set_irq_line);
-}
-
-DRIVER_INIT_MEMBER(pc_state,europc)
-{
-	UINT8 *gfx = &machine().root_device().memregion("gfx1")->base()[0x8000];
-	UINT8 *rom = &machine().root_device().memregion("maincpu")->base()[0];
-	int i;
-
-	/* just a plain bit pattern for graphics data generation */
-	for (i = 0; i < 256; i++)
-		gfx[i] = i;
-
-	/*
-	  fix century rom bios bug !
-	  if year <79 month (and not CENTURY) is loaded with 0x20
-	*/
-	if (rom[0xff93e]==0xb6){ // mov dh,
-		UINT8 a;
-		rom[0xff93e]=0xb5; // mov ch,
-		for (i=0xf8000, a=0; i<0xfffff; i++ ) a+=rom[i];
-		rom[0xfffff]=256-a;
-	}
-
-	mess_init_pc_common(machine(), PCCOMMON_KEYBOARD_PC, pc_set_keyb_int, pc_set_irq_line);
-
-	europc_rtc_init(machine());
-//  europc_rtc_set_time(machine());
+	mess_init_pc_common(pc_set_keyb_int);
 }
 
 DRIVER_INIT_MEMBER(pc_state,t1000hx)
 {
-	mess_init_pc_common(machine(), PCCOMMON_KEYBOARD_PC, pc_set_keyb_int, pc_set_irq_line);
-	pc_turbo_setup(machine(), machine().firstcpu, "DSW2", 0x02, 4.77/12, 1);
+	mess_init_pc_common(pc_set_keyb_int);
+	pc_turbo_setup(4.77/12, 1);
 }
-
-DRIVER_INIT_MEMBER(pc_state,pc200)
-{
-	UINT8 *gfx = &machine().root_device().memregion("gfx1")->base()[0x8000];
-	int i;
-
-	/* just a plain bit pattern for graphics data generation */
-	for (i = 0; i < 256; i++)
-		gfx[i] = i;
-
-	mess_init_pc_common(machine(), PCCOMMON_KEYBOARD_PC, pc_set_keyb_int, pc_set_irq_line);
-}
-
-DRIVER_INIT_MEMBER(pc_state,ppc512)
-{
-	UINT8 *gfx = &machine().root_device().memregion("gfx1")->base()[0x8000];
-	int i;
-
-	/* just a plain bit pattern for graphics data generation */
-	for (i = 0; i < 256; i++)
-		gfx[i] = i;
-
-	mess_init_pc_common(machine(), PCCOMMON_KEYBOARD_PC, pc_set_keyb_int, pc_set_irq_line);
-}
-DRIVER_INIT_MEMBER(pc_state,pc1512)
-{
-	UINT8 *gfx = &machine().root_device().memregion("gfx1")->base()[0x8000];
-	int i;
-
-	/* just a plain bit pattern for graphics data generation */
-	for (i = 0; i < 256; i++)
-		gfx[i] = i;
-
-	mess_init_pc_common(machine(), PCCOMMON_KEYBOARD_PC, pc_set_keyb_int, pc_set_irq_line);
-}
-
 
 DRIVER_INIT_MEMBER(pc_state,pcjr)
 {
-	mess_init_pc_common(machine(), PCCOMMON_KEYBOARD_PC, pcjr_set_keyb_int, pc_set_irq_line);
+	mess_init_pc_common(pcjr_set_keyb_int);
 }
 
 DRIVER_INIT_MEMBER(pc_state,mc1502)
 {
-	mess_init_pc_common(machine(), 0, NULL, pc_set_irq_line);
+	mess_init_pc_common(NULL);
 }
 
-DRIVER_INIT_MEMBER(pc_state,pc1640)
-{
-	address_space &io_space = machine().firstcpu->space( AS_IO );
-
-	io_space.install_legacy_read_handler(0x278, 0x27b, FUNC(pc1640_port278_r), 0xffff);
-	io_space.install_legacy_read_handler(0x4278, 0x427b, FUNC(pc1640_port4278_r), 0xffff);
-
-	mess_init_pc_common(machine(), PCCOMMON_KEYBOARD_PC, pc_set_keyb_int, pc_set_irq_line);
-}
 
 IRQ_CALLBACK_MEMBER(pc_state::pc_irq_callback)
 {
@@ -1473,7 +1471,6 @@ MACHINE_START_MEMBER(pc_state,pc)
 {
 	m_pic8259 = machine().device("pic8259");
 	m_pit8253 = machine().device("pit8253");
-	m_maincpu = machine().device<cpu_device>("maincpu" );
 	m_maincpu->set_irq_acknowledge_callback(device_irq_acknowledge_delegate(FUNC(pc_state::pc_irq_callback),this));
 
 	pc_fdc_interface *fdc = machine().device<pc_fdc_interface>("fdc");
@@ -1484,8 +1481,6 @@ MACHINE_START_MEMBER(pc_state,pc)
 
 MACHINE_RESET_MEMBER(pc_state,pc)
 {
-	device_t *speaker = machine().device(SPEAKER_TAG);
-
 	m_u73_q2 = 0;
 	m_out1 = 0;
 	m_pc_spkrdata = 0;
@@ -1503,13 +1498,12 @@ MACHINE_RESET_MEMBER(pc_state,pc)
 	m_ppi_shift_register = 0;
 	m_ppi_shift_enable = 0;
 
-	speaker_level_w( speaker, 0 );
+	speaker_level_w( m_speaker, 0 );
 }
 
 
 MACHINE_START_MEMBER(pc_state,mc1502)
 {
-	m_maincpu = machine().device<cpu_device>("maincpu" );
 	m_maincpu->set_irq_acknowledge_callback(device_irq_acknowledge_delegate(FUNC(pc_state::pc_irq_callback),this));
 
 	m_pic8259 = machine().device("pic8259");
@@ -1537,7 +1531,6 @@ MACHINE_START_MEMBER(pc_state,pcjr)
 	pc_int_delay_timer = machine().scheduler().timer_alloc(timer_expired_delegate(FUNC(pc_state::pcjr_delayed_pic8259_irq),this));
 	m_pcjr_watchdog = machine().scheduler().timer_alloc(timer_expired_delegate(FUNC(pc_state::pcjr_fdc_watchdog),this));
 	pcjr_keyb.keyb_signal_timer = machine().scheduler().timer_alloc(timer_expired_delegate(FUNC(pc_state::pcjr_keyb_signal_callback),this));
-	m_maincpu = machine().device<cpu_device>("maincpu");
 	m_maincpu->set_irq_acknowledge_callback(device_irq_acknowledge_delegate(FUNC(pc_state::pc_irq_callback),this));
 
 	machine().device<upd765a_device>("upd765")->set_ready_line_connected(false);
@@ -1549,7 +1542,6 @@ MACHINE_START_MEMBER(pc_state,pcjr)
 
 MACHINE_RESET_MEMBER(pc_state,pcjr)
 {
-	device_t *speaker = machine().device(SPEAKER_TAG);
 	m_u73_q2 = 0;
 	m_out1 = 0;
 	m_pc_spkrdata = 0;
@@ -1567,14 +1559,14 @@ MACHINE_RESET_MEMBER(pc_state,pcjr)
 	m_ppi_shift_register = 0;
 	m_ppi_shift_enable = 0;
 	m_pcjr_dor = 0;
-	speaker_level_w( speaker, 0 );
+	speaker_level_w( m_speaker, 0 );
 
 	m_pcjx_1ff_count = 0;
 	m_pcjx_1ff_val = 0;
 	m_pcjx_1ff_bankval = 0;
 	memset(m_pcjx_1ff_bank, 0, sizeof(m_pcjx_1ff_bank));
 
-	pcjr_keyb_init(machine());
+	pcjr_keyb_init();
 }
 
 
@@ -1591,7 +1583,7 @@ DEVICE_IMAGE_LOAD_MEMBER( pc_state, pcjr_cartridge )
 
 		size = image.get_software_region_length("rom" );
 
-		memcpy( image.device().machine().root_device().memregion("maincpu")->base() + address, cart, size );
+		memcpy( memregion("maincpu")->base() + address, cart, size );
 	}
 	else
 	{
@@ -1620,7 +1612,7 @@ DEVICE_IMAGE_LOAD_MEMBER( pc_state, pcjr_cartridge )
 		}
 
 		/* Read the cartridge contents */
-		if ( ( image_size - 0x200 ) != image.fread(image.device().machine().root_device().memregion("maincpu")->base() + address, image_size - 0x200 ) )
+		if ( ( image_size - 0x200 ) != image.fread(memregion("maincpu")->base() + address, image_size - 0x200 ) )
 		{
 			image.seterror(IMAGE_ERROR_UNSUPPORTED, "Unable to read cartridge contents" );
 			return IMAGE_INIT_FAIL;
@@ -1750,11 +1742,10 @@ TIMER_CALLBACK_MEMBER(pc_state::pc_rtc_timer)
 	}
 }
 
-void pc_rtc_init(running_machine &machine)
+void pc_state::pc_rtc_init()
 {
-	pc_state *state = machine.driver_data<pc_state>();
 	memset(&pc_rtc,0,sizeof(pc_rtc));
-	pc_rtc.timer = machine.scheduler().timer_alloc(timer_expired_delegate(FUNC(pc_state::pc_rtc_timer),state));
+	pc_rtc.timer = machine().scheduler().timer_alloc(timer_expired_delegate(FUNC(pc_state::pc_rtc_timer),this));
 	pc_rtc.timer->adjust(attotime::zero, 0, attotime(1,0));
 }
 
@@ -1826,4 +1817,26 @@ READ8_MEMBER(pc_state::pc_EXP_r)
 	}
 	//DBG_LOG(1,"EXP_unit_r",("%.2x $%02x\n", offset, data));
 	return data;
+}
+
+
+TIMER_CALLBACK_MEMBER(pc_state::pc_turbo_callback)
+{
+	int val;
+
+	val = ioport("DSW2")->read() & 0x02;
+
+	if (val != m_turbo_cur_val)
+	{
+		m_turbo_cur_val = val;
+		m_maincpu->set_clock_scale(val ? m_turbo_on_speed : m_turbo_off_speed);
+	}
+}
+
+void pc_state::pc_turbo_setup(double off_speed, double on_speed)
+{
+	m_turbo_cur_val = -1;
+	m_turbo_off_speed = off_speed;
+	m_turbo_on_speed = on_speed;
+	machine().scheduler().timer_pulse(attotime::from_msec(100), timer_expired_delegate(FUNC(pc_state::pc_turbo_callback),this));
 }

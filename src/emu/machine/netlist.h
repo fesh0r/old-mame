@@ -99,7 +99,7 @@ ATTR_COLD void NETLIST_NAME(_name)(netlist_setup_t &netlist) \
 
 #define NETLIST_MEMREGION(_name)                                                    \
 		netlist.parse((char *)downcast<netlist_t &>(netlist.netlist()).machine().root_device().memregion(_name)->base());
-#if defined(__GNUC__) && (__GNUC__ >= 3)
+#if defined(__GNUC__) && (__GNUC__ > 4) || ((__GNUC__ == 4) && (__GNUC_MINOR__ >= 3))
 #if !defined(__ppc__) && !defined (__PPC__) && !defined(__ppc64__) && !defined(__PPC64__)
 #define ATTR_ALIGN __attribute__ ((aligned(128)))
 #else
@@ -1174,8 +1174,9 @@ public:
 		: object_finder_base<_NETClass>(base, tag), m_output(output) { }
 
 	// finder
-	virtual bool findit()
+	virtual bool findit(bool isvalidation = false)
 	{
+		if (isvalidation) return true;
 		device_t *device = this->m_base.subdevice(this->m_tag);
 		m_netlist = dynamic_cast<netlist_mame_device *>(device);
 		if (device != NULL && m_netlist == NULL)

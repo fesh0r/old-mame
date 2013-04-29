@@ -112,7 +112,8 @@ public:
 		m_tmapscroll2(*this, "tmapscroll2"),
 		m_spriteram(*this, "spriteram"),
 		m_gdfs_st0020(*this, "st0020_spr"),
-		m_maincpu(*this, "maincpu") { }
+		m_maincpu(*this, "maincpu"),
+		m_eeprom(*this, "eeprom") { }
 
 	virtual void machine_start()
 	{
@@ -130,6 +131,7 @@ public:
 	optional_shared_ptr<UINT32> m_spriteram;
 	optional_device<st0020_device> m_gdfs_st0020;
 	required_device<cpu_device> m_maincpu;
+	required_device<eeprom_device> m_eeprom;
 	DECLARE_WRITE32_MEMBER(darkhors_tmapram_w);
 	DECLARE_WRITE32_MEMBER(darkhors_tmapram2_w);
 	DECLARE_WRITE32_MEMBER(paletteram32_xBBBBBGGGGGRRRRR_dword_w);
@@ -286,21 +288,19 @@ UINT32 darkhors_state::screen_update_darkhors(screen_device &screen, bitmap_ind1
 
 WRITE32_MEMBER(darkhors_state::darkhors_eeprom_w)
 {
-	device_t *device = machine().device("eeprom");
 	if (data & ~0xff000000)
 		logerror("%s: Unknown EEPROM bit written %08X\n",machine().describe_context(),data);
 
 	if ( ACCESSING_BITS_24_31 )
 	{
 		// latch the bit
-		eeprom_device *eeprom = downcast<eeprom_device *>(device);
-		eeprom->write_bit(data & 0x04000000);
+		m_eeprom->write_bit(data & 0x04000000);
 
 		// reset line asserted: reset.
-		eeprom->set_cs_line((data & 0x01000000) ? CLEAR_LINE : ASSERT_LINE );
+		m_eeprom->set_cs_line((data & 0x01000000) ? CLEAR_LINE : ASSERT_LINE );
 
 		// clock line asserted: write latch or select next bit to read
-		eeprom->set_clock_line((data & 0x02000000) ? ASSERT_LINE : CLEAR_LINE );
+		m_eeprom->set_clock_line((data & 0x02000000) ? ASSERT_LINE : CLEAR_LINE );
 	}
 }
 
@@ -766,12 +766,12 @@ ADDRESS_MAP_END
 static ADDRESS_MAP_START( st0016_io, AS_IO, 8, darkhors_state )
 	ADDRESS_MAP_GLOBAL_MASK(0xff)
 	AM_RANGE(0x00, 0xbf) AM_READ(st0016_vregs_r) AM_WRITE(st0016_vregs_w)
-	//AM_RANGE(0xc0, 0xc0) AM_READ_LEGACY(cmd1_r)
-	//AM_RANGE(0xc1, 0xc1) AM_READ_LEGACY(cmd2_r)
-	//AM_RANGE(0xc2, 0xc2) AM_READ_LEGACY(cmd_stat8_r)
+	//AM_RANGE(0xc0, 0xc0) AM_READ(cmd1_r)
+	//AM_RANGE(0xc1, 0xc1) AM_READ(cmd2_r)
+	//AM_RANGE(0xc2, 0xc2) AM_READ(cmd_stat8_r)
 	AM_RANGE(0xe1, 0xe1) AM_WRITE(st0016_rom_bank_w)
 	//AM_RANGE(0xe7, 0xe7) AM_WRITE(st0016_rom_bank_w)
-	//AM_RANGE(0xf0, 0xf0) AM_READ_LEGACY(st0016_dma_r)
+	//AM_RANGE(0xf0, 0xf0) AM_READ(st0016_dma_r)
 ADDRESS_MAP_END
 
 static const st0016_interface st0016_config =

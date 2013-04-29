@@ -299,9 +299,9 @@ static MACHINE_CONFIG_START( nascom1, nascom1_state )
 	MCFG_Z80PIO_ADD( "z80pio", XTAL_16MHz/8, nascom1_z80pio_intf )
 
 	/* devices */
-	MCFG_SNAPSHOT_ADD("snapshot", nascom1, "nas", 0.5)
+	MCFG_SNAPSHOT_ADD("snapshot", nascom1_state, nascom1, "nas", 0.5)
 
-	MCFG_CASSETTE_ADD( CASSETTE_TAG, default_cassette_interface )
+	MCFG_CASSETTE_ADD( "cassette", default_cassette_interface )
 
 	/* internal ram */
 	MCFG_RAM_ADD(RAM_TAG)

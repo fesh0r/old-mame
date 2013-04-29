@@ -36,7 +36,7 @@ WRITE8_MEMBER(battlera_state::battlera_sound_w)
 	if (offset == 0)
 	{
 		soundlatch_byte_w(space,0,data);
-		machine().device("audiocpu")->execute().set_input_line(0, HOLD_LINE);
+		m_audiocpu->set_input_line(0, HOLD_LINE);
 	}
 }
 
@@ -85,12 +85,12 @@ ADDRESS_MAP_END
 
 WRITE_LINE_MEMBER(battlera_state::battlera_adpcm_int)
 {
-	msm5205_data_w(machine().device("msm"),m_msm5205next >> 4);
+	msm5205_data_w(m_msm,m_msm5205next >> 4);
 	m_msm5205next <<= 4;
 
 	m_toggle = 1 - m_toggle;
 	if (m_toggle)
-		machine().device("audiocpu")->execute().set_input_line(1, HOLD_LINE);
+		m_audiocpu->set_input_line(1, HOLD_LINE);
 }
 
 WRITE8_MEMBER(battlera_state::battlera_adpcm_data_w)
@@ -100,8 +100,7 @@ WRITE8_MEMBER(battlera_state::battlera_adpcm_data_w)
 
 WRITE8_MEMBER(battlera_state::battlera_adpcm_reset_w)
 {
-	device_t *device = machine().device("msm");
-	msm5205_reset_w(device, 0);
+	msm5205_reset_w(m_msm, 0);
 }
 
 static ADDRESS_MAP_START( sound_map, AS_PROGRAM, 8, battlera_state )

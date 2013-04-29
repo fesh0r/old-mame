@@ -73,36 +73,34 @@ class spectrum_state : public driver_device
 {
 public:
 	spectrum_state(const machine_config &mconfig, device_type type, const char *tag)
-		: driver_device(mconfig, type, tag)
-		, m_video_ram(*this, "video_ram")
-		, m_maincpu(*this, "maincpu")
-		, m_cassette(*this, CASSETTE_TAG)
-		, m_ram(*this, RAM_TAG)
-		, m_speaker(*this, SPEAKER_TAG)
-		, m_upd765(*this, "upd765")
-		, m_upd765_0(*this, "upd765:0")
-		, m_upd765_1(*this, "upd765:1")
-		, m_io_line0(*this, "LINE0")
-		, m_io_line1(*this, "LINE1")
-		, m_io_line2(*this, "LINE2")
-		, m_io_line3(*this, "LINE3")
-		, m_io_line4(*this, "LINE4")
-		, m_io_line5(*this, "LINE5")
-		, m_io_line6(*this, "LINE6")
-		, m_io_line7(*this, "LINE7")
-		, m_io_nmi(*this, "NMI")
-		, m_io_config(*this, "CONFIG")
-		, m_io_joy_intf(*this, "JOY_INTF")
-		, m_io_kempston(*this, "KEMPSTON")
-		, m_io_fuller(*this, "FULLER")
-		, m_io_mikrogen(*this, "MIKROGEN")
-		, m_io_plus0(*this, "PLUS0")
-		, m_io_plus1(*this, "PLUS1")
-		, m_io_plus2(*this, "PLUS2")
-		, m_io_plus3(*this, "PLUS3")
-		, m_io_plus4(*this, "PLUS4")
-
-	{ }
+		: driver_device(mconfig, type, tag),
+		m_video_ram(*this, "video_ram"),
+		m_maincpu(*this, "maincpu"),
+		m_cassette(*this, "cassette"),
+		m_ram(*this, RAM_TAG),
+		m_speaker(*this, "speaker"),
+		m_upd765(*this, "upd765"),
+		m_upd765_0(*this, "upd765:0"),
+		m_upd765_1(*this, "upd765:1"),
+		m_io_line0(*this, "LINE0"),
+		m_io_line1(*this, "LINE1"),
+		m_io_line2(*this, "LINE2"),
+		m_io_line3(*this, "LINE3"),
+		m_io_line4(*this, "LINE4"),
+		m_io_line5(*this, "LINE5"),
+		m_io_line6(*this, "LINE6"),
+		m_io_line7(*this, "LINE7"),
+		m_io_nmi(*this, "NMI"),
+		m_io_config(*this, "CONFIG"),
+		m_io_joy_intf(*this, "JOY_INTF"),
+		m_io_kempston(*this, "KEMPSTON"),
+		m_io_fuller(*this, "FULLER"),
+		m_io_mikrogen(*this, "MIKROGEN"),
+		m_io_plus0(*this, "PLUS0"),
+		m_io_plus1(*this, "PLUS1"),
+		m_io_plus2(*this, "PLUS2"),
+		m_io_plus3(*this, "PLUS3"),
+		m_io_plus4(*this, "PLUS4") { }
 
 	int m_port_fe_data;
 	int m_port_7ffd_data;
@@ -182,6 +180,10 @@ public:
 	void spectrum_plus3_update_memory();
 	void ts2068_update_memory();
 
+	DECLARE_SNAPSHOT_LOAD_MEMBER( spectrum );
+	DECLARE_QUICKLOAD_LOAD_MEMBER( spectrum );
+
+
 protected:
 	required_device<cpu_device> m_maincpu;
 	required_device<cassette_image_device> m_cassette;
@@ -214,6 +216,11 @@ protected:
 	optional_ioport m_io_plus4;
 
 	void spectrum_UpdateBorderBitmap();
+	inline unsigned char get_display_color (unsigned char color, int invert);
+	inline void spectrum_plot_pixel(bitmap_ind16 &bitmap, int x, int y, UINT32 color);
+	void ts2068_hires_scanline(bitmap_ind16 &bitmap, int y, int borderlines);
+	void ts2068_64col_scanline(bitmap_ind16 &bitmap, int y, int borderlines, unsigned short inkcolor);
+	void ts2068_lores_scanline(bitmap_ind16 &bitmap, int y, int borderlines, int screen);
 };
 
 

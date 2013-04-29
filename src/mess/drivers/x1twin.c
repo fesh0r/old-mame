@@ -111,9 +111,9 @@ static MC6845_INTERFACE( mc6845_intf )
 
 INPUT_CHANGED_MEMBER(x1twin_state::ipl_reset)
 {
-	//address_space &space = machine().device("x1_cpu")->memory().space(AS_PROGRAM);
+	//address_space &space = m_maincpu->space(AS_PROGRAM);
 
-	m_x1_cpu->set_input_line(INPUT_LINE_RESET, newval ? CLEAR_LINE : ASSERT_LINE);
+	m_maincpu->set_input_line(INPUT_LINE_RESET, newval ? CLEAR_LINE : ASSERT_LINE);
 
 	m_ram_bank = 0x00;
 	if(m_is_turbo) { m_ex_bank = 0x10; }
@@ -123,7 +123,7 @@ INPUT_CHANGED_MEMBER(x1twin_state::ipl_reset)
 /* Apparently most games doesn't support this (not even the Konami ones!), one that does is...177 :o */
 INPUT_CHANGED_MEMBER(x1twin_state::nmi_reset)
 {
-	m_x1_cpu->set_input_line(INPUT_LINE_NMI, newval ? CLEAR_LINE : ASSERT_LINE);
+	m_maincpu->set_input_line(INPUT_LINE_NMI, newval ? CLEAR_LINE : ASSERT_LINE);
 }
 
 INPUT_PORTS_START( x1twin )
@@ -584,11 +584,11 @@ static MACHINE_CONFIG_START( x1twin, x1twin_state )
 	MCFG_SOUND_ROUTE(0, "x1_r", 0.25)
 	MCFG_SOUND_ROUTE(1, "x1_l",  0.5)
 	MCFG_SOUND_ROUTE(2, "x1_r", 0.5)
-	MCFG_SOUND_WAVE_ADD(WAVE_TAG, CASSETTE_TAG)
+	MCFG_SOUND_WAVE_ADD(WAVE_TAG, "cassette")
 	MCFG_SOUND_ROUTE(ALL_OUTPUTS, "x1_l", 0.25)
 	MCFG_SOUND_ROUTE(ALL_OUTPUTS, "x1_r", 0.10)
 
-	MCFG_CASSETTE_ADD(CASSETTE_TAG,x1_cassette_interface)
+	MCFG_CASSETTE_ADD("cassette",x1_cassette_interface)
 	MCFG_SOFTWARE_LIST_ADD("cass_list","x1_cass")
 
 	MCFG_LEGACY_FLOPPY_4_DRIVES_ADD(x1_floppy_interface)

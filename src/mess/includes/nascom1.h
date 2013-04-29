@@ -9,6 +9,8 @@
 
 #include "imagedev/snapquik.h"
 #include "machine/wd17xx.h"
+#include "imagedev/cassette.h"
+#include "machine/ram.h"
 
 struct nascom1_portstat_t
 {
@@ -28,8 +30,11 @@ class nascom1_state : public driver_device
 {
 public:
 	nascom1_state(const machine_config &mconfig, device_type type, const char *tag)
-		: driver_device(mconfig, type, tag) ,
-		m_videoram(*this, "videoram"){ }
+		: driver_device(mconfig, type, tag),
+		m_videoram(*this, "videoram"),
+		m_maincpu(*this, "maincpu"),
+		m_cassette(*this, "cassette"),
+		m_ram(*this, RAM_TAG) { }
 
 	required_shared_ptr<UINT8> m_videoram;
 	device_t *m_hd6402;
@@ -56,12 +61,14 @@ public:
 	DECLARE_WRITE8_MEMBER(nascom1_hd6402_so);
 	DECLARE_DEVICE_IMAGE_LOAD_MEMBER( nascom1_cassette );
 	DECLARE_DEVICE_IMAGE_UNLOAD_MEMBER( nascom1_cassette );
+	required_device<cpu_device> m_maincpu;
+	required_device<cassette_image_device> m_cassette;
+	required_device<ram_device> m_ram;
+	DECLARE_SNAPSHOT_LOAD_MEMBER( nascom1 );
 };
 
 
 /*----------- defined in machine/nascom1.c -----------*/
 
 extern const wd17xx_interface nascom2_wd17xx_interface;
-
-SNAPSHOT_LOAD( nascom1 );
 #endif /* NASCOM1_H_ */

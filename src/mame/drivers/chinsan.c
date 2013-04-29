@@ -51,8 +51,10 @@ class chinsan_state : public driver_device
 {
 public:
 	chinsan_state(const machine_config &mconfig, device_type type, const char *tag)
-		: driver_device(mconfig, type, tag) ,
-		m_video(*this, "video"){ }
+		: driver_device(mconfig, type, tag),
+		m_video(*this, "video"),
+		m_maincpu(*this, "maincpu"),
+		m_adpcm(*this, "adpcm") { }
 
 	/* memory pointers */
 	required_shared_ptr<UINT8> m_video;
@@ -77,6 +79,8 @@ public:
 	virtual void palette_init();
 	UINT32 screen_update_chinsan(screen_device &screen, bitmap_ind16 &bitmap, const rectangle &cliprect);
 	DECLARE_WRITE_LINE_MEMBER(chin_adpcm_int);
+	required_device<cpu_device> m_maincpu;
+	required_device<msm5205_device> m_adpcm;
 };
 
 
@@ -234,10 +238,9 @@ READ8_MEMBER(chinsan_state::chinsan_input_port_1_r)
 
 WRITE8_MEMBER(chinsan_state::chin_adpcm_w)
 {
-	device_t *device = machine().device("adpcm");
 	m_adpcm_pos = (data & 0xff) * 0x100;
 	m_adpcm_idle = 0;
-	msm5205_reset_w(device, 0);
+	msm5205_reset_w(m_adpcm, 0);
 }
 
 /*************************************
@@ -541,15 +544,15 @@ WRITE_LINE_MEMBER(chinsan_state::chin_adpcm_int)
 	if (m_adpcm_pos >= 0x10000 || m_adpcm_idle)
 	{
 		//m_adpcm_idle = 1;
-		msm5205_reset_w(machine().device("adpcm"), 1);
+		msm5205_reset_w(m_adpcm, 1);
 		m_trigger = 0;
 	}
 	else
 	{
-		UINT8 *ROM = machine().root_device().memregion("adpcm")->base();
+		UINT8 *ROM = memregion("adpcm")->base();
 
 		m_adpcm_data = ((m_trigger ? (ROM[m_adpcm_pos] & 0x0f) : (ROM[m_adpcm_pos] & 0xf0) >> 4));
-		msm5205_data_w(machine().device("adpcm"), m_adpcm_data & 0xf);
+		msm5205_data_w(m_adpcm, m_adpcm_data & 0xf);
 		m_trigger ^= 1;
 		if(m_trigger == 0)
 		{

@@ -187,8 +187,8 @@ DRIVER_INIT_MEMBER(aquarius_state,aquarius)
 	{
 		address_space &space = m_maincpu->space(AS_PROGRAM);
 
-		space.install_readwrite_bank(0x4000, 0x4000 + machine().device<ram_device>(RAM_TAG)->size() - 0x1000 - 1, "bank1");
-		membank("bank1")->set_base(machine().device<ram_device>(RAM_TAG)->pointer());
+		space.install_readwrite_bank(0x4000, 0x4000 + m_ram->size() - 0x1000 - 1, "bank1");
+		membank("bank1")->set_base(m_ram->pointer());
 	}
 }
 
@@ -207,7 +207,7 @@ static ADDRESS_MAP_START( aquarius_mem, AS_PROGRAM, 8, aquarius_state )
 ADDRESS_MAP_END
 
 static ADDRESS_MAP_START( aquarius_io, AS_IO, 8, aquarius_state )
-//  AM_RANGE(0x7e, 0x7f) AM_MIRROR(0xff00) AM_READWRITE_LEGACY(modem_r, modem_w)
+//  AM_RANGE(0x7e, 0x7f) AM_MIRROR(0xff00) AM_READWRITE(modem_r, modem_w)
 	AM_RANGE(0xf6, 0xf6) AM_MIRROR(0xff00) AM_DEVREADWRITE_LEGACY("ay8910", ay8910_r, ay8910_data_w)
 	AM_RANGE(0xf7, 0xf7) AM_MIRROR(0xff00) AM_DEVWRITE_LEGACY("ay8910", ay8910_address_w)
 	AM_RANGE(0xfc, 0xfc) AM_MIRROR(0xff00) AM_READWRITE(cassette_r, cassette_w)
@@ -377,7 +377,7 @@ static MACHINE_CONFIG_START( aquarius, aquarius_state )
 
 	/* sound hardware */
 	MCFG_SPEAKER_STANDARD_MONO("mono")
-	MCFG_SOUND_ADD(SPEAKER_TAG, SPEAKER_SOUND, 0)
+	MCFG_SOUND_ADD("speaker", SPEAKER_SOUND, 0)
 	MCFG_SOUND_ROUTE(ALL_OUTPUTS, "mono", 0.25)
 
 	MCFG_SOUND_ADD("ay8910", AY8910, XTAL_3_579545MHz/2) // ??? AY-3-8914
@@ -385,7 +385,7 @@ static MACHINE_CONFIG_START( aquarius, aquarius_state )
 	MCFG_SOUND_ROUTE(ALL_OUTPUTS, "mono", 0.25)
 
 	/* cassette */
-	MCFG_CASSETTE_ADD( CASSETTE_TAG, aquarius_cassette_interface )
+	MCFG_CASSETTE_ADD( "cassette", aquarius_cassette_interface )
 
 	/* cartridge */
 	MCFG_CARTSLOT_ADD("cart")

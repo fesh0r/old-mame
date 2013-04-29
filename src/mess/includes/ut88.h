@@ -19,26 +19,26 @@ class ut88_state : public driver_device
 {
 public:
 	ut88_state(const machine_config &mconfig, device_type type, const char *tag)
-		: driver_device(mconfig, type, tag)
-		, m_cass(*this, CASSETTE_TAG)
-		, m_ppi(*this, "ppi8255")
-		, m_dac(*this, "dac")
-		, m_p_videoram(*this, "p_videoram")
-		, m_region_maincpu(*this, "maincpu")
-		, m_region_proms(*this, "proms")
-		, m_bank1(*this, "bank1")
-		, m_io_line0(*this, "LINE0")
-		, m_io_line1(*this, "LINE1")
-		, m_io_line2(*this, "LINE2")
-		, m_io_line3(*this, "LINE3")
-		, m_io_line4(*this, "LINE4")
-		, m_io_line5(*this, "LINE5")
-		, m_io_line6(*this, "LINE6")
-		, m_io_line7(*this, "LINE7")
-		, m_io_line8(*this, "LINE8")
-	{ }
+		: driver_device(mconfig, type, tag),
+		m_cassette(*this, "cassette"),
+		m_ppi(*this, "ppi8255"),
+		m_dac(*this, "dac"),
+		m_p_videoram(*this, "p_videoram"),
+		m_region_maincpu(*this, "maincpu"),
+		m_region_proms(*this, "proms"),
+		m_bank1(*this, "bank1"),
+		m_io_line0(*this, "LINE0"),
+		m_io_line1(*this, "LINE1"),
+		m_io_line2(*this, "LINE2"),
+		m_io_line3(*this, "LINE3"),
+		m_io_line4(*this, "LINE4"),
+		m_io_line5(*this, "LINE5"),
+		m_io_line6(*this, "LINE6"),
+		m_io_line7(*this, "LINE7"),
+		m_io_line8(*this, "LINE8") ,
+		m_maincpu(*this, "maincpu") { }
 
-	required_device<cassette_image_device> m_cass;
+	required_device<cassette_image_device> m_cassette;
 	optional_device<i8255_device> m_ppi;
 	optional_device<dac_device> m_dac;
 	DECLARE_READ8_MEMBER(ut88_keyboard_r);
@@ -76,6 +76,7 @@ protected:
 	optional_ioport m_io_line6;
 	optional_ioport m_io_line7;
 	optional_ioport m_io_line8;
+	required_device<cpu_device> m_maincpu;
 };
 
 

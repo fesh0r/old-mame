@@ -74,7 +74,7 @@ void dec8_state::screen_eof_dec8(screen_device &screen, bool state)
 	// rising edge
 	if (state)
 	{
-		address_space &space = machine().device("maincpu")->memory().space(AS_PROGRAM);
+		address_space &space = m_maincpu->space(AS_PROGRAM);
 		dec8_mxc06_karn_buffer_spriteram_w(space, 0, 0);
 	}
 }
@@ -136,7 +136,7 @@ TIMER_CALLBACK_MEMBER(dec8_state::dec8_i8751_timer_callback)
 {
 	// The schematics show a clocked LS194 shift register (3A) is used to automatically
 	// clear the IRQ request.  The MCU does not clear it itself.
-	m_mcu->execute().set_input_line(MCS51_INT1_LINE, CLEAR_LINE);
+	m_mcu->set_input_line(MCS51_INT1_LINE, CLEAR_LINE);
 }
 
 WRITE8_MEMBER(dec8_state::dec8_i8751_w)
@@ -145,7 +145,7 @@ WRITE8_MEMBER(dec8_state::dec8_i8751_w)
 	{
 	case 0: /* High byte - SECIRQ is trigged on activating this latch */
 		m_i8751_value = (m_i8751_value & 0xff) | (data << 8);
-		m_mcu->execute().set_input_line(MCS51_INT1_LINE, ASSERT_LINE);
+		m_mcu->set_input_line(MCS51_INT1_LINE, ASSERT_LINE);
 		machine().scheduler().timer_set(m_mcu->clocks_to_attotime(64), timer_expired_delegate(FUNC(dec8_state::dec8_i8751_timer_callback),this)); // 64 clocks not confirmed
 		break;
 	case 1: /* Low byte */
@@ -484,14 +484,13 @@ WRITE_LINE_MEMBER(dec8_state::csilver_adpcm_int)
 	if (m_toggle)
 		m_audiocpu->set_input_line(M6502_IRQ_LINE, HOLD_LINE);
 
-	msm5205_data_w(machine().device("msm"), m_msm5205next >> 4);
+	msm5205_data_w(m_msm, m_msm5205next >> 4);
 	m_msm5205next <<= 4;
 }
 
 READ8_MEMBER(dec8_state::csilver_adpcm_reset_r)
 {
-	device_t *device = machine().device("msm");
-	msm5205_reset_w(device, 0);
+	msm5205_reset_w(m_msm, 0);
 	return 0;
 }
 
@@ -1949,11 +1948,6 @@ INTERRUPT_GEN_MEMBER(dec8_state::oscar_interrupt)
 
 void dec8_state::machine_start()
 {
-	m_maincpu = machine().device<cpu_device>("maincpu");
-	m_subcpu = machine().device<cpu_device>("sub");
-	m_audiocpu = machine().device<cpu_device>("audiocpu");
-	m_mcu = machine().device("mcu");
-
 	save_item(NAME(m_latch));
 	save_item(NAME(m_nmi_enable));
 	save_item(NAME(m_i8751_port0));

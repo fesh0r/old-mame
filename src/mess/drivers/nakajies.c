@@ -503,7 +503,7 @@ ADDRESS_MAP_END
 
 INPUT_CHANGED_MEMBER(nakajies_state::trigger_irq)
 {
-	UINT8 irqs = machine().root_device().ioport( "debug" )->read();
+	UINT8 irqs = ioport( "debug" )->read();
 
 	m_irq_active |= irqs;
 	nakajies_update_irqs(machine());
@@ -753,7 +753,7 @@ static MACHINE_CONFIG_START( nakajies210, nakajies_state )
 
 	/* sound */
 	MCFG_SPEAKER_STANDARD_MONO( "mono" )
-	MCFG_SOUND_ADD( SPEAKER_TAG, SPEAKER_SOUND, 0 )
+	MCFG_SOUND_ADD( "speaker", SPEAKER_SOUND, 0 )
 	MCFG_SOUND_ROUTE( ALL_OUTPUTS, "mono", 1.00 )
 
 	/* rtc */

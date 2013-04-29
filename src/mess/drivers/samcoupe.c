@@ -165,7 +165,7 @@ READ8_MEMBER(samcoupe_state::samcoupe_lmpr_r)
 
 WRITE8_MEMBER(samcoupe_state::samcoupe_lmpr_w)
 {
-	address_space &space_program = machine().device("maincpu")->memory().space(AS_PROGRAM);
+	address_space &space_program = m_maincpu->space(AS_PROGRAM);
 
 	m_lmpr = data;
 	samcoupe_update_memory(space_program);
@@ -178,7 +178,7 @@ READ8_MEMBER(samcoupe_state::samcoupe_hmpr_r)
 
 WRITE8_MEMBER(samcoupe_state::samcoupe_hmpr_w)
 {
-	address_space &space_program = machine().device("maincpu")->memory().space(AS_PROGRAM);
+	address_space &space_program = m_maincpu->space(AS_PROGRAM);
 
 	m_hmpr = data;
 	samcoupe_update_memory(space_program);
@@ -191,7 +191,7 @@ READ8_MEMBER(samcoupe_state::samcoupe_vmpr_r)
 
 WRITE8_MEMBER(samcoupe_state::samcoupe_vmpr_w)
 {
-	address_space &space_program = machine().device("maincpu")->memory().space(AS_PROGRAM);
+	address_space &space_program = m_maincpu->space(AS_PROGRAM);
 
 	m_vmpr = data;
 	samcoupe_update_memory(space_program);
@@ -210,7 +210,6 @@ WRITE8_MEMBER(samcoupe_state::samcoupe_midi_w)
 
 READ8_MEMBER(samcoupe_state::samcoupe_keyboard_r)
 {
-	cassette_image_device *cassette = machine().device<cassette_image_device>(CASSETTE_TAG);
 	UINT8 data = 0x1f;
 
 	/* bit 0-4, keyboard input */
@@ -229,14 +228,14 @@ READ8_MEMBER(samcoupe_state::samcoupe_keyboard_r)
 
 		/* if no key has been pressed, return the mouse state */
 		if (data == 0x1f)
-			data = samcoupe_mouse_r(machine());
+			data = samcoupe_mouse_r();
 	}
 
 	/* bit 5, lightpen strobe */
 	data |= 1 << 5;
 
 	/* bit 6, cassette input */
-	data |= ((cassette)->input() > 0 ? 1 : 0) << 6;
+	data |= (m_cassette->input() > 0 ? 1 : 0) << 6;
 
 	/* bit 7, external memory */
 	data |= 1 << 7;
@@ -246,16 +245,13 @@ READ8_MEMBER(samcoupe_state::samcoupe_keyboard_r)
 
 WRITE8_MEMBER(samcoupe_state::samcoupe_border_w)
 {
-	cassette_image_device *cassette = machine().device<cassette_image_device>(CASSETTE_TAG);
-	device_t *speaker = machine().device(SPEAKER_TAG);
-
 	m_border = data;
 
 	/* bit 3, cassette output */
-	cassette->output( BIT(data, 3) ? -1.0 : +1.0);
+	m_cassette->output( BIT(data, 3) ? -1.0 : +1.0);
 
 	/* bit 4, beep */
-	speaker_level_w(speaker, BIT(data, 4));
+	speaker_level_w(m_speaker, BIT(data, 4));
 }
 
 READ8_MEMBER(samcoupe_state::samcoupe_attributes_r)
@@ -330,26 +326,24 @@ TIMER_CALLBACK_MEMBER(samcoupe_state::irq_off)
 
 	/* clear interrupt */
 	if ((m_status & 0x1f) == 0x1f)
-		machine().device("maincpu")->execute().set_input_line(0, CLEAR_LINE);
+		m_maincpu->set_input_line(0, CLEAR_LINE);
 
 }
 
-void samcoupe_irq(device_t *device, UINT8 src)
+void samcoupe_state::samcoupe_irq(UINT8 src)
 {
-	samcoupe_state *state = device->machine().driver_data<samcoupe_state>();
-
 	/* assert irq and a timer to set it off again */
-	device->execute().set_input_line(0, ASSERT_LINE);
-	device->machine().scheduler().timer_set(attotime::from_usec(20), timer_expired_delegate(FUNC(samcoupe_state::irq_off),state), src);
+	m_maincpu->set_input_line(0, ASSERT_LINE);
+	machine().scheduler().timer_set(attotime::from_usec(20), timer_expired_delegate(FUNC(samcoupe_state::irq_off),this), src);
 
 	/* adjust STATUS register */
-	state->m_status &= ~src;
+	m_status &= ~src;
 }
 
 INTERRUPT_GEN_MEMBER(samcoupe_state::samcoupe_frame_interrupt)
 {
 	/* signal frame interrupt */
-	samcoupe_irq(&device, SAM_FRAME_INT);
+	samcoupe_irq(SAM_FRAME_INT);
 }
 
 
@@ -539,7 +533,7 @@ static MACHINE_CONFIG_START( samcoupe, samcoupe_state )
 	MCFG_CENTRONICS_PRINTER_ADD("lpt1", standard_centronics)
 	MCFG_CENTRONICS_PRINTER_ADD("lpt2", standard_centronics)
 	MCFG_MSM6242_ADD("sambus_clock", samcoupe_rtc_intf)
-	MCFG_CASSETTE_ADD(CASSETTE_TAG, samcoupe_cassette_interface)
+	MCFG_CASSETTE_ADD("cassette", samcoupe_cassette_interface)
 	MCFG_SOFTWARE_LIST_ADD("cass_list","samcoupe_cass")
 
 	MCFG_WD1772x_ADD("wd1772", SAMCOUPE_XTAL_X1/3)
@@ -549,7 +543,7 @@ static MACHINE_CONFIG_START( samcoupe, samcoupe_state )
 
 	/* sound hardware */
 	MCFG_SPEAKER_STANDARD_MONO("mono")
-	MCFG_SOUND_ADD(SPEAKER_TAG, SPEAKER_SOUND, 0)
+	MCFG_SOUND_ADD("speaker", SPEAKER_SOUND, 0)
 	MCFG_SOUND_ROUTE(ALL_OUTPUTS, "mono", 0.50)
 	MCFG_SAA1099_ADD("saa1099", SAMCOUPE_XTAL_X1/3) /* 8 MHz */
 	MCFG_SOUND_ROUTE(ALL_OUTPUTS, "mono", 0.50)

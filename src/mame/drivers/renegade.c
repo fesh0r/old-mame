@@ -259,7 +259,7 @@ WRITE8_MEMBER(renegade_state::adpcm_play_w)
 WRITE8_MEMBER(renegade_state::sound_w)
 {
 	soundlatch_byte_w(space, offset, data);
-	machine().device("audiocpu")->execute().set_input_line(M6809_IRQ_LINE, HOLD_LINE);
+	m_audiocpu->set_input_line(M6809_IRQ_LINE, HOLD_LINE);
 }
 
 /********************************************************************************************/
@@ -310,12 +310,12 @@ DRIVER_INIT_MEMBER(renegade_state,kuniokun)
 	m_mcu_encrypt_table = kuniokun_xor_table;
 	m_mcu_encrypt_table_len = 0x2a;
 
-	machine().device<cpu_device>("mcu")->suspend(SUSPEND_REASON_DISABLE, 1);
+	m_mcu->suspend(SUSPEND_REASON_DISABLE, 1);
 }
 
 DRIVER_INIT_MEMBER(renegade_state,kuniokunb)
 {
-	address_space &space = machine().device("maincpu")->memory().space(AS_PROGRAM);
+	address_space &space = m_maincpu->space(AS_PROGRAM);
 
 	/* Remove the MCU handlers */
 	space.unmap_readwrite(0x3804, 0x3804);
@@ -356,7 +356,7 @@ WRITE8_MEMBER(renegade_state::renegade_68705_port_b_w)
 		m_port_a_in = m_from_main;
 
 		if (m_main_sent)
-			machine().device("mcu")->execute().set_input_line(0, CLEAR_LINE);
+			m_mcu->set_input_line(0, CLEAR_LINE);
 
 		m_main_sent = 0;
 	}
@@ -413,7 +413,7 @@ READ8_MEMBER(renegade_state::mcu_reset_r)
 	}
 	else
 	{
-		machine().device("mcu")->execute().set_input_line(INPUT_LINE_RESET, PULSE_LINE);
+		m_mcu->set_input_line(INPUT_LINE_RESET, PULSE_LINE);
 	}
 	return 0;
 }
@@ -443,7 +443,7 @@ WRITE8_MEMBER(renegade_state::mcu_w)
 	{
 		m_from_main = data;
 		m_main_sent = 1;
-		machine().device("mcu")->execute().set_input_line(0, ASSERT_LINE);
+		m_mcu->set_input_line(0, ASSERT_LINE);
 	}
 }
 
@@ -718,8 +718,8 @@ static ADDRESS_MAP_START( renegade_mcu_map, AS_PROGRAM, 8, renegade_state )
 	AM_RANGE(0x0004, 0x0004) AM_WRITE(renegade_68705_ddr_a_w)
 	AM_RANGE(0x0005, 0x0005) AM_WRITE(renegade_68705_ddr_b_w)
 	AM_RANGE(0x0006, 0x0006) AM_WRITE(renegade_68705_ddr_c_w)
-//  AM_RANGE(0x0008, 0x0008) AM_READWRITE_LEGACY(m68705_tdr_r, m68705_tdr_w)
-//  AM_RANGE(0x0009, 0x0009) AM_READWRITE_LEGACY(m68705_tcr_r, m68705_tcr_w)
+//  AM_RANGE(0x0008, 0x0008) AM_READWRITE(m68705_tdr_r, m68705_tdr_w)
+//  AM_RANGE(0x0009, 0x0009) AM_READWRITE(m68705_tcr_r, m68705_tcr_w)
 	AM_RANGE(0x0010, 0x007f) AM_RAM
 	AM_RANGE(0x0080, 0x07ff) AM_ROM
 ADDRESS_MAP_END

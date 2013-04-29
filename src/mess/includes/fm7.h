@@ -1,3 +1,6 @@
+#include "imagedev/cassette.h"
+#include "sound/beep.h"
+
 /*
  *
  *  FM-7 header file
@@ -103,9 +106,13 @@ class fm7_state : public driver_device
 public:
 	fm7_state(const machine_config &mconfig, device_type type, const char *tag)
 		: driver_device(mconfig, type, tag),
-	m_shared_ram(*this, "shared_ram"),
-	m_boot_ram(*this, "boot_ram")
-	{ }
+		m_shared_ram(*this, "shared_ram"),
+		m_boot_ram(*this, "boot_ram"),
+		m_maincpu(*this, "maincpu"),
+		m_sub(*this, "sub"),
+		m_x86(*this, "x86"),
+		m_cassette(*this, "cassette"),
+		m_beeper(*this, "beeper") { }
 
 	optional_shared_ptr<UINT8> m_shared_ram;
 	optional_shared_ptr<UINT8> m_boot_ram;
@@ -253,6 +260,30 @@ public:
 	IRQ_CALLBACK_MEMBER(fm7_irq_ack);
 	IRQ_CALLBACK_MEMBER(fm7_sub_irq_ack);
 	DECLARE_WRITE_LINE_MEMBER(fm77av_fmirq);
+	required_device<cpu_device> m_maincpu;
+	required_device<cpu_device> m_sub;
+	optional_device<cpu_device> m_x86;
+	required_device<cassette_image_device> m_cassette;
+	required_device<beep_device> m_beeper;
+	void fm7_alu_mask_write(UINT32 offset, int bank, UINT8 dat);
+	void fm7_alu_function_compare(UINT32 offset);
+	void fm7_alu_function_pset(UINT32 offset);
+	void fm7_alu_function_or(UINT32 offset);
+	void fm7_alu_function_and(UINT32 offset);
+	void fm7_alu_function_xor(UINT32 offset);
+	void fm7_alu_function_not(UINT32 offset);
+	void fm7_alu_function_invalid(UINT32 offset);
+	void fm7_alu_function_tilepaint(UINT32 offset);
+	void fm7_alu_function(UINT32 offset);
+	UINT32 fm7_line_set_pixel(int x, int y);
+	void fm77av_line_draw();
+	void main_irq_set_flag(UINT8 flag);
+	void main_irq_clear_flag(UINT8 flag);
+	void fm7_update_psg();
+	void fm7_update_bank(address_space & space, int bank, UINT8 physical);
+	void fm7_mmr_refresh(address_space& space);
+	void key_press(UINT16 scancode);
+	void fm7_keyboard_poll_scan();
 };
 
 #endif /*FM7_H_*/

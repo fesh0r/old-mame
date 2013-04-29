@@ -296,15 +296,6 @@ void xmen_state::machine_start()
 	membank("bank4")->configure_entries(0, 8, &ROM[0x10000], 0x4000);
 	membank("bank4")->set_entry(0);
 
-	m_maincpu = machine().device<cpu_device>("maincpu");
-	m_audiocpu = machine().device<cpu_device>("audiocpu");
-	m_k053246 = machine().device("k053246");
-	m_k053251 = machine().device("k053251");
-	m_k052109 = machine().device("k052109");
-	m_k054539 = machine().device("k054539");
-	m_lscreen = machine().device("lscreen");
-	m_rscreen = machine().device("rscreen");
-
 	save_item(NAME(m_sound_curbank));
 	save_item(NAME(m_sprite_colorbase));
 	save_item(NAME(m_layer_colorbase));
@@ -351,10 +342,10 @@ TIMER_DEVICE_CALLBACK_MEMBER(xmen_state::xmen_scanline)
 	int scanline = param;
 
 	if(scanline == 240 && m_vblank_irq_mask) // vblank-out irq
-		machine().device("maincpu")->execute().set_input_line(3, HOLD_LINE);
+		m_maincpu->set_input_line(3, HOLD_LINE);
 
 	if(scanline == 0) // sprite DMA irq?
-		machine().device("maincpu")->execute().set_input_line(5, HOLD_LINE);
+		m_maincpu->set_input_line(5, HOLD_LINE);
 
 }
 

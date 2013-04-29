@@ -264,6 +264,7 @@ XT U44 IBM.bin: IBM 5160 PC/XT Bank-selection decoding ROM (256x4 bit). Not mapp
 #include "machine/isa_gblaster.h"
 #include "machine/isa_hdc.h"
 #include "machine/isa_sblaster.h"
+#include "machine/isa_ide8.h"
 #include "machine/3c503.h"
 #include "video/isa_cga.h"
 #include "video/isa_ega.h"
@@ -280,8 +281,10 @@ class ibmpc_state : public driver_device
 {
 public:
 	ibmpc_state(const machine_config &mconfig, device_type type, const char *tag)
-		: driver_device(mconfig, type, tag) { }
+		: driver_device(mconfig, type, tag) ,
+		m_maincpu(*this, "maincpu") { }
 
+	required_device<cpu_device> m_maincpu;
 };
 
 static ADDRESS_MAP_START( pc8_map, AS_PROGRAM, 8, ibmpc_state )
@@ -330,6 +333,7 @@ static SLOT_INTERFACE_START(ibm_isa8_cards)
 	SLOT_INTERFACE("mpu401", ISA8_MPU401)
 	SLOT_INTERFACE("lpt", ISA8_LPT)
 	SLOT_INTERFACE("ibm_mfc", ISA8_IBM_MFC)
+	SLOT_INTERFACE("isa_ide8", ISA8_IDE)
 SLOT_INTERFACE_END
 
 static MACHINE_CONFIG_START( ibm5150, ibmpc_state )

@@ -775,13 +775,13 @@ READ8_MEMBER(dooyong_state::unk_r)
 WRITE_LINE_MEMBER(dooyong_state::irqhandler_2203_1)
 {
 	m_interrupt_line_1=state;
-	machine().device("audiocpu")->execute().set_input_line(0, (m_interrupt_line_1 | m_interrupt_line_2) ? ASSERT_LINE : CLEAR_LINE);
+	m_audiocpu->set_input_line(0, (m_interrupt_line_1 | m_interrupt_line_2) ? ASSERT_LINE : CLEAR_LINE);
 }
 
 WRITE_LINE_MEMBER(dooyong_state::irqhandler_2203_2)
 {
 	m_interrupt_line_2=state;
-	machine().device("audiocpu")->execute().set_input_line(0, (m_interrupt_line_1 | m_interrupt_line_2) ? ASSERT_LINE : CLEAR_LINE);
+	m_audiocpu->set_input_line(0, (m_interrupt_line_1 | m_interrupt_line_2) ? ASSERT_LINE : CLEAR_LINE);
 }
 
 static const ym2203_interface ym2203_interface_1 =
@@ -1054,10 +1054,10 @@ TIMER_DEVICE_CALLBACK_MEMBER(dooyong_state::rshark_scanline)
 	int scanline = param;
 
 	if(scanline == 248) // vblank-out irq
-		machine().device("maincpu")->execute().set_input_line(5, HOLD_LINE);
+		m_maincpu->set_input_line(5, HOLD_LINE);
 
 	if(scanline == 120) // timer irq?
-		machine().device("maincpu")->execute().set_input_line(6, HOLD_LINE);
+		m_maincpu->set_input_line(6, HOLD_LINE);
 }
 
 

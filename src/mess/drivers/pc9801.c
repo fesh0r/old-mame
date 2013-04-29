@@ -365,7 +365,9 @@ public:
 		m_hgdc2(*this, "upd7220_btm"),
 		m_sasibus(*this, SASIBUS_TAG ":host"),
 		m_video_ram_1(*this, "video_ram_1"),
-		m_video_ram_2(*this, "video_ram_2"){ }
+		m_video_ram_2(*this, "video_ram_2"),
+		m_beeper(*this, "beeper"),
+		m_ram(*this, RAM_TAG) { }
 
 	required_device<cpu_device> m_maincpu;
 	required_device<am9517a_device> m_dmac;
@@ -379,6 +381,8 @@ public:
 	optional_device<scsicb_device> m_sasibus;
 	required_shared_ptr<UINT8> m_video_ram_1;
 	required_shared_ptr<UINT8> m_video_ram_2;
+	required_device<beep_device> m_beeper;
+	optional_device<ram_device> m_ram;
 
 	virtual void video_start();
 	UINT32 screen_update(screen_device &screen, bitmap_rgb32 &bitmap, const rectangle &cliprect);
@@ -1855,7 +1859,7 @@ WRITE8_MEMBER(pc9801_state::pc9801rs_f0_w)
 		/* reset POR bit, TODO: is there any other way? */
 		por = machine().device<i8255_device>("ppi8255_sys")->read(space, 2) & ~0x20;
 		machine().device<i8255_device>("ppi8255_sys")->write(space, 2,por);
-		machine().device("maincpu")->execute().set_input_line(INPUT_LINE_RESET, PULSE_LINE);
+		m_maincpu->set_input_line(INPUT_LINE_RESET, PULSE_LINE);
 	}
 
 	if(offset == 0x02)
@@ -2915,7 +2919,7 @@ ir7
 WRITE_LINE_MEMBER(pc9801_state::pc9801_master_set_int_line)
 {
 	//printf("%02x\n",interrupt);
-	machine().device("maincpu")->execute().set_input_line(0, state ? HOLD_LINE : CLEAR_LINE);
+	m_maincpu->set_input_line(0, state ? HOLD_LINE : CLEAR_LINE);
 }
 
 READ8_MEMBER(pc9801_state::get_slave_ack)
@@ -3103,13 +3107,13 @@ static I8237_INTERFACE( pc9801rs_dmac_intf )
 *
 ****************************************/
 
-READ8_MEMBER(pc9801_state::ppi_sys_porta_r){ return machine().root_device().ioport("DSW2")->read(); }
-READ8_MEMBER(pc9801_state::ppi_sys_portb_r){ return machine().root_device().ioport("DSW1")->read(); }
-READ8_MEMBER(pc9801_state::ppi_prn_portb_r){ return machine().root_device().ioport("DSW5")->read(); }
+READ8_MEMBER(pc9801_state::ppi_sys_porta_r){ return ioport("DSW2")->read(); }
+READ8_MEMBER(pc9801_state::ppi_sys_portb_r){ return ioport("DSW1")->read(); }
+READ8_MEMBER(pc9801_state::ppi_prn_portb_r){ return ioport("DSW5")->read(); }
 
 WRITE8_MEMBER(pc9801_state::ppi_sys_portc_w)
 {
-	machine().device<beep_device>(BEEPER_TAG)->set_state(!(data & 0x08));
+	m_beeper->set_state(!(data & 0x08));
 }
 
 static I8255A_INTERFACE( ppi_system_intf )
@@ -3186,8 +3190,8 @@ READ8_MEMBER(pc9801_state::ppi_mouse_porta_r)
 	return res;
 }
 
-READ8_MEMBER(pc9801_state::ppi_mouse_portb_r) { return machine().root_device().ioport("DSW3")->read(); }
-READ8_MEMBER(pc9801_state::ppi_mouse_portc_r) { return machine().root_device().ioport("DSW4")->read(); }
+READ8_MEMBER(pc9801_state::ppi_mouse_portb_r) { return ioport("DSW3")->read(); }
+READ8_MEMBER(pc9801_state::ppi_mouse_portc_r) { return ioport("DSW4")->read(); }
 
 WRITE8_MEMBER(pc9801_state::ppi_mouse_porta_w)
 {
@@ -3338,7 +3342,7 @@ IRQ_CALLBACK_MEMBER(pc9801_state::irq_callback)
 
 MACHINE_START_MEMBER(pc9801_state,pc9801_common)
 {
-	machine().device("maincpu")->execute().set_irq_acknowledge_callback(device_irq_acknowledge_delegate(FUNC(pc9801_state::irq_callback),this));
+	m_maincpu->set_irq_acknowledge_callback(device_irq_acknowledge_delegate(FUNC(pc9801_state::irq_callback),this));
 
 	m_rtc->cs_w(1);
 	m_rtc->oe_w(0); // TODO: unknown connection, MS-DOS 6.2x wants this low somehow with the test mode
@@ -3388,7 +3392,7 @@ MACHINE_START_MEMBER(pc9801_state,pc9801rs)
 	state_save_register_global_pointer(machine(), m_work_ram, 0xa0000);
 	state_save_register_global_pointer(machine(), m_ext_work_ram, 0x700000);
 
-	m_ram_size = machine().device<ram_device>(RAM_TAG)->size() - 0xa0000;
+	m_ram_size = m_ram->size() - 0xa0000;
 
 	upd765a_device *fdc;
 	fdc = machine().device<upd765a_device>(":upd765_2hd");
@@ -3427,8 +3431,8 @@ MACHINE_RESET_MEMBER(pc9801_state,pc9801_common)
 			m_tvram[(0x3fe0)+i*2] = default_memsw_data[i];
 	}
 
-	machine().device<beep_device>(BEEPER_TAG)->set_frequency(2400);
-	machine().device<beep_device>(BEEPER_TAG)->set_state(0);
+	m_beeper->set_frequency(2400);
+	m_beeper->set_state(0);
 
 	m_nmi_ff = 0;
 	m_mouse.control = 0xff;
@@ -3452,17 +3456,17 @@ MACHINE_RESET_MEMBER(pc9801_state,pc9801f)
 	{
 		UINT8 op_mode;
 		UINT8 *ROM;
-		UINT8 *PRG = machine().root_device().memregion("fdc_data")->base();
+		UINT8 *PRG = memregion("fdc_data")->base();
 		int i;
 
-		ROM = machine().root_device().memregion("fdc_bios_2dd")->base();
-		op_mode = (machine().root_device().ioport("ROM_LOAD")->read() & 2) >> 1;
+		ROM = memregion("fdc_bios_2dd")->base();
+		op_mode = (ioport("ROM_LOAD")->read() & 2) >> 1;
 
 		for(i=0;i<0x1000;i++)
 			ROM[i] = PRG[i+op_mode*0x8000];
 
-		ROM = machine().root_device().memregion("fdc_bios_2hd")->base();
-		op_mode = machine().root_device().ioport("ROM_LOAD")->read() & 1;
+		ROM = memregion("fdc_bios_2hd")->base();
+		op_mode = ioport("ROM_LOAD")->read() & 1;
 
 		for(i=0;i<0x1000;i++)
 			ROM[i] = PRG[i+op_mode*0x8000+0x10000];
@@ -3478,7 +3482,7 @@ MACHINE_RESET_MEMBER(pc9801_state,pc9801rs)
 	m_fdc_ctrl = 3;
 	m_access_ctrl = 0;
 	m_keyb_press = 0xff; // temp kludge, for PC-9821 booting
-//  m_has_opna = machine().root_device().ioport("SOUND_CONFIG")->read() & 1;
+//  m_has_opna = ioport("SOUND_CONFIG")->read() & 1;
 	memset(m_work_ram, 0, sizeof(UINT8) * 0xa0000);
 }
 
@@ -3612,7 +3616,7 @@ static MACHINE_CONFIG_START( pc9801, pc9801_state )
 
 	MCFG_SPEAKER_STANDARD_MONO("mono")
 
-	MCFG_SOUND_ADD(BEEPER_TAG, BEEP, 0)
+	MCFG_SOUND_ADD("beeper", BEEP, 0)
 	MCFG_SOUND_ROUTE(ALL_OUTPUTS,"mono",0.15)
 MACHINE_CONFIG_END
 
@@ -3677,7 +3681,7 @@ static MACHINE_CONFIG_START( pc9801rs, pc9801_state )
 //  MCFG_SOUND_CONFIG(pc98_ym2608_intf)
 //  MCFG_SOUND_ROUTE(ALL_OUTPUTS, "mono", 1.00)
 
-	MCFG_SOUND_ADD(BEEPER_TAG, BEEP, 0)
+	MCFG_SOUND_ADD("beeper", BEEP, 0)
 	MCFG_SOUND_ROUTE(ALL_OUTPUTS,"mono",0.15)
 MACHINE_CONFIG_END
 
@@ -3743,7 +3747,7 @@ static MACHINE_CONFIG_START( pc9821, pc9801_state )
 //  MCFG_SOUND_CONFIG(pc98_ym2608_intf)
 //  MCFG_SOUND_ROUTE(ALL_OUTPUTS, "mono", 1.00)
 
-	MCFG_SOUND_ADD(BEEPER_TAG, BEEP, 0)
+	MCFG_SOUND_ADD("beeper", BEEP, 0)
 	MCFG_SOUND_ROUTE(ALL_OUTPUTS,"mono",0.15)
 MACHINE_CONFIG_END
 
@@ -4069,10 +4073,10 @@ DRIVER_INIT_MEMBER(pc9801_state,pc9801_kanji)
 	}
 	UINT32 i,j,k;
 	UINT32 pcg_tile;
-	UINT8 *kanji = machine().root_device().memregion("kanji")->base();
-	UINT8 *raw_kanji = machine().root_device().memregion("raw_kanji")->base();
-	UINT8 *new_chargen = machine().root_device().memregion("new_chargen")->base();
-	UINT8 *chargen = machine().root_device().memregion("chargen")->base();
+	UINT8 *kanji = memregion("kanji")->base();
+	UINT8 *raw_kanji = memregion("raw_kanji")->base();
+	UINT8 *new_chargen = memregion("new_chargen")->base();
+	UINT8 *chargen = memregion("chargen")->base();
 
 	/* Convert the ROM bitswap here from the original structure */
 	/* TODO: kanji bitswap should be completely wrong, will check it out once that a dump is remade. */

@@ -145,7 +145,7 @@ static ADDRESS_MAP_START( fitfight_main_map, AS_PROGRAM, 16, fitfight_state )
 	//      @0x000036bc/?: 0xF0FD when inserting coin
 	//      @0x000037a6/0x000030e6: 0x??dd byte from 0xe08c05, 0xF101 then 0xF001/0xF157 then 0xF057
 
-//  AM_RANGE(0x700000, 0x700001) AM_READ_LEGACY(xxxx) /* see init */
+//  AM_RANGE(0x700000, 0x700001) AM_READ(xxxx) /* see init */
 	AM_RANGE(0x700000, 0x700001) AM_WRITE(fitfight_700000_w) AM_SHARE("fof_700000")
 	//  kept at 0xe07900/0xe04c56
 
@@ -994,7 +994,7 @@ DRIVER_INIT_MEMBER(fitfight_state,fitfight)
 {
 //  UINT16 *mem16 = (UINT16 *)memregion("maincpu")->base();
 //  mem16[0x0165B2/2] = 0x4e71; // for now so it boots
-	machine().device("maincpu")->memory().space(AS_PROGRAM).install_read_handler(0x700000, 0x700001, read16_delegate(FUNC(fitfight_state::fitfight_700000_r),this));
+	m_maincpu->space(AS_PROGRAM).install_read_handler(0x700000, 0x700001, read16_delegate(FUNC(fitfight_state::fitfight_700000_r),this));
 	m_bbprot_kludge = 0;
 }
 
@@ -1002,7 +1002,7 @@ DRIVER_INIT_MEMBER(fitfight_state,histryma)
 {
 //  UINT16 *mem16 = (UINT16 *)memregion("maincpu")->base();
 //  mem16[0x017FDC/2] = 0x4e71; // for now so it boots
-	machine().device("maincpu")->memory().space(AS_PROGRAM).install_read_handler(0x700000, 0x700001, read16_delegate(FUNC(fitfight_state::histryma_700000_r),this));
+	m_maincpu->space(AS_PROGRAM).install_read_handler(0x700000, 0x700001, read16_delegate(FUNC(fitfight_state::histryma_700000_r),this));
 	m_bbprot_kludge = 0;
 }
 
@@ -1013,7 +1013,7 @@ DRIVER_INIT_MEMBER(fitfight_state,bbprot)
 
 DRIVER_INIT_MEMBER(fitfight_state,hotmindff)
 {
-	machine().device("maincpu")->memory().space(AS_PROGRAM).install_read_handler(0x200000, 0x200001, 0, 0, read16_delegate(FUNC(fitfight_state::hotmindff_unk_r),this));
+	m_maincpu->space(AS_PROGRAM).install_read_handler(0x200000, 0x200001, 0, 0, read16_delegate(FUNC(fitfight_state::hotmindff_unk_r),this));
 	DRIVER_INIT_CALL(fitfight);
 }
 

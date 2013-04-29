@@ -65,10 +65,11 @@ class pc100_state : public driver_device
 {
 public:
 	pc100_state(const machine_config &mconfig, device_type type, const char *tag)
-		: driver_device(mconfig, type, tag) ,
+		: driver_device(mconfig, type, tag),
 		m_rtc(*this, "rtc"),
-		m_palram(*this, "palram")
-		{ }
+		m_palram(*this, "palram"),
+		m_maincpu(*this, "maincpu"),
+		m_beeper(*this, "beeper") { }
 
 	required_device<msm58321_device> m_rtc;
 	required_shared_ptr<UINT16> m_palram;
@@ -116,6 +117,8 @@ public:
 	TIMER_DEVICE_CALLBACK_MEMBER(pc100_50hz_irq);
 	TIMER_DEVICE_CALLBACK_MEMBER(pc100_10hz_irq);
 	IRQ_CALLBACK_MEMBER(pc100_irq_callback);
+	required_device<cpu_device> m_maincpu;
+	required_device<beep_device> m_beeper;
 };
 
 void pc100_state::video_start()
@@ -217,7 +220,7 @@ WRITE8_MEMBER( pc100_state::pc100_output_w )
 	if(offset == 0)
 	{
 		m_timer_mode = (data & 0x18) >> 3;
-		machine().device<beep_device>(BEEPER_TAG)->set_state(((data & 0x40) >> 6) ^ 1);
+		m_beeper->set_state(((data & 0x40) >> 6) ^ 1);
 		printf("%02x\n",data & 0xc0);
 	}
 }
@@ -408,7 +411,7 @@ IRQ_CALLBACK_MEMBER(pc100_state::pc100_irq_callback)
 WRITE_LINE_MEMBER( pc100_state::pc100_set_int_line )
 {
 	//printf("%02x\n",interrupt);
-	machine().device("maincpu")->execute().set_input_line(0, state ? HOLD_LINE : CLEAR_LINE);
+	m_maincpu->set_input_line(0, state ? HOLD_LINE : CLEAR_LINE);
 }
 
 static const struct pic8259_interface pc100_pic8259_config =
@@ -420,15 +423,15 @@ static const struct pic8259_interface pc100_pic8259_config =
 
 void pc100_state::machine_start()
 {
-	machine().device("maincpu")->execute().set_irq_acknowledge_callback(device_irq_acknowledge_delegate(FUNC(pc100_state::pc100_irq_callback),this));
-	m_kanji_rom = (UINT16 *)(*machine().root_device().memregion("kanji"));
+	m_maincpu->set_irq_acknowledge_callback(device_irq_acknowledge_delegate(FUNC(pc100_state::pc100_irq_callback),this));
+	m_kanji_rom = (UINT16 *)(*memregion("kanji"));
 	m_vram = (UINT16 *)(*memregion("vram"));
 }
 
 void pc100_state::machine_reset()
 {
-	machine().device<beep_device>(BEEPER_TAG)->set_frequency(2400);
-	machine().device<beep_device>(BEEPER_TAG)->set_state(0);
+	m_beeper->set_frequency(2400);
+	m_beeper->set_state(0);
 }
 
 INTERRUPT_GEN_MEMBER(pc100_state::pc100_vblank_irq)
@@ -515,7 +518,7 @@ static MACHINE_CONFIG_START( pc100, pc100_state )
 
 	MCFG_SPEAKER_STANDARD_MONO("mono")
 
-	MCFG_SOUND_ADD(BEEPER_TAG, BEEP, 0)
+	MCFG_SOUND_ADD("beeper", BEEP, 0)
 	MCFG_SOUND_ROUTE(ALL_OUTPUTS,"mono",0.50)
 MACHINE_CONFIG_END
 

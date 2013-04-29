@@ -8,7 +8,7 @@
 #define GB_H_
 
 #include "machine/gb_slot.h"
-
+#include "machine/ram.h"
 
 /* Interrupts */
 #define VBL_INT               0       /* V-Blank    */
@@ -110,14 +110,14 @@ class gb_state : public driver_device
 {
 public:
 	gb_state(const machine_config &mconfig, device_type type, const char *tag)
-		: driver_device(mconfig, type, tag)
-		, m_cartslot(*this, "gbslot")
-		, m_maincpu(*this, "maincpu")
-		, m_custom(*this, "custom")
-		, m_region_maincpu(*this, "maincpu")
-		, m_rambank(*this, "cgb_ram")
-		, m_inputs(*this, "INPUTS")
-	{ }
+		: driver_device(mconfig, type, tag),
+		m_cartslot(*this, "gbslot"),
+		m_maincpu(*this, "maincpu"),
+		m_custom(*this, "custom"),
+		m_region_maincpu(*this, "maincpu"),
+		m_rambank(*this, "cgb_ram"),
+		m_inputs(*this, "INPUTS"),
+		m_ram(*this, RAM_TAG) { }
 
 	UINT32 screen_update(screen_device &screen, bitmap_ind16 &bitmap, const rectangle &cliprect);
 
@@ -214,6 +214,7 @@ protected:
 	required_memory_region m_region_maincpu;
 	optional_memory_bank m_rambank;   // cgb
 	required_ioport m_inputs;
+	optional_device<ram_device> m_ram;
 
 	void gb_timer_increment();
 	void gb_timer_check_irq();
@@ -231,6 +232,7 @@ protected:
 	void gbc_hdma(UINT16 length);
 	void gb_increment_scanline();
 	void gb_lcd_switch_on();
+	inline void gb_plot_pixel(bitmap_ind16 &bitmap, int x, int y, UINT32 color);
 };
 
 

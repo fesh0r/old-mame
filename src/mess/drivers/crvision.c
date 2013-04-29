@@ -833,21 +833,19 @@ DEVICE_IMAGE_LOAD_MEMBER( crvision_state, crvision_cart )
 {
 	UINT32 size;
 	UINT8 *temp_copy;
-	running_machine &machine = image.device().machine();
-	crvision_state *state = machine.driver_data<crvision_state>();
-	UINT8 *mem = state->memregion(M6502_TAG)->base();
-	address_space &program = state->m_maincpu->space(AS_PROGRAM);
+	UINT8 *mem = memregion(M6502_TAG)->base();
+	address_space &program = m_maincpu->space(AS_PROGRAM);
 
 	if (image.software_entry() == NULL)
 	{
 		size = image.length();
-		temp_copy = auto_alloc_array(machine, UINT8, size);
+		temp_copy = auto_alloc_array(machine(), UINT8, size);
 		image.fread( temp_copy, size);
 	}
 	else
 	{
 		size= image.get_software_region_length("rom");
-		temp_copy = auto_alloc_array(machine, UINT8, size);
+		temp_copy = auto_alloc_array(machine(), UINT8, size);
 		memcpy(temp_copy, image.get_software_region("rom"), size);
 	}
 
@@ -924,17 +922,17 @@ DEVICE_IMAGE_LOAD_MEMBER( crvision_state, crvision_cart )
 		break;
 
 	default:
-		auto_free(machine, temp_copy);
+		auto_free(machine(), temp_copy);
 		return IMAGE_INIT_FAIL;
 	}
 
-	state->membank(BANK_ROM1)->configure_entry(0, mem + 0x8000);
-	state->membank(BANK_ROM1)->set_entry(0);
+	membank(BANK_ROM1)->configure_entry(0, mem + 0x8000);
+	membank(BANK_ROM1)->set_entry(0);
 
-	state->membank(BANK_ROM2)->configure_entry(0, mem + 0x4000);
-	state->membank(BANK_ROM2)->set_entry(0);
+	membank(BANK_ROM2)->configure_entry(0, mem + 0x4000);
+	membank(BANK_ROM2)->set_entry(0);
 
-	auto_free(machine, temp_copy);
+	auto_free(machine(), temp_copy);
 
 	return IMAGE_INIT_PASS;
 }
@@ -954,7 +952,7 @@ static MACHINE_CONFIG_START( creativision, crvision_state )
 
 	// devices
 	MCFG_PIA6821_ADD(PIA6821_TAG, pia_intf)
-	MCFG_CASSETTE_ADD(CASSETTE_TAG, crvision_cassette_interface)
+	MCFG_CASSETTE_ADD("cassette", crvision_cassette_interface)
 	MCFG_CENTRONICS_PRINTER_ADD(CENTRONICS_TAG, standard_centronics)
 
 	// sound hardware
@@ -963,7 +961,7 @@ static MACHINE_CONFIG_START( creativision, crvision_state )
 	MCFG_SOUND_CONFIG(psg_intf)
 	MCFG_SOUND_ROUTE(ALL_OUTPUTS, "mono", 1.00)
 
-	MCFG_SOUND_WAVE_ADD(WAVE_TAG, CASSETTE_TAG)
+	MCFG_SOUND_WAVE_ADD(WAVE_TAG, "cassette")
 	MCFG_SOUND_ROUTE(1, "mono", 0.25)
 
 	// cartridge
@@ -1015,7 +1013,7 @@ static MACHINE_CONFIG_START( lasr2001, laser2001_state )
 
 	// devices
 	MCFG_PIA6821_ADD(PIA6821_TAG, lasr2001_pia_intf)
-	MCFG_CASSETTE_ADD(CASSETTE_TAG, lasr2001_cassette_interface)
+	MCFG_CASSETTE_ADD("cassette", lasr2001_cassette_interface)
 	MCFG_CENTRONICS_PRINTER_ADD(CENTRONICS_TAG, lasr2001_centronics_intf)
 
 	// video hardware
@@ -1029,7 +1027,7 @@ static MACHINE_CONFIG_START( lasr2001, laser2001_state )
 	MCFG_SOUND_CONFIG(psg_intf)
 	MCFG_SOUND_ROUTE(ALL_OUTPUTS, "mono", 1.00)
 
-	MCFG_SOUND_WAVE_ADD(WAVE_TAG, CASSETTE_TAG)
+	MCFG_SOUND_WAVE_ADD(WAVE_TAG, "cassette")
 	MCFG_SOUND_ROUTE(1, "mono", 0.25)
 
 	// cartridge

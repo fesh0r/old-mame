@@ -61,7 +61,8 @@ class ti99_4p_state : public driver_device
 {
 public:
 	ti99_4p_state(const machine_config &mconfig, device_type type, const char *tag)
-		: driver_device(mconfig, type, tag) { }
+		: driver_device(mconfig, type, tag),
+		m_cassette(*this, "cassette") { }
 
 	DECLARE_WRITE_LINE_MEMBER( console_ready );
 	DECLARE_WRITE_LINE_MEMBER( console_ready_dmux );
@@ -103,7 +104,7 @@ public:
 	tms9901_device*         m_tms9901;
 	ti_sound_system_device* m_sound;
 	ti_exp_video_device*    m_video;
-	cassette_image_device*  m_cassette;
+	required_device<cassette_image_device> m_cassette;
 	peribox_device*         m_peribox;
 	joyport_device*         m_joyport;
 
@@ -338,7 +339,7 @@ READ16_MEMBER( ti99_4p_state::memread )
 
 WRITE16_MEMBER( ti99_4p_state::memwrite )
 {
-//  m_cpu->execute().adjust_icount(-4);
+//  m_cpu->adjust_icount(-4);
 
 	int addroff = offset << 1;
 	UINT16 zone = addroff & 0xe000;
@@ -816,12 +817,11 @@ void ti99_4p_state::machine_start()
 	m_peribox = static_cast<peribox_device*>(machine().device(PERIBOX_TAG));
 	m_sound = static_cast<ti_sound_system_device*>(machine().device(TISOUND_TAG));
 	m_video = static_cast<ti_exp_video_device*>(machine().device(VIDEO_SYSTEM_TAG));
-	m_cassette = static_cast<cassette_image_device*>(machine().device(CASSETTE_TAG));
 	m_tms9901 = static_cast<tms9901_device*>(machine().device(TMS9901_TAG));
 	m_joyport = static_cast<joyport_device*>(machine().device(JOYPORT_TAG));
 
-	m_ram = (UINT16*)(*machine().root_device().memregion(SAMSMEM_TAG));
-	m_scratchpad = (UINT16*)(*machine().root_device().memregion(PADMEM_TAG));
+	m_ram = (UINT16*)(*memregion(SAMSMEM_TAG));
+	m_scratchpad = (UINT16*)(*memregion(PADMEM_TAG));
 
 	m_peribox->senila(CLEAR_LINE);
 	m_peribox->senilb(CLEAR_LINE);
@@ -830,7 +830,7 @@ void ti99_4p_state::machine_start()
 
 	m_ready_line = m_ready_line_dmux = ASSERT_LINE;
 
-	UINT16 *rom = (UINT16*)(*machine().root_device().memregion("maincpu"));
+	UINT16 *rom = (UINT16*)(*memregion("maincpu"));
 	m_rom0  = rom + 0x2000;
 	m_dsr   = rom + 0x6000;
 	m_rom6a = rom + 0x3000;
@@ -900,9 +900,9 @@ static MACHINE_CONFIG_START( ti99_4p_60hz, ti99_4p_state )
 
 	// Cassette drives
 	MCFG_SPEAKER_STANDARD_MONO("cass_out")
-	MCFG_CASSETTE_ADD( CASSETTE_TAG, default_cassette_interface )
+	MCFG_CASSETTE_ADD( "cassette", default_cassette_interface )
 
-	MCFG_SOUND_WAVE_ADD(WAVE_TAG, CASSETTE_TAG)
+	MCFG_SOUND_WAVE_ADD(WAVE_TAG, "cassette")
 	MCFG_SOUND_ROUTE(ALL_OUTPUTS, "cass_out", 0.25)
 
 	// Joystick port

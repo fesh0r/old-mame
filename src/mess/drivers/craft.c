@@ -22,7 +22,7 @@ inline void craft_state::verboselog(int n_level, const char *s_fmt, ...)
 		va_start( v, s_fmt );
 		vsprintf( buf, s_fmt, v );
 		va_end( v );
-		logerror( "%08x: %s", machine().device("maincpu")->safe_pc(), buf );
+		logerror( "%08x: %s", m_maincpu->safe_pc(), buf );
 	}
 }
 #else
@@ -49,15 +49,14 @@ class craft_state : public driver_device
 public:
 	craft_state(const machine_config &mconfig, device_type type, const char *tag)
 		: driver_device(mconfig, type, tag),
-		m_maincpu(*this, "maincpu")
+		m_maincpu(*this, "maincpu"),
+		m_dac(*this, "dac")
 	{
 	}
 
 	void video_update();
 
 	virtual void machine_start();
-
-	dac_device* m_dac;
 
 	UINT32 m_last_cycles;
 	UINT64 m_frame_start_cycle;
@@ -79,6 +78,7 @@ public:
 #if ENABLE_VERBOSE_LOG
 	inline void verboselog(int n_level, const char *s_fmt, ...);
 #endif
+	required_device<dac_device> m_dac;
 };
 
 void craft_state::machine_start()
@@ -230,8 +230,6 @@ DRIVER_INIT_MEMBER(craft_state,craft)
 
 void craft_state::machine_reset()
 {
-	m_dac = machine().device<dac_device>("dac");
-
 	m_dac->write_unsigned8(0x00);
 
 	m_frame_start_cycle = 0;

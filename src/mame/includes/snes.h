@@ -364,7 +364,6 @@
 
 
 #define SNES_CPU_REG(a) m_cpu_regs[a - 0x4200]  // regs 0x4200-0x421f
-#define SNES_CPU_REG_STATE(a) state->m_cpu_regs[a - 0x4200] // regs 0x4200-0x421f
 
 /* (PPU) Video related */
 
@@ -580,8 +579,11 @@ class snes_state : public driver_device
 {
 public:
 	snes_state(const machine_config &mconfig, device_type type, const char *tag)
-		: driver_device(mconfig, type, tag)
-		{ }
+		: driver_device(mconfig, type, tag),
+		m_maincpu(*this, "maincpu"),
+		m_soundcpu(*this, "soundcpu"),
+		m_spc700(*this, "spc700"),
+		m_superfx(*this, "superfx") { }
 
 	/* misc */
 	UINT16                m_hblank_offset;
@@ -650,12 +652,10 @@ public:
 	UINT32 screen_update(screen_device &screen, bitmap_rgb32 &bitmap, const rectangle &cliprect);
 
 	/* devices */
-	_5a22_device *m_maincpu;
-	spc700_device *m_soundcpu;
-	snes_sound_device *m_spc700;
-	cpu_device *m_superfx;
-	upd7725_device *m_upd7725;
-	upd96050_device *m_upd96050;
+	required_device<_5a22_device> m_maincpu;
+	required_device<spc700_device> m_soundcpu;
+	required_device<snes_sound_device> m_spc700;
+	optional_device<cpu_device> m_superfx;
 
 	DECLARE_DIRECT_UPDATE_MEMBER(snes_spc_direct);
 	DECLARE_DIRECT_UPDATE_MEMBER(snes_direct);
@@ -702,6 +702,9 @@ public:
 	DECLARE_DEVICE_IMAGE_LOAD_MEMBER(snes_cart);
 	DECLARE_DEVICE_IMAGE_LOAD_MEMBER(sufami_cart);
 	virtual void video_start();
+	void snes_init_timers();
+	virtual void machine_start();
+	virtual void machine_reset();
 };
 
 /* Special chips, checked at init and used in memory handlers */
@@ -746,12 +749,6 @@ enum
 	SNES_OAM,
 	SNES_COLOR
 };
-
-/*----------- defined in machine/snes.c -----------*/
-
-
-extern MACHINE_START( snes );
-extern MACHINE_RESET( snes );
 
 DECLARE_READ8_HANDLER( snes_open_bus_r );
 

@@ -2,7 +2,8 @@ class nbmj8688_state : public driver_device
 {
 public:
 	nbmj8688_state(const machine_config &mconfig, device_type type, const char *tag)
-		: driver_device(mconfig, type, tag) { }
+		: driver_device(mconfig, type, tag) ,
+		m_maincpu(*this, "maincpu") { }
 
 	int m_mjsikaku_scrolly;
 	int m_blitter_destx;
@@ -87,6 +88,8 @@ public:
 	DECLARE_VIDEO_START(mbmj8688_hybrid_16bit);
 	DECLARE_VIDEO_START(mbmj8688_hybrid_12bit);
 	DECLARE_VIDEO_START(mbmj8688_pure_16bit);
+	DECLARE_READ8_MEMBER(dipsw1_r);
+	DECLARE_READ8_MEMBER(dipsw2_r);
 	UINT32 screen_update_mbmj8688(screen_device &screen, bitmap_ind16 &bitmap, const rectangle &cliprect);
 	UINT32 screen_update_mbmj8688_lcd0(screen_device &screen, bitmap_ind16 &bitmap, const rectangle &cliprect);
 	UINT32 screen_update_mbmj8688_lcd1(screen_device &screen, bitmap_ind16 &bitmap, const rectangle &cliprect);
@@ -98,4 +101,5 @@ public:
 	void common_video_start();
 	void nbmj8688_HD61830B_instr_w(address_space &space,int offset,int data,int chip);
 	void nbmj8688_HD61830B_data_w(address_space &space,int offset,int data,int chip);
+	required_device<cpu_device> m_maincpu;
 };

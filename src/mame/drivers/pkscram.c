@@ -21,10 +21,11 @@ class pkscram_state : public driver_device
 {
 public:
 	pkscram_state(const machine_config &mconfig, device_type type, const char *tag)
-		: driver_device(mconfig, type, tag) ,
+		: driver_device(mconfig, type, tag),
 		m_pkscramble_fgtilemap_ram(*this, "fgtilemap_ram"),
 		m_pkscramble_mdtilemap_ram(*this, "mdtilemap_ram"),
-		m_pkscramble_bgtilemap_ram(*this, "bgtilemap_ram"){ }
+		m_pkscramble_bgtilemap_ram(*this, "bgtilemap_ram"),
+		m_maincpu(*this, "maincpu") { }
 
 	UINT16 m_out;
 	UINT8 m_interrupt_line_active;
@@ -47,6 +48,7 @@ public:
 	UINT32 screen_update_pkscramble(screen_device &screen, bitmap_ind16 &bitmap, const rectangle &cliprect);
 	TIMER_DEVICE_CALLBACK_MEMBER(scanline_callback);
 	DECLARE_WRITE_LINE_MEMBER(irqhandler);
+	required_device<cpu_device> m_maincpu;
 };
 
 
@@ -99,7 +101,7 @@ WRITE16_MEMBER(pkscram_state::pkscramble_output_w)
 
 	if (!(m_out & 0x2000) && m_interrupt_line_active)
 	{
-		machine().device("maincpu")->execute().set_input_line(1, CLEAR_LINE);
+		m_maincpu->set_input_line(1, CLEAR_LINE);
 		m_interrupt_line_active = 0;
 	}
 
@@ -222,14 +224,14 @@ TIMER_DEVICE_CALLBACK_MEMBER(pkscram_state::scanline_callback)
 	if (param == interrupt_scanline)
 	{
 		if (m_out & 0x2000)
-			machine().device("maincpu")->execute().set_input_line(1, ASSERT_LINE);
+			m_maincpu->set_input_line(1, ASSERT_LINE);
 		timer.adjust(machine().primary_screen->time_until_pos(param + 1), param+1);
 		m_interrupt_line_active = 1;
 	}
 	else
 	{
 		if (m_interrupt_line_active)
-			machine().device("maincpu")->execute().set_input_line(1, CLEAR_LINE);
+			m_maincpu->set_input_line(1, CLEAR_LINE);
 		timer.adjust(machine().primary_screen->time_until_pos(interrupt_scanline), interrupt_scanline);
 		m_interrupt_line_active = 0;
 	}
@@ -272,7 +274,7 @@ GFXDECODE_END
 WRITE_LINE_MEMBER(pkscram_state::irqhandler)
 {
 	if(m_out & 0x10)
-		machine().device("maincpu")->execute().set_input_line(2, state ? ASSERT_LINE : CLEAR_LINE);
+		m_maincpu->set_input_line(2, state ? ASSERT_LINE : CLEAR_LINE);
 }
 
 static const ym2203_interface ym2203_config =

@@ -25,7 +25,7 @@
 TIMER_DEVICE_CALLBACK_MEMBER(psion_state::nmi_timer)
 {
 	if (m_enable_nmi)
-		machine().device("maincpu")->execute().set_input_line(INPUT_LINE_NMI, PULSE_LINE);
+		m_maincpu->set_input_line(INPUT_LINE_NMI, PULSE_LINE);
 }
 
 UINT8 psion_state::kb_read(running_machine &machine)
@@ -141,7 +141,7 @@ void psion_state::io_rw(address_space &space, UINT16 offset)
 		/* switch off, CPU goes into standby mode */
 		m_enable_nmi = 0;
 		m_stby_pwr = 1;
-		space.machine().device<cpu_device>("maincpu")->suspend(SUSPEND_REASON_HALT, 1);
+		m_maincpu->suspend(SUSPEND_REASON_HALT, 1);
 		break;
 	case 0x100:
 		m_pulse = 1;
@@ -216,11 +216,9 @@ READ8_MEMBER( psion_state::io_r )
 
 INPUT_CHANGED_MEMBER(psion_state::psion_on)
 {
-	cpu_device *cpu = machine().device<cpu_device>("maincpu");
-
 	/* reset the CPU for resume from standby */
-	if (cpu->suspended(SUSPEND_REASON_HALT))
-		cpu->reset();
+	if (m_maincpu->suspended(SUSPEND_REASON_HALT))
+		m_maincpu->reset();
 }
 
 static ADDRESS_MAP_START(psioncm_mem, AS_PROGRAM, 8, psion_state)
@@ -391,7 +389,7 @@ void psion_state::machine_start()
 
 	if (m_rom_bank_count)
 	{
-		UINT8* rom_base = (UINT8 *)machine().root_device().memregion("maincpu")->base();
+		UINT8* rom_base = (UINT8 *)memregion("maincpu")->base();
 
 		membank("rombank")->configure_entry(0, rom_base + 0x8000);
 		membank("rombank")->configure_entries(1, m_rom_bank_count-1, rom_base + 0x10000, 0x4000);
@@ -492,7 +490,7 @@ static MACHINE_CONFIG_START( psion_2lines, psion_state )
 
 	/* sound hardware */
 	MCFG_SPEAKER_STANDARD_MONO( "mono" )
-	MCFG_SOUND_ADD( BEEPER_TAG, BEEP, 0 )
+	MCFG_SOUND_ADD( "beeper", BEEP, 0 )
 	MCFG_SOUND_ROUTE( ALL_OUTPUTS, "mono", 1.00 )
 
 	MCFG_NVRAM_HANDLER(psion)

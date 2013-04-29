@@ -51,7 +51,7 @@ public:
 	pegasus_state(const machine_config &mconfig, device_type type, const char *tag)
 		: driver_device(mconfig, type, tag),
 	m_maincpu(*this, "maincpu"),
-	m_cass(*this, CASSETTE_TAG),
+	m_cass(*this, "cassette"),
 	m_pia_s(*this, "pia_s"),
 	m_pia_u(*this, "pia_u"),
 	m_p_videoram(*this, "p_videoram"){ }
@@ -92,13 +92,12 @@ public:
 
 TIMER_DEVICE_CALLBACK_MEMBER(pegasus_state::pegasus_firq)
 {
-	device_t *cpu = machine().device( "maincpu" );
-	cpu->execute().set_input_line(M6809_FIRQ_LINE, HOLD_LINE);
+	m_maincpu->set_input_line(M6809_FIRQ_LINE, HOLD_LINE);
 }
 
 WRITE_LINE_MEMBER( pegasus_state::pegasus_firq_clr )
 {
-	machine().device("maincpu")->execute().set_input_line(M6809_FIRQ_LINE, CLEAR_LINE);
+	m_maincpu->set_input_line(M6809_FIRQ_LINE, CLEAR_LINE);
 }
 
 READ8_MEMBER( pegasus_state::pegasus_keyboard_r )
@@ -422,7 +421,7 @@ GFXDECODE_END
     multipart roms will have. */
 void pegasus_state::pegasus_decrypt_rom( UINT16 addr )
 {
-	UINT8 b, *ROM = machine().root_device().memregion("maincpu")->base();
+	UINT8 b, *ROM = memregion("maincpu")->base();
 	UINT16 i, j;
 	UINT8 buff[0x1000];
 	if (ROM[addr] == 0x02)
@@ -441,7 +440,7 @@ void pegasus_state::pegasus_decrypt_rom( UINT16 addr )
 
 DEVICE_IMAGE_LOAD_MEMBER( pegasus_state, pegasus_cart_1 )
 {
-	image.fread(image.device().machine().root_device().memregion("maincpu")->base() + 0x0000, 0x1000);
+	image.fread(memregion("maincpu")->base() + 0x0000, 0x1000);
 	pegasus_decrypt_rom( 0x0000 );
 
 	return IMAGE_INIT_PASS;
@@ -449,7 +448,7 @@ DEVICE_IMAGE_LOAD_MEMBER( pegasus_state, pegasus_cart_1 )
 
 DEVICE_IMAGE_LOAD_MEMBER( pegasus_state, pegasus_cart_2 )
 {
-	image.fread(image.device().machine().root_device().memregion("maincpu")->base() + 0x1000, 0x1000);
+	image.fread(memregion("maincpu")->base() + 0x1000, 0x1000);
 	pegasus_decrypt_rom( 0x1000 );
 
 	return IMAGE_INIT_PASS;
@@ -457,7 +456,7 @@ DEVICE_IMAGE_LOAD_MEMBER( pegasus_state, pegasus_cart_2 )
 
 DEVICE_IMAGE_LOAD_MEMBER( pegasus_state, pegasus_cart_3 )
 {
-	image.fread(image.device().machine().root_device().memregion("maincpu")->base() + 0x2000, 0x1000);
+	image.fread(memregion("maincpu")->base() + 0x2000, 0x1000);
 	pegasus_decrypt_rom( 0x2000 );
 
 	return IMAGE_INIT_PASS;
@@ -465,7 +464,7 @@ DEVICE_IMAGE_LOAD_MEMBER( pegasus_state, pegasus_cart_3 )
 
 DEVICE_IMAGE_LOAD_MEMBER( pegasus_state, pegasus_cart_4 )
 {
-	image.fread(image.device().machine().root_device().memregion("maincpu")->base() + 0xc000, 0x1000);
+	image.fread(memregion("maincpu")->base() + 0xc000, 0x1000);
 	pegasus_decrypt_rom( 0xc000 );
 
 	return IMAGE_INIT_PASS;
@@ -473,7 +472,7 @@ DEVICE_IMAGE_LOAD_MEMBER( pegasus_state, pegasus_cart_4 )
 
 DEVICE_IMAGE_LOAD_MEMBER( pegasus_state, pegasus_cart_5 )
 {
-	image.fread( image.device().machine().root_device().memregion("maincpu")->base() + 0xd000, 0x1000);
+	image.fread(memregion("maincpu")->base() + 0xd000, 0x1000);
 	pegasus_decrypt_rom( 0xd000 );
 
 	return IMAGE_INIT_PASS;
@@ -516,7 +515,7 @@ static MACHINE_CONFIG_START( pegasus, pegasus_state )
 
 	/* sound hardware */
 	MCFG_SPEAKER_STANDARD_MONO("mono")
-	MCFG_SOUND_WAVE_ADD(WAVE_TAG, CASSETTE_TAG)
+	MCFG_SOUND_WAVE_ADD(WAVE_TAG, "cassette")
 	MCFG_SOUND_ROUTE(ALL_OUTPUTS, "mono", 0.25)
 
 	/* devices */
@@ -537,7 +536,7 @@ static MACHINE_CONFIG_START( pegasus, pegasus_state )
 	MCFG_CARTSLOT_ADD("cart5")
 	MCFG_CARTSLOT_EXTENSION_LIST("bin")
 	MCFG_CARTSLOT_LOAD(pegasus_state,pegasus_cart_5)
-	MCFG_CASSETTE_ADD( CASSETTE_TAG, pegasus_cassette_interface )
+	MCFG_CASSETTE_ADD( "cassette", pegasus_cassette_interface )
 MACHINE_CONFIG_END
 
 static MACHINE_CONFIG_DERIVED( pegasusm, pegasus )

@@ -86,10 +86,11 @@ class merit_state : public driver_device
 {
 public:
 	merit_state(const machine_config &mconfig, device_type type, const char *tag)
-		: driver_device(mconfig, type, tag) ,
+		: driver_device(mconfig, type, tag),
 		m_ram_attr(*this, "raattr"),
 		m_ram_video(*this, "ravideo"),
-		m_backup_ram(*this, "backup_ram"){ }
+		m_backup_ram(*this, "backup_ram"),
+		m_maincpu(*this, "maincpu") { }
 
 	void dodge_nvram_init(nvram_device &nvram, void *base, size_t size);
 	pen_t m_pens[NUM_PENS];
@@ -124,6 +125,7 @@ public:
 	DECLARE_DRIVER_INIT(dtrvwz5);
 	virtual void machine_start();
 	DECLARE_MACHINE_START(casino5);
+	required_device<cpu_device> m_maincpu;
 };
 
 
@@ -310,7 +312,7 @@ WRITE_LINE_MEMBER(merit_state::hsync_changed)
 
 WRITE_LINE_MEMBER(merit_state::vsync_changed)
 {
-	machine().device("maincpu")->execute().set_input_line(0, state ? ASSERT_LINE : CLEAR_LINE);
+	m_maincpu->set_input_line(0, state ? ASSERT_LINE : CLEAR_LINE);
 }
 
 static MC6845_INTERFACE( mc6845_intf )

@@ -102,12 +102,12 @@ WRITE8_MEMBER(zaccaria_state::ay8910_port0a_w)
 
 WRITE_LINE_MEMBER(zaccaria_state::zaccaria_irq0a)
 {
-	machine().device("audiocpu")->execute().set_input_line(INPUT_LINE_NMI, state ? ASSERT_LINE : CLEAR_LINE);
+	m_audiocpu->set_input_line(INPUT_LINE_NMI, state ? ASSERT_LINE : CLEAR_LINE);
 }
 
 WRITE_LINE_MEMBER(zaccaria_state::zaccaria_irq0b)
 {
-	machine().device("audiocpu")->execute().set_input_line(0, state ? ASSERT_LINE : CLEAR_LINE);
+	m_audiocpu->set_input_line(0, state ? ASSERT_LINE : CLEAR_LINE);
 }
 
 READ8_MEMBER(zaccaria_state::zaccaria_port0a_r)
@@ -178,7 +178,7 @@ WRITE8_MEMBER(zaccaria_state::zaccaria_port1b_w)
 WRITE8_MEMBER(zaccaria_state::sound_command_w)
 {
 	soundlatch_byte_w(space, 0, data);
-	machine().device("audio2")->execute().set_input_line(0, (data & 0x80) ? CLEAR_LINE : ASSERT_LINE);
+	m_audio2->set_input_line(0, (data & 0x80) ? CLEAR_LINE : ASSERT_LINE);
 }
 
 WRITE8_MEMBER(zaccaria_state::sound1_command_w)
@@ -190,8 +190,7 @@ WRITE8_MEMBER(zaccaria_state::sound1_command_w)
 
 WRITE8_MEMBER(zaccaria_state::mc1408_data_w)
 {
-	dac_device *device = machine().device<dac_device>("dac2");
-	device->write_unsigned8(data);
+	m_dac2->write_unsigned8(data);
 }
 
 

@@ -156,11 +156,10 @@ WRITE16_MEMBER(tigeroad_state::tigeroad_soundcmd_w)
 
 WRITE8_MEMBER(tigeroad_state::msm5205_w)
 {
-	device_t *device = machine().device("msm");
-	msm5205_reset_w(device,(data>>7)&1);
-	msm5205_data_w(device,data);
-	msm5205_vclk_w(device,1);
-	msm5205_vclk_w(device,0);
+	msm5205_reset_w(m_msm,(data>>7)&1);
+	msm5205_data_w(m_msm,data);
+	msm5205_vclk_w(m_msm,1);
+	msm5205_vclk_w(m_msm,0);
 }
 
 
@@ -494,7 +493,7 @@ GFXDECODE_END
 /* handler called by the 2203 emulator when the internal timers cause an IRQ */
 WRITE_LINE_MEMBER(tigeroad_state::irqhandler)
 {
-	machine().device("audiocpu")->execute().set_input_line(0, state ? ASSERT_LINE : CLEAR_LINE);
+	m_audiocpu->set_input_line(0, state ? ASSERT_LINE : CLEAR_LINE);
 }
 
 static const ym2203_interface ym2203_config =
@@ -763,12 +762,12 @@ ROM_END
 
 DRIVER_INIT_MEMBER(tigeroad_state,tigeroad)
 {
-	machine().device("maincpu")->memory().space(AS_PROGRAM).install_write_handler(0xfe4002, 0xfe4003, write16_delegate(FUNC(tigeroad_state::tigeroad_soundcmd_w),this));
+	m_maincpu->space(AS_PROGRAM).install_write_handler(0xfe4002, 0xfe4003, write16_delegate(FUNC(tigeroad_state::tigeroad_soundcmd_w),this));
 }
 
 DRIVER_INIT_MEMBER(tigeroad_state,f1dream)
 {
-	machine().device("maincpu")->memory().space(AS_PROGRAM).install_write_handler(0xfe4002, 0xfe4003, write16_delegate(FUNC(tigeroad_state::f1dream_control_w),this));
+	m_maincpu->space(AS_PROGRAM).install_write_handler(0xfe4002, 0xfe4003, write16_delegate(FUNC(tigeroad_state::f1dream_control_w),this));
 }
 
 

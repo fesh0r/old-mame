@@ -64,11 +64,11 @@
  *
  *************************************/
 
-class su2000_state : public driver_device
+class su2000_state : public pcat_base_state
 {
 public:
 	su2000_state(const machine_config &mconfig, device_type type, const char *tag)
-		: driver_device(mconfig, type, tag) { }
+		: pcat_base_state(mconfig, type, tag){ }
 
 	device_t    *m_pit8254;
 	device_t    *m_pic8259_1;
@@ -81,7 +81,6 @@ public:
 	DECLARE_READ8_MEMBER(get_slave_ack);
 	virtual void machine_start();
 	virtual void machine_reset();
-	IRQ_CALLBACK_MEMBER(irq_callback);
 };
 
 
@@ -116,45 +115,6 @@ ADDRESS_MAP_END
 
 /*************************************************************
  *
- * Keyboard
- *
- *************************************************************/
-
-static void su2000_set_keyb_int(running_machine &machine, int state)
-{
-	su2000_state *drv_state = machine.driver_data<su2000_state>();
-	pic8259_ir1_w(drv_state->m_pic8259_1, state);
-}
-
-static void set_gate_a20(running_machine &machine, int a20)
-{
-	machine.device("maincpu")->execute().set_input_line(INPUT_LINE_A20, a20);
-}
-
-static void keyboard_interrupt(running_machine &machine, int state)
-{
-	su2000_state *drv_state = machine.driver_data<su2000_state>();
-	pic8259_ir1_w(drv_state->m_pic8259_1, state);
-}
-
-static int pcat_get_out2(running_machine &machine)
-{
-	su2000_state *state = machine.driver_data<su2000_state>();
-	return pit8253_get_output(state->m_pit8254, 2);
-}
-
-static const struct kbdc8042_interface at8042 =
-{
-	KBDC8042_AT386,
-	set_gate_a20,
-	keyboard_interrupt,
-	NULL,
-	pcat_get_out2,
-};
-
-
-/*************************************************************
- *
  * IDE
  *
  *************************************************************/
@@ -176,7 +136,7 @@ static void ide_interrupt(device_t *device, int state)
 
 WRITE_LINE_MEMBER(su2000_state::su2000_pic8259_1_set_int_line)
 {
-	machine().device("maincpu")->execute().set_input_line(0, state ? HOLD_LINE : CLEAR_LINE);
+	m_maincpu->set_input_line(0, state ? HOLD_LINE : CLEAR_LINE);
 }
 
 READ8_MEMBER(su2000_state::get_slave_ack)
@@ -230,19 +190,6 @@ static const struct pit8253_config su2000_pit8254_config =
 	}
 };
 
-
-/*************************************
- *
- *  Interrupt Generation
- *
- *************************************/
-
-IRQ_CALLBACK_MEMBER(su2000_state::irq_callback)
-{
-	return pic8259_acknowledge(m_pic8259_1);
-}
-
-
 /*************************************
  *
  *  Initialization
@@ -251,7 +198,7 @@ IRQ_CALLBACK_MEMBER(su2000_state::irq_callback)
 
 void su2000_state::machine_start()
 {
-	address_space &space = machine().device("maincpu")->memory().space(AS_PROGRAM);
+	address_space &space = m_maincpu->space(AS_PROGRAM);
 
 	m_pit8254 = machine().device("pit8254");
 	m_pic8259_1 = machine().device("pic8259_1");
@@ -271,11 +218,7 @@ void su2000_state::machine_start()
 	space.install_write_bank(0x100000, ram_limit - 1, "hma_bank");
 	membank("hma_bank")->set_base(m_pc_ram + 0xa0000);
 
-	machine().device("maincpu")->execute().set_irq_acknowledge_callback(device_irq_acknowledge_delegate(FUNC(su2000_state::irq_callback),this));
-
-	init_pc_common(machine(), PCCOMMON_KEYBOARD_AT, su2000_set_keyb_int);
-
-	kbdc8042_init(machine(), &at8042);
+	m_maincpu->set_irq_acknowledge_callback(device_irq_acknowledge_delegate(FUNC(su2000_state::irq_callback),this));
 }
 
 void su2000_state::machine_reset()

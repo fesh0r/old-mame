@@ -88,7 +88,7 @@ WRITE16_MEMBER(shangha3_state::heberpop_coinctrl_w)
 	if (ACCESSING_BITS_0_7)
 	{
 		/* the sound ROM bank is selected by the main CPU! */
-		machine().device<okim6295_device>("oki")->set_bank_base((data & 0x08) ? 0x40000 : 0x00000);
+		m_oki->set_bank_base((data & 0x08) ? 0x40000 : 0x00000);
 
 		coin_lockout_w(machine(), 0,~data & 0x04);
 		coin_lockout_w(machine(), 1,~data & 0x04);
@@ -102,7 +102,7 @@ WRITE16_MEMBER(shangha3_state::blocken_coinctrl_w)
 	if (ACCESSING_BITS_0_7)
 	{
 		/* the sound ROM bank is selected by the main CPU! */
-		machine().device<okim6295_device>("oki")->set_bank_base(((data >> 4) & 3) * 0x40000);
+		m_oki->set_bank_base(((data >> 4) & 3) * 0x40000);
 
 		coin_lockout_w(machine(), 0,~data & 0x04);
 		coin_lockout_w(machine(), 1,~data & 0x04);
@@ -117,13 +117,13 @@ WRITE16_MEMBER(shangha3_state::heberpop_sound_command_w)
 	if (ACCESSING_BITS_0_7)
 	{
 		soundlatch_byte_w(space, 0, data & 0xff);
-		machine().device("audiocpu")->execute().set_input_line_and_vector(0, HOLD_LINE, 0xff);  /* RST 38h */
+		m_audiocpu->set_input_line_and_vector(0, HOLD_LINE, 0xff);  /* RST 38h */
 	}
 }
 
 WRITE16_MEMBER(shangha3_state::shangha3_irq_ack_w)
 {
-	machine().device("maincpu")->execute().set_input_line(4, CLEAR_LINE);
+	m_maincpu->set_input_line(4, CLEAR_LINE);
 }
 
 static ADDRESS_MAP_START( shangha3_map, AS_PROGRAM, 16, shangha3_state )
@@ -467,7 +467,7 @@ static const ay8910_interface ay8910_config =
 
 WRITE_LINE_MEMBER(shangha3_state::irqhandler)
 {
-	machine().device("audiocpu")->execute().set_input_line(INPUT_LINE_NMI, state);
+	m_audiocpu->set_input_line(INPUT_LINE_NMI, state);
 }
 
 static const ym3438_interface ym3438_config =

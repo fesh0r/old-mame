@@ -91,16 +91,15 @@ class gp32_state : public driver_device
 {
 public:
 	gp32_state(const machine_config &mconfig, device_type type, const char *tag)
-		: driver_device(mconfig, type, tag)
-		, m_s3c240x_ram(*this, "s3c240x_ram")
-		, m_maincpu(*this, "maincpu")
-		, m_smartmedia(*this, "smartmedia")
-		, m_dac1(*this, "dac1")
-		, m_dac2(*this, "dac2")
-		, m_nvram(*this, "nvram")
-		, m_io_in0(*this, "IN0")
-		, m_io_in1(*this, "IN1")
-	{ }
+		: driver_device(mconfig, type, tag),
+		m_s3c240x_ram(*this, "s3c240x_ram"),
+		m_maincpu(*this, "maincpu"),
+		m_smartmedia(*this, "smartmedia"),
+		m_dac1(*this, "dac1"),
+		m_dac2(*this, "dac2"),
+		m_nvram(*this, "nvram"),
+		m_io_in0(*this, "IN0"),
+		m_io_in1(*this, "IN1") { }
 
 	virtual void video_start();
 
@@ -182,7 +181,6 @@ public:
 	TIMER_CALLBACK_MEMBER(s3c240x_dma_timer_exp);
 	TIMER_CALLBACK_MEMBER(s3c240x_iic_timer_exp);
 	TIMER_CALLBACK_MEMBER(s3c240x_iis_timer_exp);
-
 protected:
 	required_device<cpu_device> m_maincpu;
 	required_device<smartmedia_image_device> m_smartmedia;
@@ -231,6 +229,17 @@ protected:
 	void iic_resume();
 	void s3c240x_machine_start();
 	void s3c240x_machine_reset();
+	inline rgb_t s3c240x_get_color_5551( UINT16 data);
+	UINT32 s3c240x_lcd_dma_read( );
+	void s3c240x_lcd_render_01( );
+	void s3c240x_lcd_render_02( );
+	void s3c240x_lcd_render_04( );
+	void s3c240x_lcd_render_08( );
+	void s3c240x_lcd_render_16( );
+	UINT8 i2cmem_read_byte( int last);
+	void i2cmem_write_byte( UINT8 data);
+	void i2cmem_start( );
+	void i2cmem_stop( );
 };
 
 

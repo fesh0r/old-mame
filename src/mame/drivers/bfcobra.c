@@ -235,7 +235,10 @@ class bfcobra_state : public driver_device
 {
 public:
 	bfcobra_state(const machine_config &mconfig, device_type type, const char *tag)
-		: driver_device(mconfig, type, tag) { }
+		: driver_device(mconfig, type, tag),
+		m_maincpu(*this, "maincpu"),
+		m_audiocpu(*this, "audiocpu"),
+		m_upd7759(*this, "upd") { }
 
 	UINT8 m_bank_data[4];
 	UINT8 *m_work_ram;
@@ -307,6 +310,9 @@ public:
 	inline void z80_bank(int num, int data);
 	UINT8 exec_r_phase(void);
 	UINT8 results_phase(void);
+	required_device<cpu_device> m_maincpu;
+	required_device<cpu_device> m_audiocpu;
+	required_device<upd7759_device> m_upd7759;
 };
 
 
@@ -883,7 +889,7 @@ void bfcobra_state::update_irqs()
 	if (newstate != m_irq_state)
 	{
 		m_irq_state = newstate;
-		machine().device("maincpu")->execute().set_input_line(0, m_irq_state ? ASSERT_LINE : CLEAR_LINE);
+		m_maincpu->set_input_line(0, m_irq_state ? ASSERT_LINE : CLEAR_LINE);
 	}
 }
 
@@ -1461,16 +1467,14 @@ WRITE8_MEMBER(bfcobra_state::latch_w)
 
 READ8_MEMBER(bfcobra_state::upd_r)
 {
-	device_t *device = machine().device("upd");
-	return 2 | upd7759_busy_r(device);
+	return 2 | upd7759_busy_r(m_upd7759);
 }
 
 WRITE8_MEMBER(bfcobra_state::upd_w)
 {
-	device_t *device = machine().device("upd");
-	upd7759_reset_w(device, data & 0x80);
-	upd7759_port_w(device, space, 0, data & 0x3f);
-	upd7759_start_w(device, data & 0x40 ? 0 : 1);
+	upd7759_reset_w(m_upd7759, data & 0x80);
+	upd7759_port_w(m_upd7759, space, 0, data & 0x3f);
+	upd7759_start_w(m_upd7759, data & 0x40 ? 0 : 1);
 }
 
 static ADDRESS_MAP_START( m6809_prog_map, AS_PROGRAM, 8, bfcobra_state )
@@ -1654,7 +1658,7 @@ WRITE_LINE_MEMBER(bfcobra_state::m6809_acia_tx_w)
 
 WRITE_LINE_MEMBER(bfcobra_state::m6809_data_irq)
 {
-	machine().device("audiocpu")->execute().set_input_line(M6809_IRQ_LINE, state ? ASSERT_LINE : CLEAR_LINE);
+	m_audiocpu->set_input_line(M6809_IRQ_LINE, state ? ASSERT_LINE : CLEAR_LINE);
 }
 
 static ACIA6850_INTERFACE( m6809_acia_if )

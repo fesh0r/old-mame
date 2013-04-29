@@ -51,22 +51,21 @@ class d6800_state : public driver_device
 {
 public:
 	d6800_state(const machine_config &mconfig, device_type type, const char *tag)
-		: driver_device(mconfig, type, tag)
-		, m_maincpu(*this, "maincpu")
-		, m_cass(*this, CASSETTE_TAG)
-		, m_pia(*this, "pia")
-		, m_dac(*this, "dac")
-		, m_videoram(*this, "videoram")
-		, m_io_x0(*this, "X0")
-		, m_io_x1(*this, "X1")
-		, m_io_x2(*this, "X2")
-		, m_io_x3(*this, "X3")
-		, m_io_y0(*this, "Y0")
-		, m_io_y1(*this, "Y1")
-		, m_io_y2(*this, "Y2")
-		, m_io_y3(*this, "Y3")
-		, m_io_shift(*this, "SHIFT")
-	{ }
+		: driver_device(mconfig, type, tag),
+		m_maincpu(*this, "maincpu"),
+		m_cass(*this, "cassette"),
+		m_pia(*this, "pia"),
+		m_dac(*this, "dac"),
+		m_videoram(*this, "videoram"),
+		m_io_x0(*this, "X0"),
+		m_io_x1(*this, "X1"),
+		m_io_x2(*this, "X2"),
+		m_io_x3(*this, "X3"),
+		m_io_y0(*this, "Y0"),
+		m_io_y1(*this, "Y1"),
+		m_io_y2(*this, "Y2"),
+		m_io_y3(*this, "Y3"),
+		m_io_shift(*this, "SHIFT") { }
 
 	DECLARE_READ8_MEMBER( d6800_cassette_r );
 	DECLARE_WRITE8_MEMBER( d6800_cassette_w );
@@ -78,6 +77,7 @@ public:
 	DECLARE_WRITE_LINE_MEMBER( d6800_screen_w );
 	UINT32 screen_update_d6800(screen_device &screen, bitmap_ind16 &bitmap, const rectangle &cliprect);
 	TIMER_DEVICE_CALLBACK_MEMBER(d6800_p);
+	DECLARE_QUICKLOAD_LOAD_MEMBER( d6800 );
 protected:
 	required_device<cpu_device> m_maincpu;
 	required_device<cassette_image_device> m_cass;
@@ -334,15 +334,16 @@ static const cassette_interface d6800_cassette_interface =
 	NULL
 };
 
-static QUICKLOAD_LOAD( d6800 )
+QUICKLOAD_LOAD_MEMBER( d6800_state, d6800 )
 {
-	address_space &space = image.device().machine().device("maincpu")->memory().space(AS_PROGRAM);
+	address_space &space = m_maincpu->space(AS_PROGRAM);
 	int i;
-	int quick_addr = 0x0200;
+	int quick_addr = 0x200;
 	int exec_addr = 0xc000;
 	int quick_length;
 	UINT8 *quick_data;
 	int read_;
+	int result = IMAGE_INIT_FAIL;
 
 	quick_length = image.length();
 	quick_data = (UINT8*)malloc(quick_length);
@@ -350,27 +351,34 @@ static QUICKLOAD_LOAD( d6800 )
 	{
 		image.seterror(IMAGE_ERROR_INVALIDIMAGE, "Cannot open file");
 		image.message(" Cannot open file");
-		return IMAGE_INIT_FAIL;
 	}
-
-	read_ = image.fread( quick_data, quick_length);
-	if (read_ != quick_length)
+	else
 	{
-		image.seterror(IMAGE_ERROR_INVALIDIMAGE, "Cannot read the file");
-		image.message(" Cannot read the file");
-		return IMAGE_INIT_FAIL;
+		read_ = image.fread( quick_data, quick_length);
+		if (read_ != quick_length)
+		{
+			image.seterror(IMAGE_ERROR_INVALIDIMAGE, "Cannot read the file");
+			image.message(" Cannot read the file");
+		}
+		else
+		{
+			for (i = 0; i < quick_length; i++)
+				if ((quick_addr + i) < 0x800)
+					space.write_byte(i + quick_addr, quick_data[i]);
+
+			/* display a message about the loaded quickload */
+			image.message(" Quickload: size=%04X : start=%04X : end=%04X : exec=%04X",quick_length,quick_addr,quick_addr+quick_length,exec_addr);
+
+			// Start the quickload
+			m_maincpu->set_pc(exec_addr);
+
+			result = IMAGE_INIT_PASS;
+		}
+
+		free( quick_data );
 	}
 
-	for (i = 0; i < quick_length; i++)
-		if ((quick_addr + i) < 0x800)
-			space.write_byte(i + quick_addr, quick_data[i]);
-
-	/* display a message about the loaded quickload */
-	image.message(" Quickload: size=%04X : start=%04X : end=%04X : exec=%04X",quick_length,quick_addr,quick_addr+quick_length,exec_addr);
-
-	// Start the quickload
-	image.device().machine().device("maincpu")->state().set_pc(exec_addr);
-	return IMAGE_INIT_PASS;
+	return result;
 }
 
 static MACHINE_CONFIG_START( d6800, d6800_state )
@@ -391,18 +399,18 @@ static MACHINE_CONFIG_START( d6800, d6800_state )
 
 	/* sound hardware */
 	MCFG_SPEAKER_STANDARD_MONO("mono")
-	MCFG_SOUND_WAVE_ADD(WAVE_TAG, CASSETTE_TAG)
+	MCFG_SOUND_WAVE_ADD(WAVE_TAG, "cassette")
 	MCFG_SOUND_ROUTE(ALL_OUTPUTS, "mono", 0.50)
 	MCFG_SOUND_ADD("dac", DAC, 0)
 	MCFG_SOUND_ROUTE(ALL_OUTPUTS, "mono", 0.50)
 
 	/* devices */
 	MCFG_PIA6821_ADD("pia", d6800_mc6821_intf)
-	MCFG_CASSETTE_ADD(CASSETTE_TAG, d6800_cassette_interface)
+	MCFG_CASSETTE_ADD("cassette", d6800_cassette_interface)
 	MCFG_TIMER_DRIVER_ADD_PERIODIC("d6800_p", d6800_state, d6800_p, attotime::from_hz(40000))
 
 	/* quickload */
-	MCFG_QUICKLOAD_ADD("quickload", d6800, "ch8", 1)
+	MCFG_QUICKLOAD_ADD("quickload", d6800_state, d6800, "ch8", 1)
 MACHINE_CONFIG_END
 
 /* ROMs */

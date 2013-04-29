@@ -467,7 +467,7 @@ void x1_state::draw_fgtilemap(running_machine &machine, bitmap_rgb32 &bitmap,con
  * of the bitmap.
  *
  */
-static int priority_mixer_pri(running_machine &machine,int color)
+int x1_state::priority_mixer_pri(int color)
 {
 	int pri_i,pri_mask_calc;
 
@@ -521,7 +521,7 @@ void x1_state::draw_gfxbitmap(running_machine &machine, bitmap_rgb32 &bitmap,con
 
 					color =  (pen_g<<2 | pen_r<<1 | pen_b<<0) | 8;
 
-					pri_mask_val = priority_mixer_pri(machine,color);
+					pri_mask_val = priority_mixer_pri(color);
 					if(pri_mask_val & pri) continue;
 
 					if((color == 8 && m_scrn_reg.blackclip & 0x10) || (color == 9 && m_scrn_reg.blackclip & 0x20)) // bitmap color clip to black conditions
@@ -742,9 +742,8 @@ READ8_MEMBER( x1_state::x1_sub_io_r )
 	return ret;
 }
 
-static void cmt_command( running_machine &machine, UINT8 cmd )
+void x1_state::cmt_command( UINT8 cmd )
 {
-	x1_state *state = machine.driver_data<x1_state>();
 	// CMT deck control command (E9 xx)
 	// E9 00 - Eject
 	// E9 01 - Stop
@@ -758,47 +757,47 @@ static void cmt_command( running_machine &machine, UINT8 cmd )
 	APSS is a Sharp invention and stands for Automatic Program Search System, it scans the tape for silent parts that are bigger than 4 seconds.
 	It's basically used for audio tapes in order to jump over the next/previous "track".
 	*/
-	state->m_cmt_current_cmd = cmd;
+	m_cmt_current_cmd = cmd;
 
-	if(state->m_cass->get_image() == NULL) //avoid a crash if a disk game tries to access this
+	if(m_cassette->get_image() == NULL) //avoid a crash if a disk game tries to access this
 		return;
 
 	switch(cmd)
 	{
 		case 0x01:  // Stop
-			state->m_cass->change_state(CASSETTE_MOTOR_DISABLED,CASSETTE_MASK_MOTOR);
-			state->m_cass->change_state(CASSETTE_STOPPED,CASSETTE_MASK_UISTATE);
-			state->m_cmt_test = 1;
+			m_cassette->change_state(CASSETTE_MOTOR_DISABLED,CASSETTE_MASK_MOTOR);
+			m_cassette->change_state(CASSETTE_STOPPED,CASSETTE_MASK_UISTATE);
+			m_cmt_test = 1;
 			popmessage("CMT: Stop");
 			break;
 		case 0x02:  // Play
-			state->m_cass->change_state(CASSETTE_MOTOR_ENABLED,CASSETTE_MASK_MOTOR);
-			state->m_cass->change_state(CASSETTE_PLAY,CASSETTE_MASK_UISTATE);
+			m_cassette->change_state(CASSETTE_MOTOR_ENABLED,CASSETTE_MASK_MOTOR);
+			m_cassette->change_state(CASSETTE_PLAY,CASSETTE_MASK_UISTATE);
 			popmessage("CMT: Play");
 			break;
 		case 0x03:  // Fast Forward
-			state->m_cass->change_state(CASSETTE_MOTOR_DISABLED,CASSETTE_MASK_MOTOR);
-			state->m_cass->change_state(CASSETTE_STOPPED,CASSETTE_MASK_UISTATE);
+			m_cassette->change_state(CASSETTE_MOTOR_DISABLED,CASSETTE_MASK_MOTOR);
+			m_cassette->change_state(CASSETTE_STOPPED,CASSETTE_MASK_UISTATE);
 			popmessage("CMT: Fast Forward");
 			break;
 		case 0x04:  // Rewind
-			state->m_cass->change_state(CASSETTE_MOTOR_DISABLED,CASSETTE_MASK_MOTOR);
-			state->m_cass->change_state(CASSETTE_STOPPED,CASSETTE_MASK_UISTATE);
+			m_cassette->change_state(CASSETTE_MOTOR_DISABLED,CASSETTE_MASK_MOTOR);
+			m_cassette->change_state(CASSETTE_STOPPED,CASSETTE_MASK_UISTATE);
 			popmessage("CMT: Rewind");
 			break;
 		case 0x05:  // APSS Fast Forward
-			state->m_cass->change_state(CASSETTE_MOTOR_DISABLED,CASSETTE_MASK_MOTOR);
-			state->m_cass->change_state(CASSETTE_STOPPED,CASSETTE_MASK_UISTATE);
+			m_cassette->change_state(CASSETTE_MOTOR_DISABLED,CASSETTE_MASK_MOTOR);
+			m_cassette->change_state(CASSETTE_STOPPED,CASSETTE_MASK_UISTATE);
 			popmessage("CMT: APSS Fast Forward");
 			break;
 		case 0x06:  // APSS Rewind
-			state->m_cass->change_state(CASSETTE_MOTOR_DISABLED,CASSETTE_MASK_MOTOR);
-			state->m_cass->change_state(CASSETTE_STOPPED,CASSETTE_MASK_UISTATE);
+			m_cassette->change_state(CASSETTE_MOTOR_DISABLED,CASSETTE_MASK_MOTOR);
+			m_cassette->change_state(CASSETTE_STOPPED,CASSETTE_MASK_UISTATE);
 			popmessage("CMT: APSS Rewind");
 			break;
 		case 0x0a:  // Record
-			state->m_cass->change_state(CASSETTE_MOTOR_ENABLED,CASSETTE_MASK_MOTOR);
-			state->m_cass->change_state(CASSETTE_RECORD,CASSETTE_MASK_UISTATE);
+			m_cassette->change_state(CASSETTE_MOTOR_ENABLED,CASSETTE_MASK_MOTOR);
+			m_cassette->change_state(CASSETTE_RECORD,CASSETTE_MASK_UISTATE);
 			popmessage("CMT: Record");
 			break;
 		default:
@@ -809,22 +808,22 @@ static void cmt_command( running_machine &machine, UINT8 cmd )
 
 TIMER_DEVICE_CALLBACK_MEMBER(x1_state::x1_cmt_wind_timer)
 {
-	if(m_cass->get_image() == NULL) //avoid a crash if a disk game tries to access this
+	if(m_cassette->get_image() == NULL) //avoid a crash if a disk game tries to access this
 		return;
 
 	switch(m_cmt_current_cmd)
 	{
 		case 0x03:
 		case 0x05:  // Fast Forwarding tape
-			m_cass->seek(1,SEEK_CUR);
-			if(m_cass->get_position() >= m_cass->get_length())  // at end?
-				cmt_command(machine(),0x01);  // Stop tape
+			m_cassette->seek(1,SEEK_CUR);
+			if(m_cassette->get_position() >= m_cassette->get_length())  // at end?
+				cmt_command(0x01);  // Stop tape
 			break;
 		case 0x04:
 		case 0x06:  // Rewinding tape
-			m_cass->seek(-1,SEEK_CUR);
-			if(m_cass->get_position() <= 0) // at beginning?
-				cmt_command(machine(),0x01);  // Stop tape
+			m_cassette->seek(-1,SEEK_CUR);
+			if(m_cassette->get_position() <= 0) // at beginning?
+				cmt_command(0x01);  // Stop tape
 			break;
 	}
 }
@@ -847,7 +846,7 @@ WRITE8_MEMBER( x1_state::x1_sub_io_w )
 
 	if(m_sub_cmd == 0xe9)
 	{
-		cmt_command(machine(),data);
+		cmt_command(data);
 		data = 0;
 	}
 
@@ -921,7 +920,7 @@ WRITE8_MEMBER( x1_state::x1_sub_io_w )
 					// bit 1 = tape inserted
 					// bit 2 = record status (1=OK, 0=write protect)
 			m_sub_val[0] = 0x05;
-			if(m_cass->get_image() != NULL)
+			if(m_cassette->get_image() != NULL)
 				m_sub_val[0] |= 0x02;
 			m_sub_cmd_length = 1;
 			logerror("CMT: Command 0xEB received, returning 0x%02x.\n",m_sub_val[0]);
@@ -1424,7 +1423,7 @@ WRITE8_MEMBER( x1_state::x1turbo_gfxpal_w )
  *  FIXME: bit-wise this doesn't make any sense, I guess that it uses the lv 2 kanji roms
  *         Test cases for this port so far are Hyper Olympics '84 disk version and Might & Magic.
  */
-static UINT16 jis_convert(int kanji_addr)
+UINT16 x1_state::jis_convert(int kanji_addr)
 {
 	if(kanji_addr >= 0x0e00 && kanji_addr <= 0x0e9f) { kanji_addr -= 0x0e00; kanji_addr &= 0x0ff; return ((0x0e0) + (kanji_addr >> 3)) << 4; } // numbers
 	if(kanji_addr >= 0x0f00 && kanji_addr <= 0x109f) { kanji_addr -= 0x0f00; kanji_addr &= 0x1ff; return ((0x4c0) + (kanji_addr >> 3)) << 4; } // lower case chars
@@ -1813,10 +1812,10 @@ READ8_MEMBER( x1_state::x1_portb_r )
 
 	res = m_ram_bank | m_sub_obf | m_vsync | m_vdisp;
 
-	if(m_cass->input() > 0.03)
+	if(m_cassette->input() > 0.03)
 		res |= 0x02;
 
-//  if(cassette_get_state(m_cass) & CASSETTE_MOTOR_DISABLED)
+//  if(cassette_get_state(m_cassette) & CASSETTE_MOTOR_DISABLED)
 //      res &= ~0x02;  // is zero if not playing
 
 	// CMT test bit is set low when the CMT Stop command is issued, and becomes
@@ -1868,7 +1867,7 @@ WRITE8_MEMBER( x1_state::x1_portc_w )
 	m_io_switch = data & 0x20;
 	m_io_sys = data & 0xff;
 
-	m_cass->output(BIT(data, 0) ? +1.0 : -1.0);
+	m_cassette->output(BIT(data, 0) ? +1.0 : -1.0);
 }
 
 static I8255A_INTERFACE( ppi8255_intf )
@@ -1896,18 +1895,39 @@ static MC6845_INTERFACE( mc6845_intf )
 	NULL        /* update address callback */
 };
 
-static UINT8 memory_read_byte(address_space &space, offs_t address, UINT8 mem_mask) { return space.read_byte(address); }
-static void memory_write_byte(address_space &space, offs_t address, UINT8 data, UINT8 mem_mask) { space.write_byte(address, data); }
+READ8_MEMBER(x1_state::memory_read_byte)
+{
+	address_space& prog_space = m_maincpu->space(AS_PROGRAM);
+	return prog_space.read_byte(offset);
+}
+
+WRITE8_MEMBER(x1_state::memory_write_byte)
+{
+	address_space& prog_space = m_maincpu->space(AS_PROGRAM);
+	return prog_space.write_byte(offset, data);
+}
+
+READ8_MEMBER(x1_state::io_read_byte)
+{
+	address_space& prog_space = m_maincpu->space(AS_IO);
+	return prog_space.read_byte(offset);
+}
+
+WRITE8_MEMBER(x1_state::io_write_byte)
+{
+	address_space& prog_space = m_maincpu->space(AS_IO);
+	return prog_space.write_byte(offset, data);
+}
 
 static Z80DMA_INTERFACE( x1_dma )
 {
 	DEVCB_CPU_INPUT_LINE("x1_cpu", INPUT_LINE_HALT),
 	DEVCB_CPU_INPUT_LINE("x1_cpu", INPUT_LINE_IRQ0),
 	DEVCB_NULL,
-	DEVCB_MEMORY_HANDLER("x1_cpu", PROGRAM, memory_read_byte),
-	DEVCB_MEMORY_HANDLER("x1_cpu", PROGRAM, memory_write_byte),
-	DEVCB_MEMORY_HANDLER("x1_cpu", IO, memory_read_byte),
-	DEVCB_MEMORY_HANDLER("x1_cpu", IO, memory_write_byte)
+	DEVCB_DRIVER_MEMBER(x1_state, memory_read_byte),
+	DEVCB_DRIVER_MEMBER(x1_state, memory_write_byte),
+	DEVCB_DRIVER_MEMBER(x1_state, io_read_byte),
+	DEVCB_DRIVER_MEMBER(x1_state, io_write_byte)
 };
 
 /*************************************
@@ -1918,7 +1938,7 @@ static Z80DMA_INTERFACE( x1_dma )
 
 INPUT_CHANGED_MEMBER(x1_state::ipl_reset)
 {
-	m_x1_cpu->set_input_line(INPUT_LINE_RESET, newval ? CLEAR_LINE : ASSERT_LINE);
+	m_maincpu->set_input_line(INPUT_LINE_RESET, newval ? CLEAR_LINE : ASSERT_LINE);
 
 	m_ram_bank = 0x00;
 	if(m_is_turbo) { m_ex_bank = 0x10; }
@@ -1928,7 +1948,7 @@ INPUT_CHANGED_MEMBER(x1_state::ipl_reset)
 /* Apparently most games doesn't support this (not even the Konami ones!), one that does is...177 :o */
 INPUT_CHANGED_MEMBER(x1_state::nmi_reset)
 {
-	m_x1_cpu->set_input_line(INPUT_LINE_NMI, newval ? CLEAR_LINE : ASSERT_LINE);
+	m_maincpu->set_input_line(INPUT_LINE_NMI, newval ? CLEAR_LINE : ASSERT_LINE);
 }
 
 INPUT_PORTS_START( x1 )
@@ -2369,12 +2389,12 @@ IRQ_CALLBACK_MEMBER(x1_state::x1_irq_callback)
 
 TIMER_DEVICE_CALLBACK_MEMBER(x1_state::x1_keyboard_callback)
 {
-	address_space &space = machine().device("x1_cpu")->memory().space(AS_PROGRAM);
-	UINT32 key1 = machine().root_device().ioport("key1")->read();
-	UINT32 key2 = machine().root_device().ioport("key2")->read();
-	UINT32 key3 = machine().root_device().ioport("key3")->read();
-	UINT32 key4 = machine().root_device().ioport("tenkey")->read();
-	UINT32 f_key = machine().root_device().ioport("f_keys")->read();
+	address_space &space = m_maincpu->space(AS_PROGRAM);
+	UINT32 key1 = ioport("key1")->read();
+	UINT32 key2 = ioport("key2")->read();
+	UINT32 key3 = ioport("key3")->read();
+	UINT32 key4 = ioport("tenkey")->read();
+	UINT32 f_key = ioport("f_keys")->read();
 
 	if(m_key_irq_vector)
 	{
@@ -2387,7 +2407,7 @@ TIMER_DEVICE_CALLBACK_MEMBER(x1_state::x1_keyboard_callback)
 			x1_sub_io_w(space,0,0xe6);
 			m_irq_vector = m_key_irq_vector;
 			m_key_irq_flag = 1;
-			machine().device("x1_cpu")->execute().set_input_line(0,ASSERT_LINE);
+			m_maincpu->set_input_line(0,ASSERT_LINE);
 			m_old_key1 = key1;
 			m_old_key2 = key2;
 			m_old_key3 = key3;
@@ -2426,7 +2446,7 @@ TIMER_CALLBACK_MEMBER(x1_state::x1_rtc_increment)
 
 MACHINE_RESET_MEMBER(x1_state,x1)
 {
-	//UINT8 *ROM = machine().root_device().memregion("x1_cpu")->base();
+	//UINT8 *ROM = memregion("x1_cpu")->base();
 	int i;
 
 	memset(m_gfx_bitmap_ram,0x00,0xc000*2);
@@ -2441,11 +2461,11 @@ MACHINE_RESET_MEMBER(x1_state,x1)
 
 	m_io_bank_mode = 0;
 
-	//machine().device("x1_cpu")->execute().set_irq_acknowledge_callback(device_irq_acknowledge_delegate(FUNC(x1_state::x1_irq_callback),this));
+	//m_x1_cpu->set_irq_acknowledge_callback(device_irq_acknowledge_delegate(FUNC(x1_state::x1_irq_callback),this));
 
 	m_cmt_current_cmd = 0;
 	m_cmt_test = 0;
-	m_cass->change_state(CASSETTE_MOTOR_DISABLED,CASSETTE_MASK_MOTOR);
+	m_cassette->change_state(CASSETTE_MOTOR_DISABLED,CASSETTE_MASK_MOTOR);
 
 	m_key_irq_flag = m_ctc_irq_flag = 0;
 	m_sub_cmd = 0;
@@ -2597,11 +2617,11 @@ static MACHINE_CONFIG_START( x1, x1_state )
 	MCFG_SOUND_ROUTE(0, "rspeaker", 0.25)
 	MCFG_SOUND_ROUTE(1, "lspeaker",  0.5)
 	MCFG_SOUND_ROUTE(2, "rspeaker", 0.5)
-	MCFG_SOUND_WAVE_ADD(WAVE_TAG, CASSETTE_TAG)
+	MCFG_SOUND_WAVE_ADD(WAVE_TAG, "cassette")
 	MCFG_SOUND_ROUTE(ALL_OUTPUTS, "lspeaker", 0.25)
 	MCFG_SOUND_ROUTE(ALL_OUTPUTS, "rspeaker", 0.10)
 
-	MCFG_CASSETTE_ADD(CASSETTE_TAG,x1_cassette_interface)
+	MCFG_CASSETTE_ADD("cassette",x1_cassette_interface)
 	MCFG_SOFTWARE_LIST_ADD("cass_list","x1_cass")
 
 	MCFG_LEGACY_FLOPPY_4_DRIVES_ADD(x1_floppy_interface)
@@ -2715,8 +2735,8 @@ ROM_END
 DRIVER_INIT_MEMBER(x1_state,x1_kanji)
 {
 	UINT32 i,j,k,l;
-	UINT8 *kanji = machine().root_device().memregion("kanji")->base();
-	UINT8 *raw_kanji = machine().root_device().memregion("raw_kanji")->base();
+	UINT8 *kanji = memregion("kanji")->base();
+	UINT8 *raw_kanji = memregion("raw_kanji")->base();
 
 	k = 0;
 	for(l=0;l<2;l++)

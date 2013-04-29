@@ -240,8 +240,12 @@ class gticlub_state : public driver_device
 public:
 	gticlub_state(const machine_config &mconfig, device_type type, const char *tag)
 		: driver_device(mconfig, type, tag),
-		m_work_ram(*this, "work_ram")
-	{ }
+		m_work_ram(*this, "work_ram"),
+		m_maincpu(*this, "maincpu"),
+		m_audiocpu(*this, "audiocpu"),
+		m_dsp(*this, "dsp"),
+		m_dsp2(*this, "dsp2"),
+		m_eeprom(*this, "eeprom")  { }
 
 	required_shared_ptr<UINT32> m_work_ram;
 	UINT32 *m_sharc_dataram_0;
@@ -259,6 +263,8 @@ public:
 	DECLARE_WRITE32_MEMBER(dsp_dataram0_w);
 	DECLARE_READ32_MEMBER(dsp_dataram1_r);
 	DECLARE_WRITE32_MEMBER(dsp_dataram1_w);
+	DECLARE_WRITE_LINE_MEMBER(voodoo_vblank_0);
+	DECLARE_WRITE_LINE_MEMBER(voodoo_vblank_1);
 	void init_hangplt_common();
 	DECLARE_DRIVER_INIT(hangplt);
 	DECLARE_DRIVER_INIT(hangpltu);
@@ -268,6 +274,11 @@ public:
 	DECLARE_MACHINE_RESET(hangplt);
 	INTERRUPT_GEN_MEMBER(gticlub_vblank);
 	TIMER_CALLBACK_MEMBER(irq_off);
+	required_device<cpu_device> m_maincpu;
+	required_device<cpu_device> m_audiocpu;
+	required_device<cpu_device> m_dsp;
+	optional_device<cpu_device> m_dsp2;
+	required_device<eeprom_device> m_eeprom;
 };
 
 
@@ -278,14 +289,14 @@ WRITE32_MEMBER(gticlub_state::paletteram32_w)
 	palette_set_color_rgb(machine(), offset, pal5bit(data >> 10), pal5bit(data >> 5), pal5bit(data >> 0));
 }
 
-static void voodoo_vblank_0(device_t *device, int param)
+WRITE_LINE_MEMBER(gticlub_state::voodoo_vblank_0)
 {
-	device->machine().device("maincpu")->execute().set_input_line(INPUT_LINE_IRQ0, param ? ASSERT_LINE : CLEAR_LINE);
+	m_maincpu->set_input_line(INPUT_LINE_IRQ0, state? ASSERT_LINE : CLEAR_LINE);
 }
 
-static void voodoo_vblank_1(device_t *device, int param)
+WRITE_LINE_MEMBER(gticlub_state::voodoo_vblank_1)
 {
-	device->machine().device("maincpu")->execute().set_input_line(INPUT_LINE_IRQ1, param ? ASSERT_LINE : CLEAR_LINE);
+	m_maincpu->set_input_line(INPUT_LINE_IRQ1, state ? ASSERT_LINE : CLEAR_LINE);
 }
 
 READ32_MEMBER(gticlub_state::gticlub_k001604_tile_r)
@@ -346,8 +357,6 @@ READ8_MEMBER(gticlub_state::sysreg_r)
 {
 	static const char *const portnames[] = { "IN0", "IN1", "IN2", "IN3" };
 	device_t *adc1038 = machine().device("adc1038");
-	eeprom_device *eeprom = machine().device<eeprom_device>("eeprom");
-
 	switch (offset)
 	{
 		case 0:
@@ -366,7 +375,7 @@ READ8_MEMBER(gticlub_state::sysreg_r)
 			// a = ADC readout
 			// e = EEPROM data out
 
-			UINT32 eeprom_bit = (eeprom->read_bit() << 1);
+			UINT32 eeprom_bit = (m_eeprom->read_bit() << 1);
 			UINT32 adc_bit = (adc1038_do_read(adc1038) << 2);
 			return (eeprom_bit | adc_bit);
 		}
@@ -381,8 +390,6 @@ READ8_MEMBER(gticlub_state::sysreg_r)
 WRITE8_MEMBER(gticlub_state::sysreg_w)
 {
 	device_t *adc1038 = machine().device("adc1038");
-	eeprom_device *eeprom = machine().device<eeprom_device>("eeprom");
-
 	switch (offset)
 	{
 		case 0:
@@ -391,17 +398,17 @@ WRITE8_MEMBER(gticlub_state::sysreg_w)
 			break;
 
 		case 3:
-			eeprom->write_bit((data & 0x01) ? 1 : 0);
-			eeprom->set_clock_line((data & 0x02) ? ASSERT_LINE : CLEAR_LINE);
-			eeprom->set_cs_line((data & 0x04) ? CLEAR_LINE : ASSERT_LINE);
+			m_eeprom->write_bit((data & 0x01) ? 1 : 0);
+			m_eeprom->set_clock_line((data & 0x02) ? ASSERT_LINE : CLEAR_LINE);
+			m_eeprom->set_cs_line((data & 0x04) ? CLEAR_LINE : ASSERT_LINE);
 			break;
 
 		case 4:
 			if (data & 0x80)    /* CG Board 1 IRQ Ack */
-				machine().device("maincpu")->execute().set_input_line(INPUT_LINE_IRQ1, CLEAR_LINE);
+				m_maincpu->set_input_line(INPUT_LINE_IRQ1, CLEAR_LINE);
 
 			if (data & 0x40)    /* CG Board 0 IRQ Ack */
-				machine().device("maincpu")->execute().set_input_line(INPUT_LINE_IRQ0, CLEAR_LINE);
+				m_maincpu->set_input_line(INPUT_LINE_IRQ0, CLEAR_LINE);
 
 			adc1038_di_write(adc1038, (data >> 0) & 1);
 			adc1038_clk_write(adc1038, (data >> 1) & 1);
@@ -416,10 +423,10 @@ WRITE8_MEMBER(gticlub_state::sysreg_w)
 MACHINE_START_MEMBER(gticlub_state,gticlub)
 {
 	/* set conservative DRC options */
-	ppcdrc_set_options(machine().device("maincpu"), PPCDRC_COMPATIBLE_OPTIONS);
+	ppcdrc_set_options(m_maincpu, PPCDRC_COMPATIBLE_OPTIONS);
 
 	/* configure fast RAM regions for DRC */
-	ppcdrc_add_fastram(machine().device("maincpu"), 0x00000000, 0x000fffff, FALSE, m_work_ram);
+	ppcdrc_add_fastram(m_maincpu, 0x00000000, 0x000fffff, FALSE, m_work_ram);
 }
 
 static ADDRESS_MAP_START( gticlub_map, AS_PROGRAM, 32, gticlub_state )
@@ -713,7 +720,7 @@ static const sharc_config sharc_cfg =
 
 TIMER_CALLBACK_MEMBER(gticlub_state::irq_off)
 {
-	machine().device("audiocpu")->execute().set_input_line(param, CLEAR_LINE);
+	m_audiocpu->set_input_line(param, CLEAR_LINE);
 }
 
 static void sound_irq_callback( running_machine &machine, int irq )
@@ -721,7 +728,7 @@ static void sound_irq_callback( running_machine &machine, int irq )
 	gticlub_state *state = machine.driver_data<gticlub_state>();
 	int line = (irq == 0) ? INPUT_LINE_IRQ1 : INPUT_LINE_IRQ2;
 
-	machine.device("audiocpu")->execute().set_input_line(line, ASSERT_LINE);
+	state->m_audiocpu->set_input_line(line, ASSERT_LINE);
 	machine.scheduler().timer_set(attotime::from_usec(5), timer_expired_delegate(FUNC(gticlub_state::irq_off),state), line);
 }
 
@@ -808,7 +815,7 @@ static const k001604_interface hangplt_k001604_intf_r =
 
 MACHINE_RESET_MEMBER(gticlub_state,gticlub)
 {
-	machine().device("dsp")->execute().set_input_line(INPUT_LINE_RESET, ASSERT_LINE);
+	m_dsp->set_input_line(INPUT_LINE_RESET, ASSERT_LINE);
 }
 
 static MACHINE_CONFIG_START( gticlub, gticlub_state )
@@ -889,8 +896,8 @@ static const k033906_interface hangplt_k033906_intf_1 =
 
 MACHINE_RESET_MEMBER(gticlub_state,hangplt)
 {
-	machine().device("dsp")->execute().set_input_line(INPUT_LINE_RESET, ASSERT_LINE);
-	machine().device("dsp2")->execute().set_input_line(INPUT_LINE_RESET, ASSERT_LINE);
+	m_dsp->set_input_line(INPUT_LINE_RESET, ASSERT_LINE);
+	m_dsp2->set_input_line(INPUT_LINE_RESET, ASSERT_LINE);
 }
 
 static const voodoo_config voodoo_l_intf =
@@ -900,8 +907,8 @@ static const voodoo_config voodoo_l_intf =
 	2,//                tmumem1;
 	"lscreen",//        screen;
 	"dsp",//            cputag;
-	voodoo_vblank_0,//  vblank;
-	NULL,//             stall;
+	DEVCB_DRIVER_LINE_MEMBER(gticlub_state,voodoo_vblank_0),//  vblank;
+	DEVCB_NULL//             stall;
 };
 
 static const voodoo_config voodoo_r_intf =
@@ -911,8 +918,8 @@ static const voodoo_config voodoo_r_intf =
 	2,//                tmumem1;
 	"rscreen",//        screen;
 	"dsp2",//           cputag;
-	voodoo_vblank_1,//  vblank;
-	NULL,//             stall;
+	DEVCB_DRIVER_LINE_MEMBER(gticlub_state,voodoo_vblank_1),//  vblank;
+	DEVCB_NULL//             stall;
 };
 
 static MACHINE_CONFIG_START( hangplt, gticlub_state )

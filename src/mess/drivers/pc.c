@@ -84,7 +84,6 @@ video HW too.
 #include "includes/europc.h"
 #include "includes/tandy1t.h"
 
-#include "machine/pcshare.h"
 #include "includes/pc.h"
 
 #include "imagedev/flopdrv.h"
@@ -310,7 +309,7 @@ static ADDRESS_MAP_START(ibm5550_io, AS_IO, 16, pc_state )
 ADDRESS_MAP_END
 
 
-static ADDRESS_MAP_START( europc_map, AS_PROGRAM, 8, pc_state )
+static ADDRESS_MAP_START( europc_map, AS_PROGRAM, 8, europc_pc_state )
 	AM_RANGE(0x00000, 0x9ffff) AM_RAMBANK("bank10")
 	AM_RANGE(0xa0000, 0xaffff) AM_NOP
 	AM_RANGE(0xc0000, 0xc7fff) AM_NOP
@@ -321,16 +320,16 @@ ADDRESS_MAP_END
 
 
 
-static ADDRESS_MAP_START(europc_io, AS_IO, 8, pc_state )
+static ADDRESS_MAP_START(europc_io, AS_IO, 8, europc_pc_state )
 	AM_RANGE(0x0000, 0x000f) AM_DEVREADWRITE("dma8237", am9517a_device, read, write)
 	AM_RANGE(0x0020, 0x0021) AM_DEVREADWRITE_LEGACY("pic8259", pic8259_r, pic8259_w)
 	AM_RANGE(0x0040, 0x0043) AM_DEVREADWRITE_LEGACY("pit8253", pit8253_r, pit8253_w)
-	AM_RANGE(0x0060, 0x0063) AM_READWRITE_LEGACY(europc_pio_r,          europc_pio_w)
+	AM_RANGE(0x0060, 0x0063) AM_READWRITE(europc_pio_r,          europc_pio_w)
 	AM_RANGE(0x0080, 0x0087) AM_READWRITE(pc_page_r,            pc_page_w)
 	AM_RANGE(0x0200, 0x0207) AM_DEVREADWRITE("joy", pc_joy_device, joy_port_r, joy_port_w)
-	AM_RANGE(0x0250, 0x025f) AM_READWRITE_LEGACY(europc_jim_r,          europc_jim_w)
+	AM_RANGE(0x0250, 0x025f) AM_READWRITE(europc_jim_r,          europc_jim_w)
 	AM_RANGE(0x0278, 0x027b) AM_DEVREADWRITE_LEGACY("lpt_2", pc_lpt_r, pc_lpt_w)
-	AM_RANGE(0x02e0, 0x02e0) AM_READ_LEGACY(europc_jim2_r)
+	AM_RANGE(0x02e0, 0x02e0) AM_READ(europc_jim2_r)
 	AM_RANGE(0x02e8, 0x02ef) AM_DEVREADWRITE("ins8250_3", ins8250_device, ins8250_r, ins8250_w)
 	AM_RANGE(0x02f8, 0x02ff) AM_DEVREADWRITE("ins8250_1", ins8250_device, ins8250_r, ins8250_w)
 	AM_RANGE(0x0378, 0x037b) AM_DEVREADWRITE_LEGACY("lpt_1", pc_lpt_r, pc_lpt_w)
@@ -342,7 +341,7 @@ ADDRESS_MAP_END
 
 
 
-static ADDRESS_MAP_START(tandy1000_map, AS_PROGRAM, 8, pc_state )
+static ADDRESS_MAP_START(tandy1000_map, AS_PROGRAM, 8, tandy_pc_state )
 	AM_RANGE(0x00000, 0x9ffff) AM_RAMBANK("bank10")
 	AM_RANGE(0xa0000, 0xaffff) AM_RAM
 	AM_RANGE(0xb0000, 0xb7fff) AM_NOP
@@ -355,16 +354,16 @@ ADDRESS_MAP_END
 
 
 
-static ADDRESS_MAP_START(tandy1000_io, AS_IO, 8, pc_state )
+static ADDRESS_MAP_START(tandy1000_io, AS_IO, 8, tandy_pc_state )
 	AM_RANGE(0x0000, 0x000f) AM_DEVREADWRITE("dma8237", am9517a_device, read, write)
 	AM_RANGE(0x0020, 0x0021) AM_DEVREADWRITE_LEGACY("pic8259", pic8259_r, pic8259_w)
 	AM_RANGE(0x0040, 0x0043) AM_DEVREADWRITE_LEGACY("pit8253", pit8253_r, pit8253_w)
-	AM_RANGE(0x0060, 0x0063) AM_READWRITE_LEGACY(tandy1000_pio_r,           tandy1000_pio_w)
+	AM_RANGE(0x0060, 0x0063) AM_READWRITE(tandy1000_pio_r,           tandy1000_pio_w)
 	AM_RANGE(0x0080, 0x0087) AM_READWRITE(pc_page_r,                pc_page_w)
 	AM_RANGE(0x00c0, 0x00c0) AM_DEVWRITE("sn76496", ncr7496_device, write)
 	AM_RANGE(0x0200, 0x0207) AM_DEVREADWRITE("joy", pc_joy_device, joy_port_r, joy_port_w)
 	AM_RANGE(0x02f8, 0x02ff) AM_DEVREADWRITE("ins8250_1", ins8250_device, ins8250_r, ins8250_w)
-	AM_RANGE(0x0378, 0x037f) AM_READWRITE_LEGACY(pc_t1t_p37x_r,         pc_t1t_p37x_w)
+	AM_RANGE(0x0378, 0x037f) AM_READWRITE(pc_t1t_p37x_r,         pc_t1t_p37x_w)
 	AM_RANGE(0x03bc, 0x03be) AM_DEVREADWRITE_LEGACY("lpt_0", pc_lpt_r, pc_lpt_w)
 	AM_RANGE(0x03f0, 0x03f7) AM_DEVICE("fdc", pc_fdc_interface, map)
 	AM_RANGE(0x03f8, 0x03ff) AM_DEVREADWRITE("ins8250_0", ins8250_device, ins8250_r, ins8250_w)
@@ -385,25 +384,26 @@ ADDRESS_MAP_END
 
 
 
-static ADDRESS_MAP_START(tandy1000_16_io, AS_IO, 16, pc_state )
+static ADDRESS_MAP_START(tandy1000_16_io, AS_IO, 16, tandy_pc_state )
 	AM_RANGE(0x0000, 0x000f) AM_DEVREADWRITE8("dma8237", am9517a_device, read, write, 0xffff)
 	AM_RANGE(0x0020, 0x0021) AM_DEVREADWRITE8_LEGACY("pic8259", pic8259_r, pic8259_w, 0xffff)
 	AM_RANGE(0x0040, 0x0043) AM_DEVREADWRITE8_LEGACY("pit8253", pit8253_r, pit8253_w, 0xffff)
-	AM_RANGE(0x0060, 0x0063) AM_READWRITE8_LEGACY(tandy1000_pio_r,          tandy1000_pio_w, 0xffff)
+	AM_RANGE(0x0060, 0x0063) AM_READWRITE8(tandy1000_pio_r,          tandy1000_pio_w, 0xffff)
 	AM_RANGE(0x0080, 0x0087) AM_READWRITE8(pc_page_r,               pc_page_w, 0xffff)
 	AM_RANGE(0x00c0, 0x00c1) AM_DEVWRITE8("sn76496",    ncr7496_device, write, 0xffff)
 	AM_RANGE(0x0200, 0x0207) AM_DEVREADWRITE8("joy", pc_joy_device, joy_port_r, joy_port_w, 0xffff)
 	AM_RANGE(0x02f8, 0x02ff) AM_DEVREADWRITE8("ins8250_1", ins8250_device, ins8250_r, ins8250_w, 0xffff)
-	AM_RANGE(0x0378, 0x037f) AM_READWRITE8_LEGACY(pc_t1t_p37x_r,            pc_t1t_p37x_w, 0xffff)
+	AM_RANGE(0x0378, 0x037f) AM_READWRITE8(pc_t1t_p37x_r,            pc_t1t_p37x_w, 0xffff)
 	AM_RANGE(0x03bc, 0x03bf) AM_DEVREADWRITE8_LEGACY("lpt_0", pc_lpt_r, pc_lpt_w, 0xffff)
 	AM_RANGE(0x03f0, 0x03f7) AM_DEVICE8("fdc", pc_fdc_interface, map, 0xffff)
 	AM_RANGE(0x03f8, 0x03ff) AM_DEVREADWRITE8("ins8250_0", ins8250_device, ins8250_r, ins8250_w, 0xffff)
-	AM_RANGE(0xffea, 0xffeb) AM_READWRITE8_LEGACY(tandy1000_bank_r, tandy1000_bank_w, 0xffff)
+	AM_RANGE(0xffea, 0xffeb) AM_READWRITE8(tandy1000_bank_r, tandy1000_bank_w, 0xffff)
 ADDRESS_MAP_END
 
 
 
-static ADDRESS_MAP_START(tandy1000_286_map, AS_PROGRAM, 16, pc_state )
+static ADDRESS_MAP_START(tandy1000_286_map, AS_PROGRAM, 16, tandy_pc_state )
+	ADDRESS_MAP_GLOBAL_MASK(0x000fffff)
 	AM_RANGE(0x00000, 0x9ffff) AM_RAMBANK("bank10")
 	AM_RANGE(0xa0000, 0xaffff) AM_RAM
 	AM_RANGE(0xb0000, 0xb7fff) AM_NOP
@@ -416,23 +416,23 @@ ADDRESS_MAP_END
 
 
 
-static ADDRESS_MAP_START(tandy1000_286_io, AS_IO, 16, pc_state )
+static ADDRESS_MAP_START(tandy1000_286_io, AS_IO, 16, tandy_pc_state )
 	AM_RANGE(0x0000, 0x000f) AM_DEVREADWRITE8("dma8237", am9517a_device, read, write, 0xffff)
 	AM_RANGE(0x0020, 0x0021) AM_DEVREADWRITE8_LEGACY("pic8259", pic8259_r, pic8259_w, 0xffff)
 	AM_RANGE(0x0040, 0x0043) AM_DEVREADWRITE8_LEGACY("pit8253", pit8253_r, pit8253_w, 0xffff)
-	AM_RANGE(0x0060, 0x0063) AM_READWRITE8_LEGACY(tandy1000_pio_r,         tandy1000_pio_w, 0xffff)
+	AM_RANGE(0x0060, 0x0063) AM_READWRITE8(tandy1000_pio_r,         tandy1000_pio_w, 0xffff)
 	AM_RANGE(0x0080, 0x0087) AM_READWRITE8(pc_page_r,               pc_page_w, 0xffff)
 	AM_RANGE(0x00c0, 0x00c1) AM_DEVWRITE8("sn76496", ncr7496_device, write, 0xffff)
 	AM_RANGE(0x0200, 0x0207) AM_DEVREADWRITE8("joy", pc_joy_device, joy_port_r, joy_port_w, 0xffff)
 	AM_RANGE(0x02f8, 0x02ff) AM_DEVREADWRITE8("ins8250_1", ins8250_device, ins8250_r, ins8250_w, 0xffff)
-	AM_RANGE(0x0378, 0x037f) AM_READWRITE8_LEGACY(pc_t1t_p37x_r,           pc_t1t_p37x_w, 0xffff)
+	AM_RANGE(0x0378, 0x037f) AM_READWRITE8(pc_t1t_p37x_r,           pc_t1t_p37x_w, 0xffff)
 	AM_RANGE(0x03bc, 0x03bf) AM_DEVREADWRITE8_LEGACY("lpt_0", pc_lpt_r, pc_lpt_w, 0xffff)
 	AM_RANGE(0x03f0, 0x03f7) AM_DEVICE8("fdc", pc_fdc_interface, map, 0xffff)
 	AM_RANGE(0x03f8, 0x03ff) AM_DEVREADWRITE8("ins8250_0", ins8250_device, ins8250_r, ins8250_w, 0xffff)
 ADDRESS_MAP_END
 
 
-static ADDRESS_MAP_START(ibmpcjr_map, AS_PROGRAM, 8, pc_state )
+static ADDRESS_MAP_START(ibmpcjr_map, AS_PROGRAM, 8, tandy_pc_state )
 	AM_RANGE(0x00000, 0x9ffff) AM_RAMBANK("bank10")
 	AM_RANGE(0xa0000, 0xaffff) AM_RAM
 	AM_RANGE(0xb0000, 0xb7fff) AM_NOP
@@ -446,7 +446,7 @@ static ADDRESS_MAP_START(ibmpcjr_map, AS_PROGRAM, 8, pc_state )
 ADDRESS_MAP_END
 
 
-static ADDRESS_MAP_START(ibmpcjr_io, AS_IO, 8, pc_state )
+static ADDRESS_MAP_START(ibmpcjr_io, AS_IO, 8, tandy_pc_state )
 	AM_RANGE(0x0020, 0x0021) AM_DEVREADWRITE_LEGACY("pic8259", pic8259_r, pic8259_w)
 	AM_RANGE(0x0040, 0x0043) AM_DEVREADWRITE_LEGACY("pit8253", pit8253_r, pit8253_w)
 	AM_RANGE(0x0060, 0x0063) AM_DEVREADWRITE("ppi8255", i8255_device, read, write)
@@ -457,7 +457,7 @@ static ADDRESS_MAP_START(ibmpcjr_io, AS_IO, 8, pc_state )
 	AM_RANGE(0x00f4, 0x00f5) AM_DEVICE("upd765", upd765a_device, map)
 	AM_RANGE(0x0200, 0x0207) AM_DEVREADWRITE("joy", pc_joy_device, joy_port_r, joy_port_w)
 	AM_RANGE(0x02f8, 0x02ff) AM_DEVREADWRITE("ins8250_1", ins8250_device, ins8250_r, ins8250_w)
-	AM_RANGE(0x0378, 0x037f) AM_READWRITE_LEGACY(pc_t1t_p37x_r,         pc_t1t_p37x_w)
+	AM_RANGE(0x0378, 0x037f) AM_READWRITE(pc_t1t_p37x_r,         pc_t1t_p37x_w)
 	AM_RANGE(0x03bc, 0x03be) AM_DEVREADWRITE_LEGACY("lpt_0", pc_lpt_r, pc_lpt_w)
 	AM_RANGE(0x03f8, 0x03ff) AM_DEVREADWRITE("ins8250_0", ins8250_device, ins8250_r, ins8250_w)
 ADDRESS_MAP_END
@@ -983,7 +983,7 @@ static MACHINE_CONFIG_START( pccga, pc_state )
 
 	/* sound hardware */
 	MCFG_SPEAKER_STANDARD_MONO("mono")
-	MCFG_SOUND_ADD(SPEAKER_TAG, SPEAKER_SOUND, 0)
+	MCFG_SOUND_ADD("speaker", SPEAKER_SOUND, 0)
 	MCFG_SOUND_ROUTE(ALL_OUTPUTS, "mono", 0.80)
 
 	/* keyboard */
@@ -1037,12 +1037,12 @@ static GFXDECODE_START( europc )
 	GFXDECODE_ENTRY( "gfx1", 0x0800, europc_16_charlayout, 3, 1 )
 GFXDECODE_END
 
-static MACHINE_CONFIG_START( europc, pc_state )
+static MACHINE_CONFIG_START( europc, europc_pc_state )
 	/* basic machine hardware */
 	MCFG_CPU_PC(europc, europc, I8088, 4772720*2, pc_frame_interrupt)
 
-	MCFG_MACHINE_START_OVERRIDE(pc_state,pc)
-	MCFG_MACHINE_RESET_OVERRIDE(pc_state,pc)
+	MCFG_MACHINE_START_OVERRIDE(europc_pc_state,pc)
+	MCFG_MACHINE_RESET_OVERRIDE(europc_pc_state,pc)
 
 	MCFG_PIT8253_ADD( "pit8253", ibm5150_pit8253_config )
 
@@ -1068,7 +1068,7 @@ static MACHINE_CONFIG_START( europc, pc_state )
 
 	/* sound hardware */
 	MCFG_SPEAKER_STANDARD_MONO("mono")
-	MCFG_SOUND_ADD(SPEAKER_TAG, SPEAKER_SOUND, 0)
+	MCFG_SOUND_ADD("speaker", SPEAKER_SOUND, 0)
 	MCFG_SOUND_ROUTE(ALL_OUTPUTS, "mono", 0.80)
 
 	MCFG_NVRAM_HANDLER( europc_rtc )
@@ -1089,11 +1089,11 @@ static MACHINE_CONFIG_START( europc, pc_state )
 MACHINE_CONFIG_END
 
 
-static MACHINE_CONFIG_START( t1000hx, pc_state )
+static MACHINE_CONFIG_START( t1000hx, tandy_pc_state )
 	/* basic machine hardware */
 	MCFG_CPU_PC(tandy1000, tandy1000, I8088, 8000000, pc_frame_interrupt)
 
-	MCFG_MACHINE_START_OVERRIDE(pc_state,pc)
+	MCFG_MACHINE_START_OVERRIDE(tandy_pc_state,pc)
 	MCFG_MACHINE_RESET_OVERRIDE(pc_state,pc)
 
 	MCFG_PIT8253_ADD( "pit8253", ibm5150_pit8253_config )
@@ -1115,7 +1115,7 @@ static MACHINE_CONFIG_START( t1000hx, pc_state )
 
 	/* sound hardware */
 	MCFG_SPEAKER_STANDARD_MONO("mono")
-	MCFG_SOUND_ADD(SPEAKER_TAG, SPEAKER_SOUND, 0)
+	MCFG_SOUND_ADD("speaker", SPEAKER_SOUND, 0)
 	MCFG_SOUND_ROUTE(ALL_OUTPUTS, "mono", 0.80)
 	MCFG_SOUND_ADD("sn76496", NCR7496, XTAL_14_31818MHz/4)
 	MCFG_SOUND_CONFIG(psg_intf)
@@ -1143,12 +1143,12 @@ static MACHINE_CONFIG_DERIVED( t1000sx, t1000hx )
 	MCFG_FLOPPY_DRIVE_ADD("fdc:0", ibmpc_floppies, "525dd", 0, pc_state::floppy_formats)
 MACHINE_CONFIG_END
 
-static MACHINE_CONFIG_START( t1000_16, pc_state )
+static MACHINE_CONFIG_START( t1000_16, tandy_pc_state )
 	/* basic machine hardware */
 	MCFG_CPU_PC(tandy1000_16, tandy1000_16, I8086, XTAL_28_63636MHz / 3, pc_frame_interrupt)
 
-	MCFG_MACHINE_START_OVERRIDE(pc_state,pc)
-	MCFG_MACHINE_RESET_OVERRIDE(pc_state,tandy1000rl)
+	MCFG_MACHINE_START_OVERRIDE(tandy_pc_state,pc)
+	MCFG_MACHINE_RESET_OVERRIDE(tandy_pc_state,tandy1000rl)
 
 	MCFG_PIT8253_ADD( "pit8253", ibm5150_pit8253_config )
 
@@ -1169,7 +1169,7 @@ static MACHINE_CONFIG_START( t1000_16, pc_state )
 
 	/* sound hardware */
 	MCFG_SPEAKER_STANDARD_MONO("mono")
-	MCFG_SOUND_ADD(SPEAKER_TAG, SPEAKER_SOUND, 0)
+	MCFG_SOUND_ADD("speaker", SPEAKER_SOUND, 0)
 	MCFG_SOUND_ROUTE(ALL_OUTPUTS, "mono", 0.80)
 	MCFG_SOUND_ADD("sn76496", NCR7496, XTAL_14_31818MHz/4)
 	MCFG_SOUND_CONFIG(psg_intf)
@@ -1192,7 +1192,7 @@ static MACHINE_CONFIG_START( t1000_16, pc_state )
 MACHINE_CONFIG_END
 
 
-static MACHINE_CONFIG_START( t1000_286, pc_state )
+static MACHINE_CONFIG_START( t1000_286, tandy_pc_state )
 	/* basic machine hardware */
 	MCFG_CPU_PC(tandy1000_286, tandy1000_286, I80286, XTAL_28_63636MHz / 2, pc_frame_interrupt)
 
@@ -1218,7 +1218,7 @@ static MACHINE_CONFIG_START( t1000_286, pc_state )
 
 	/* sound hardware */
 	MCFG_SPEAKER_STANDARD_MONO("mono")
-	MCFG_SOUND_ADD(SPEAKER_TAG, SPEAKER_SOUND, 0)
+	MCFG_SOUND_ADD("speaker", SPEAKER_SOUND, 0)
 	MCFG_SOUND_ROUTE(ALL_OUTPUTS, "mono", 0.80)
 	MCFG_SOUND_ADD("sn76496", NCR7496, XTAL_14_31818MHz/4)
 	MCFG_SOUND_CONFIG(psg_intf)
@@ -1263,7 +1263,7 @@ static const cassette_interface mc1502_cassette_interface =
 	NULL
 };
 
-static MACHINE_CONFIG_START( ibmpcjr, pc_state )
+static MACHINE_CONFIG_START( ibmpcjr, tandy_pc_state )
 	/* basic machine hardware */
 	MCFG_CPU_PC(ibmpcjr, ibmpcjr, I8088, 4900000, pcjr_frame_interrupt) /* TODO: Get correct cpu frequency, probably XTAL_14_31818MHz/3 */
 
@@ -1287,7 +1287,7 @@ static MACHINE_CONFIG_START( ibmpcjr, pc_state )
 
 	/* sound hardware */
 	MCFG_SPEAKER_STANDARD_MONO("mono")
-	MCFG_SOUND_ADD(SPEAKER_TAG, SPEAKER_SOUND, 0)
+	MCFG_SOUND_ADD("speaker", SPEAKER_SOUND, 0)
 	MCFG_SOUND_ROUTE(ALL_OUTPUTS, "mono", 0.80)
 	MCFG_SOUND_ADD("sn76496", SN76496, XTAL_14_31818MHz/4)
 	MCFG_SOUND_CONFIG(psg_intf)
@@ -1302,7 +1302,7 @@ static MACHINE_CONFIG_START( ibmpcjr, pc_state )
 	MCFG_PC_JOY_ADD("joy")
 
 	/* cassette */
-	MCFG_CASSETTE_ADD( CASSETTE_TAG, ibm5150_cassette_interface )
+	MCFG_CASSETTE_ADD( "cassette", ibm5150_cassette_interface )
 
 	MCFG_UPD765A_ADD("upd765", false, false)
 
@@ -1374,14 +1374,14 @@ static MACHINE_CONFIG_START( mc1502, pc_state )
 
 	/* sound hardware */
 	MCFG_SPEAKER_STANDARD_MONO("mono")
-	MCFG_SOUND_ADD(SPEAKER_TAG, SPEAKER_SOUND, 0)
+	MCFG_SOUND_ADD("speaker", SPEAKER_SOUND, 0)
 	MCFG_SOUND_ROUTE(ALL_OUTPUTS, "mono", 0.80)
 
 	/* printer */
 //  MCFG_PC_LPT_ADD("lpt_0", pc_lpt_config)             /* TODO: non-standard */
 
 	/* cassette */
-	MCFG_CASSETTE_ADD( CASSETTE_TAG, mc1502_cassette_interface )    // has no motor control
+	MCFG_CASSETTE_ADD( "cassette", mc1502_cassette_interface )    // has no motor control
 
 	MCFG_FD1793x_ADD("vg93", XTAL_8MHz / 8) // clock?
 	MCFG_FLOPPY_DRIVE_ADD("fd0", ibmpc_floppies, "525dd", 0, pc_state::floppy_formats)
@@ -1421,7 +1421,7 @@ static MACHINE_CONFIG_START( ec1841, pc_state )
 
 	/* sound hardware */
 	MCFG_SPEAKER_STANDARD_MONO("mono")
-	MCFG_SOUND_ADD(SPEAKER_TAG, SPEAKER_SOUND, 0)
+	MCFG_SOUND_ADD("speaker", SPEAKER_SOUND, 0)
 	MCFG_SOUND_ROUTE(ALL_OUTPUTS, "mono", 0.80)
 
 	/* printer */
@@ -1475,7 +1475,7 @@ static MACHINE_CONFIG_START( iskr1031, pc_state )
 
 	/* sound hardware */
 	MCFG_SPEAKER_STANDARD_MONO("mono")
-	MCFG_SOUND_ADD(SPEAKER_TAG, SPEAKER_SOUND, 0)
+	MCFG_SOUND_ADD("speaker", SPEAKER_SOUND, 0)
 	MCFG_SOUND_ROUTE(ALL_OUTPUTS, "mono", 0.80)
 
 	/* keyboard */
@@ -1529,7 +1529,7 @@ static MACHINE_CONFIG_START( iskr3104, pc_state )
 	MCFG_FRAGMENT_ADD( pcvideo_cga )
 	/* sound hardware */
 	MCFG_SPEAKER_STANDARD_MONO("mono")
-	MCFG_SOUND_ADD(SPEAKER_TAG, SPEAKER_SOUND, 0)
+	MCFG_SOUND_ADD("speaker", SPEAKER_SOUND, 0)
 	MCFG_SOUND_ROUTE(ALL_OUTPUTS, "mono", 0.80)
 
 	/* keyboard */
@@ -1585,7 +1585,7 @@ static MACHINE_CONFIG_START( poisk2, pc_state )
 
 	/* sound hardware */
 	MCFG_SPEAKER_STANDARD_MONO("mono")
-	MCFG_SOUND_ADD(SPEAKER_TAG, SPEAKER_SOUND, 0)
+	MCFG_SOUND_ADD("speaker", SPEAKER_SOUND, 0)
 	MCFG_SOUND_ROUTE(ALL_OUTPUTS, "mono", 0.80)
 
 	/* keyboard */
@@ -1640,7 +1640,7 @@ static MACHINE_CONFIG_START( zenith, pc_state )
 
 	/* sound hardware */
 	MCFG_SPEAKER_STANDARD_MONO("mono")
-	MCFG_SOUND_ADD(SPEAKER_TAG, SPEAKER_SOUND, 0)
+	MCFG_SOUND_ADD("speaker", SPEAKER_SOUND, 0)
 	MCFG_SOUND_ROUTE(ALL_OUTPUTS, "mono", 0.80)
 
 	/* keyboard */
@@ -1695,7 +1695,7 @@ static MACHINE_CONFIG_START( olivetti, pc_state )
 
 	/* sound hardware */
 	MCFG_SPEAKER_STANDARD_MONO("mono")
-	MCFG_SOUND_ADD(SPEAKER_TAG, SPEAKER_SOUND, 0)
+	MCFG_SOUND_ADD("speaker", SPEAKER_SOUND, 0)
 	MCFG_SOUND_ROUTE(ALL_OUTPUTS, "mono", 0.80)
 
 	/* keyboard */
@@ -1750,7 +1750,7 @@ static MACHINE_CONFIG_START( ibm5550, pc_state )
 
 	/* sound hardware */
 	MCFG_SPEAKER_STANDARD_MONO("mono")
-	MCFG_SOUND_ADD(SPEAKER_TAG, SPEAKER_SOUND, 0)
+	MCFG_SOUND_ADD("speaker", SPEAKER_SOUND, 0)
 	MCFG_SOUND_ROUTE(ALL_OUTPUTS, "mono", 0.80)
 
 	/* keyboard */
@@ -2336,7 +2336,7 @@ ROM_END
 /*    YEAR  NAME        PARENT      COMPAT      MACHINE     INPUT       INIT        COMPANY            FULLNAME */
 COMP( 1984, dgone,      ibm5150,    0,          pccga,      pccga, pc_state,      pccga,      "Data General", "Data General/One" , GAME_NOT_WORKING)/* CGA, 2x 3.5" disk drives */
 COMP( 1985, bw230,      ibm5150,    0,          pccga,      bondwell, pc_state,   bondwell,   "Bondwell Holding", "BW230 (PRO28 Series)", 0 )
-COMP( 1988, europc,     ibm5150,    0,          europc,     europc, pc_state,     europc,     "Schneider Rdf. AG", "EURO PC", GAME_NOT_WORKING)
+COMP( 1988, europc,     ibm5150,    0,          europc,     europc, europc_pc_state,     europc,     "Schneider Rdf. AG", "EURO PC", GAME_NOT_WORKING)
 COMP( 1984, compc1,     ibm5150,    0,          pccga,      pccga, pc_state,      pccga,      "Commodore Business Machines", "Commodore PC-1" , GAME_NOT_WORKING)
 COMP( 1987, pc10iii,    ibm5150,    0,          pccga,      pccga, pc_state,      pccga,      "Commodore Business Machines", "Commodore PC-10 III" , GAME_NOT_WORKING)
 

@@ -38,34 +38,33 @@ class mz2000_state : public driver_device
 {
 public:
 	mz2000_state(const machine_config &mconfig, device_type type, const char *tag)
-		: driver_device(mconfig, type, tag)
-		, m_cass(*this, CASSETTE_TAG)
-		, m_maincpu(*this, "maincpu")
-		, m_mb8877a(*this, "mb8877a")
-		, m_pit8253(*this, "pit")
-		, m_beeper(*this, BEEPER_TAG)
-		, m_region_tvram(*this, "tvram")
-		, m_region_gvram(*this, "gvram")
-		, m_region_chargen(*this, "chargen")
-		, m_region_ipl(*this, "ipl")
-		, m_region_wram(*this, "wram")
-		, m_io_key0(*this, "KEY0")
-		, m_io_key1(*this, "KEY1")
-		, m_io_key2(*this, "KEY2")
-		, m_io_key3(*this, "KEY3")
-		, m_io_key4(*this, "KEY4")
-		, m_io_key5(*this, "KEY5")
-		, m_io_key6(*this, "KEY6")
-		, m_io_key7(*this, "KEY7")
-		, m_io_key8(*this, "KEY8")
-		, m_io_key9(*this, "KEY9")
-		, m_io_keya(*this, "KEYA")
-		, m_io_keyb(*this, "KEYB")
-		, m_io_keyc(*this, "KEYC")
-		, m_io_keyd(*this, "KEYD")
-		, m_io_unused(*this, "UNUSED")
-		, m_io_config(*this, "CONFIG")
-	{ }
+		: driver_device(mconfig, type, tag),
+		m_cass(*this, "cassette"),
+		m_maincpu(*this, "maincpu"),
+		m_mb8877a(*this, "mb8877a"),
+		m_pit8253(*this, "pit"),
+		m_beeper(*this, "beeper"),
+		m_region_tvram(*this, "tvram"),
+		m_region_gvram(*this, "gvram"),
+		m_region_chargen(*this, "chargen"),
+		m_region_ipl(*this, "ipl"),
+		m_region_wram(*this, "wram"),
+		m_io_key0(*this, "KEY0"),
+		m_io_key1(*this, "KEY1"),
+		m_io_key2(*this, "KEY2"),
+		m_io_key3(*this, "KEY3"),
+		m_io_key4(*this, "KEY4"),
+		m_io_key5(*this, "KEY5"),
+		m_io_key6(*this, "KEY6"),
+		m_io_key7(*this, "KEY7"),
+		m_io_key8(*this, "KEY8"),
+		m_io_key9(*this, "KEY9"),
+		m_io_keya(*this, "KEYA"),
+		m_io_keyb(*this, "KEYB"),
+		m_io_keyc(*this, "KEYC"),
+		m_io_keyd(*this, "KEYD"),
+		m_io_unused(*this, "UNUSED"),
+		m_io_config(*this, "CONFIG") { }
 
 	required_device<cassette_image_device> m_cass;
 
@@ -873,7 +872,7 @@ static MACHINE_CONFIG_START( mz2000, mz2000_state )
 	MCFG_LEGACY_FLOPPY_4_DRIVES_ADD(mz2000_floppy_interface)
 	MCFG_SOFTWARE_LIST_ADD("flop_list","mz2000_flop")
 
-	MCFG_CASSETTE_ADD( CASSETTE_TAG, mz2000_cassette_interface )
+	MCFG_CASSETTE_ADD( "cassette", mz2000_cassette_interface )
 	MCFG_SOFTWARE_LIST_ADD("cass_list","mz2000_cass")
 
 	/* video hardware */
@@ -890,10 +889,10 @@ static MACHINE_CONFIG_START( mz2000, mz2000_state )
 
 	MCFG_SPEAKER_STANDARD_MONO("mono")
 
-	MCFG_SOUND_WAVE_ADD(WAVE_TAG, CASSETTE_TAG)
+	MCFG_SOUND_WAVE_ADD(WAVE_TAG, "cassette")
 	MCFG_SOUND_ROUTE(ALL_OUTPUTS, "mono", 0.25)
 
-	MCFG_SOUND_ADD(BEEPER_TAG, BEEP, 0)
+	MCFG_SOUND_ADD("beeper", BEEP, 0)
 	MCFG_SOUND_ROUTE(ALL_OUTPUTS,"mono",0.15)
 MACHINE_CONFIG_END
 

@@ -27,14 +27,18 @@
 #include "emu.h"
 #include "cpu/m68000/m68000.h"
 #include "video/pc_vga.h"
+#include "machine/mcf5206e.h"
 
 class gaminator_state : public driver_device
 {
 public:
 	gaminator_state(const machine_config &mconfig, device_type type, const char *tag)
-		: driver_device(mconfig, type, tag){ }
+		: driver_device(mconfig, type, tag),
+		m_maincpu(*this, "maincpu") { }
+
 	DECLARE_WRITE32_MEMBER(gamtor_unk_w);
 	DECLARE_DRIVER_INIT(gaminator);
+	required_device<cpu_device> m_maincpu;
 };
 
 WRITE32_MEMBER(gaminator_state::gamtor_unk_w)
@@ -74,6 +78,7 @@ static MACHINE_CONFIG_START( gaminator, gaminator_state )
 	MCFG_CPU_ADD("maincpu", MCF5206E, 40000000) /* definitely Coldfire, model / clock uncertain */
 	MCFG_CPU_PROGRAM_MAP(gaminator_map)
 	MCFG_CPU_VBLANK_INT_DRIVER("screen", gaminator_state,  irq6_line_hold) // irq6 seems to be needed to get past the ROM checking
+	MCFG_MCF5206E_PERIPHERAL_ADD("maincpu_onboard")
 
 	MCFG_FRAGMENT_ADD( pcvideo_gamtor_vga )
 

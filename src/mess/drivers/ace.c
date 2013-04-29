@@ -68,15 +68,15 @@ Ports:
  Snapshot Handling
 ******************************************************************************/
 
-SNAPSHOT_LOAD( ace )
+SNAPSHOT_LOAD_MEMBER( ace_state, ace )
 {
-	cpu_device *cpu = image.device().machine().firstcpu;
-	UINT8 *RAM = image.device().machine().root_device().memregion(cpu->tag())->base();
+	cpu_device *cpu = m_maincpu;
+	UINT8 *RAM = memregion(cpu->tag())->base();
 	address_space &space = cpu->space(AS_PROGRAM);
 	unsigned char ace_repeat, ace_byte, loop;
 	int done=0, ace_index=0x2000;
 
-	if (image.device().machine().device<ram_device>(RAM_TAG)->size() < 16*1024)
+	if (m_ram->size() < 16*1024)
 	{
 		image.seterror(IMAGE_ERROR_INVALIDIMAGE, "At least 16KB RAM expansion required");
 		image.message("At least 16KB RAM expansion required");
@@ -474,7 +474,7 @@ GFXDECODE_END
 
 TIMER_DEVICE_CALLBACK_MEMBER(ace_state::set_irq)
 {
-	machine().device(Z80_TAG)->execute().set_input_line(INPUT_LINE_IRQ0, ASSERT_LINE);
+	m_maincpu->set_input_line(INPUT_LINE_IRQ0, ASSERT_LINE);
 }
 
 
@@ -484,7 +484,7 @@ TIMER_DEVICE_CALLBACK_MEMBER(ace_state::set_irq)
 
 TIMER_DEVICE_CALLBACK_MEMBER(ace_state::clear_irq)
 {
-	machine().device(Z80_TAG)->execute().set_input_line(INPUT_LINE_IRQ0, CLEAR_LINE);
+	m_maincpu->set_input_line(INPUT_LINE_IRQ0, CLEAR_LINE);
 }
 
 
@@ -750,9 +750,9 @@ static MACHINE_CONFIG_START( ace, ace_state )
 
 	// sound hardware
 	MCFG_SPEAKER_STANDARD_MONO("mono")
-	MCFG_SOUND_WAVE_ADD(WAVE_TAG, CASSETTE_TAG)
+	MCFG_SOUND_WAVE_ADD(WAVE_TAG, "cassette")
 	MCFG_SOUND_ROUTE(ALL_OUTPUTS, "mono", 0.25)
-	MCFG_SOUND_ADD(SPEAKER_TAG, SPEAKER_SOUND, 0)
+	MCFG_SOUND_ADD("speaker", SPEAKER_SOUND, 0)
 	MCFG_SOUND_ROUTE(ALL_OUTPUTS, "mono", 1.00)
 
 	MCFG_SOUND_ADD(AY8910_TAG, AY8910, XTAL_6_5MHz/2)
@@ -764,8 +764,8 @@ static MACHINE_CONFIG_START( ace, ace_state )
 	MCFG_SOUND_ROUTE(ALL_OUTPUTS, "mono", 0.25)
 
 	// devices
-	MCFG_CASSETTE_ADD(CASSETTE_TAG, ace_cassette_interface)
-	MCFG_SNAPSHOT_ADD("snapshot", ace, "ace", 1)
+	MCFG_CASSETTE_ADD("cassette", ace_cassette_interface)
+	MCFG_SNAPSHOT_ADD("snapshot", ace_state, ace, "ace", 1)
 	MCFG_I8255A_ADD(I8255_TAG, ppi_intf)
 	MCFG_Z80PIO_ADD(Z80PIO_TAG, XTAL_6_5MHz/2, pio_intf)
 	MCFG_CENTRONICS_PRINTER_ADD(CENTRONICS_TAG, standard_centronics)

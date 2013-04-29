@@ -90,10 +90,9 @@ READ16_MEMBER(oneshot_state::oneshot_gun_y_p2_r)
 
 WRITE16_MEMBER(oneshot_state::soundbank_w)
 {
-	device_t *device = machine().device("oki");
 	if (ACCESSING_BITS_0_7)
 	{
-		downcast<okim6295_device *>(device)->set_bank_base(0x40000 * ((data & 0x03) ^ 0x03));
+		m_oki->set_bank_base(0x40000 * ((data & 0x03) ^ 0x03));
 	}
 }
 
@@ -339,9 +338,6 @@ static const ym3812_interface ym3812_config =
 
 void oneshot_state::machine_start()
 {
-	m_maincpu = machine().device<cpu_device>("maincpu");
-	m_audiocpu = machine().device<cpu_device>("audiocpu");
-
 	save_item(NAME(m_gun_x_p1));
 	save_item(NAME(m_gun_y_p1));
 	save_item(NAME(m_gun_x_p2));

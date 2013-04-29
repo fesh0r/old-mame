@@ -52,7 +52,8 @@ public:
 			m_laserdisc(*this, "laserdisc") ,
 		m_sprite_ram(*this, "sprite_ram"),
 		m_palette_ram(*this, "palette_ram"),
-		m_tile_ram(*this, "tile_ram"){ }
+		m_tile_ram(*this, "tile_ram"),
+		m_maincpu(*this, "maincpu") { }
 
 	UINT8 m_nmi_enable;
 	UINT8 m_start_lamp;
@@ -77,6 +78,7 @@ public:
 	void gpworld_draw_tiles(bitmap_rgb32 &bitmap,const rectangle &cliprect);
 	inline void draw_pixel(bitmap_rgb32 &bitmap,const rectangle &cliprect,int x,int y,int color,int flip);
 	void gpworld_draw_sprites(bitmap_rgb32 &bitmap, const rectangle &cliprect);
+	required_device<cpu_device> m_maincpu;
 };
 
 
@@ -306,9 +308,9 @@ static ADDRESS_MAP_START( mainmem, AS_PROGRAM, 8, gpworld_state )
 	AM_RANGE(0xc800,0xcfff) AM_RAM_WRITE(palette_write) AM_SHARE("palette_ram") /* The memory test reads at 0xc800 */
 	AM_RANGE(0xd000,0xd7ff) AM_RAM AM_SHARE("tile_ram")
 	AM_RANGE(0xd800,0xd800) AM_READWRITE(ldp_read,ldp_write)
-/*  AM_RANGE(0xd801,0xd801) AM_READ_LEGACY(???) */
+/*  AM_RANGE(0xd801,0xd801) AM_READ(???) */
 	AM_RANGE(0xda00,0xda00) AM_READ_PORT("INWHEEL") //8255 here....
-/*  AM_RANGE(0xda01,0xda01) AM_WRITE_LEGACY(???) */                 /* These inputs are interesting - there are writes and reads all over these addr's */
+/*  AM_RANGE(0xda01,0xda01) AM_WRITE(???) */                 /* These inputs are interesting - there are writes and reads all over these addr's */
 	AM_RANGE(0xda02,0xda02) AM_WRITE(brake_gas_write)               /*bit 0 select gas/brake input */
 	AM_RANGE(0xda20,0xda20) AM_READ(pedal_in)
 
@@ -429,7 +431,7 @@ INPUT_PORTS_END
 
 TIMER_CALLBACK_MEMBER(gpworld_state::irq_stop)
 {
-	machine().device("maincpu")->execute().set_input_line(0, CLEAR_LINE);
+	m_maincpu->set_input_line(0, CLEAR_LINE);
 }
 
 INTERRUPT_GEN_MEMBER(gpworld_state::vblank_callback_gpworld)

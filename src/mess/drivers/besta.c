@@ -29,12 +29,10 @@ class besta_state : public driver_device
 {
 public:
 	besta_state(const machine_config &mconfig, device_type type, const char *tag)
-		: driver_device(mconfig, type, tag)
-		, m_maincpu(*this, "maincpu")
-		, m_terminal(*this, TERMINAL_TAG)
-		, m_p_ram(*this, "p_ram")
-	{
-	}
+		: driver_device(mconfig, type, tag),
+		m_maincpu(*this, "maincpu"),
+		m_terminal(*this, TERMINAL_TAG),
+		m_p_ram(*this, "p_ram") { }
 
 	DECLARE_READ8_MEMBER( mpcc_reg_r );
 	DECLARE_WRITE8_MEMBER( mpcc_reg_w );
@@ -123,7 +121,7 @@ void besta_state::machine_reset()
 	memset(m_mpcc_regs, sizeof(m_mpcc_regs), 0);    // should initialize to defined values
 	m_mpcc_regs[8] = 0x80;              // always ready to transmit
 
-	machine().device("maincpu")->reset();
+	m_maincpu->reset();
 }
 
 static GENERIC_TERMINAL_INTERFACE( terminal_intf )

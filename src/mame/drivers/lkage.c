@@ -491,10 +491,6 @@ static const ym2203_interface ym2203_config =
 
 void lkage_state::machine_start()
 {
-	m_maincpu = machine().device<cpu_device>("maincpu");
-	m_audiocpu = machine().device<cpu_device>("audiocpu");
-	m_mcu = machine().device("mcu");
-
 	save_item(NAME(m_bg_tile_bank));
 	save_item(NAME(m_fg_tile_bank));
 	save_item(NAME(m_tx_tile_bank));
@@ -955,9 +951,9 @@ DRIVER_INIT_MEMBER(lkage_state,lkage)
 
 DRIVER_INIT_MEMBER(lkage_state,lkageb)
 {
-	machine().device("maincpu")->memory().space(AS_PROGRAM).install_read_handler(0xf062, 0xf062, read8_delegate(FUNC(lkage_state::fake_mcu_r),this));
-	machine().device("maincpu")->memory().space(AS_PROGRAM).install_read_handler(0xf087, 0xf087, read8_delegate(FUNC(lkage_state::fake_status_r),this));
-	machine().device("maincpu")->memory().space(AS_PROGRAM).install_write_handler(0xf062, 0xf062, write8_delegate(FUNC(lkage_state::fake_mcu_w),this));
+	m_maincpu->space(AS_PROGRAM).install_read_handler(0xf062, 0xf062, read8_delegate(FUNC(lkage_state::fake_mcu_r),this));
+	m_maincpu->space(AS_PROGRAM).install_read_handler(0xf087, 0xf087, read8_delegate(FUNC(lkage_state::fake_status_r),this));
+	m_maincpu->space(AS_PROGRAM).install_write_handler(0xf062, 0xf062, write8_delegate(FUNC(lkage_state::fake_mcu_w),this));
 	m_sprite_dx=0;
 }
 

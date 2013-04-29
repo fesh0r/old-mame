@@ -64,8 +64,9 @@ public:
 	m_fdc(*this, "upd765"),
 	m_hgdc(*this, "upd7220"),
 	m_rtc(*this, "rtc"),
-	m_vram_bank(0)
-	{ }
+	m_vram_bank(0),
+	m_maincpu(*this, "maincpu"),
+	m_ram(*this, RAM_TAG) { }
 
 	required_device<pit8253_device> m_pit_1;
 	required_device<pit8253_device> m_pit_2;
@@ -114,6 +115,8 @@ public:
 	DECLARE_WRITE8_MEMBER( vram_bank_w );
 	DECLARE_READ8_MEMBER( vram_r );
 	DECLARE_WRITE8_MEMBER( vram_w );
+	DECLARE_READ8_MEMBER(memory_read_byte);
+	DECLARE_WRITE8_MEMBER(memory_write_byte);
 
 	UINT8 *m_char_rom;
 
@@ -147,6 +150,8 @@ public:
 	DECLARE_INPUT_CHANGED_MEMBER(key_stroke);
 	DECLARE_WRITE_LINE_MEMBER(dma_hrq_changed);
 	IRQ_CALLBACK_MEMBER(irq_callback);
+	required_device<cpu_device> m_maincpu;
+	required_device<ram_device> m_ram;
 };
 
 static UPD7220_DISPLAY_PIXELS( hgdc_display_pixels )
@@ -268,11 +273,11 @@ void qx10_state::update_memory_mapping()
 
 	if (!m_memprom)
 	{
-		membank("bank1")->set_base(machine().root_device().memregion("maincpu")->base());
+		membank("bank1")->set_base(memregion("maincpu")->base());
 	}
 	else
 	{
-		membank("bank1")->set_base(machine().device<ram_device>(RAM_TAG)->pointer() + drambank*64*1024);
+		membank("bank1")->set_base(m_ram->pointer() + drambank*64*1024);
 	}
 	if (m_memcmos)
 	{
@@ -280,7 +285,7 @@ void qx10_state::update_memory_mapping()
 	}
 	else
 	{
-		membank("bank2")->set_base(machine().device<ram_device>(RAM_TAG)->pointer() + drambank*64*1024 + 32*1024);
+		membank("bank2")->set_base(m_ram->pointer() + drambank*64*1024 + 32*1024);
 	}
 }
 
@@ -389,15 +394,24 @@ WRITE_LINE_MEMBER( qx10_state::tc_w )
     Channel 2: GDC
     Channel 3: Option slots
 */
-static UINT8 memory_read_byte(address_space &space, offs_t address, UINT8 mem_mask) { return space.read_byte(address); }
-static void memory_write_byte(address_space &space, offs_t address, UINT8 data, UINT8 mem_mask) { space.write_byte(address, data); }
+READ8_MEMBER(qx10_state::memory_read_byte)
+{
+	address_space& prog_space = m_maincpu->space(AS_PROGRAM);
+	return prog_space.read_byte(offset);
+}
+
+WRITE8_MEMBER(qx10_state::memory_write_byte)
+{
+	address_space& prog_space = m_maincpu->space(AS_PROGRAM);
+	return prog_space.write_byte(offset, data);
+}
 
 static I8237_INTERFACE( qx10_dma8237_1_interface )
 {
 	DEVCB_DRIVER_LINE_MEMBER(qx10_state,dma_hrq_changed),
 	DEVCB_DRIVER_LINE_MEMBER(qx10_state, tc_w),
-	DEVCB_MEMORY_HANDLER("maincpu", PROGRAM, memory_read_byte),
-	DEVCB_MEMORY_HANDLER("maincpu", PROGRAM, memory_write_byte),
+	DEVCB_DRIVER_MEMBER(qx10_state, memory_read_byte),
+	DEVCB_DRIVER_MEMBER(qx10_state, memory_write_byte),
 	{ DEVCB_DRIVER_MEMBER(qx10_state, fdc_dma_r), DEVCB_DRIVER_MEMBER(qx10_state, gdc_dack_r),/*DEVCB_DEVICE_HANDLER("upd7220", upd7220_dack_r)*/ DEVCB_NULL, DEVCB_NULL },
 	{ DEVCB_DRIVER_MEMBER(qx10_state, fdc_dma_w), DEVCB_DRIVER_MEMBER(qx10_state, gdc_dack_w),/*DEVCB_DEVICE_HANDLER("upd7220", upd7220_dack_w)*/ DEVCB_NULL, DEVCB_NULL },
 	{ DEVCB_NULL, DEVCB_NULL, DEVCB_NULL, DEVCB_NULL }
@@ -539,7 +553,7 @@ static const struct pit8253_config qx10_pit8253_2_config =
 
 WRITE_LINE_MEMBER( qx10_state::qx10_pic8259_master_set_int_line )
 {
-	machine().device("maincpu")->execute().set_input_line(0, state ? HOLD_LINE : CLEAR_LINE);
+	m_maincpu->set_input_line(0, state ? HOLD_LINE : CLEAR_LINE);
 }
 
 READ8_MEMBER( qx10_state::get_slave_ack )
@@ -909,7 +923,7 @@ INPUT_PORTS_END
 
 void qx10_state::machine_start()
 {
-	machine().device("maincpu")->execute().set_irq_acknowledge_callback(device_irq_acknowledge_delegate(FUNC(qx10_state::irq_callback),this));
+	m_maincpu->set_irq_acknowledge_callback(device_irq_acknowledge_delegate(FUNC(qx10_state::irq_callback),this));
 	m_fdc->setup_intrq_cb(upd765a_device::line_cb(FUNC(qx10_state::qx10_upd765_interrupt), this));
 	m_fdc->setup_drq_cb(upd765a_device::line_cb(FUNC(qx10_state::drq_w), this));
 }

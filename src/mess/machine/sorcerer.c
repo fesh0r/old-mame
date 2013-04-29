@@ -29,18 +29,6 @@ TIMER_CALLBACK_MEMBER(sorcerer_state::sorcerer_serial_tc)
 
 /* timer to read cassette waveforms */
 
-
-static cassette_image_device *cassette_device_image(running_machine &machine)
-{
-	sorcerer_state *state = machine.driver_data<sorcerer_state>();
-	if (state->m_fe & 0x20)
-		return machine.device<cassette_image_device>(CASSETTE2_TAG);
-	else
-		return machine.device<cassette_image_device>(CASSETTE_TAG);
-}
-
-
-
 TIMER_CALLBACK_MEMBER(sorcerer_state::sorcerer_cassette_tc)
 {
 	UINT8 cass_ws = 0;
@@ -53,7 +41,7 @@ TIMER_CALLBACK_MEMBER(sorcerer_state::sorcerer_cassette_tc)
 
 			m_cass_data.input.length++;
 
-			cass_ws = ((cassette_device_image(machine()))->input() > +0.02) ? 1 : 0;
+			cass_ws = ((((m_fe & 0x20) ? m_cassette2 : m_cassette1))->input() > +0.02) ? 1 : 0;
 
 			if (cass_ws != m_cass_data.input.level)
 			{
@@ -82,7 +70,7 @@ TIMER_CALLBACK_MEMBER(sorcerer_state::sorcerer_cassette_tc)
 				if (!((m_cass_data.output.bit == 0) && (m_cass_data.output.length & 4)))
 				{
 					m_cass_data.output.level ^= 1;          // toggle output this, except on 2nd half of low bit
-					cassette_device_image(machine())->output(m_cass_data.output.level ? -1.0 : +1.0);
+					((m_fe & 0x20) ? m_cassette2 : m_cassette1)->output(m_cass_data.output.level ? -1.0 : +1.0);
 				}
 			}
 			return;
@@ -91,7 +79,7 @@ TIMER_CALLBACK_MEMBER(sorcerer_state::sorcerer_cassette_tc)
 			/* loading a tape */
 			m_cass_data.input.length++;
 
-			cass_ws = ((cassette_device_image(machine()))->input() > +0.02) ? 1 : 0;
+			cass_ws = ((((m_fe & 0x20) ? m_cassette2 : m_cassette1))->input() > +0.02) ? 1 : 0;
 
 			if (cass_ws != m_cass_data.input.level || m_cass_data.input.length == 10)
 			{
@@ -122,7 +110,7 @@ TIMER_CALLBACK_MEMBER(sorcerer_state::sorcerer_cassette_tc)
 				if (!((m_cass_data.output.bit == 0) && (m_cass_data.output.length & 8)))
 				{
 					m_cass_data.output.level ^= 1;          // toggle output this, except on 2nd half of low bit
-					cassette_device_image(machine())->output(m_cass_data.output.level ? -1.0 : +1.0);
+					((m_fe & 0x20) ? m_cassette2 : m_cassette1)->output(m_cass_data.output.level ? -1.0 : +1.0);
 				}
 			}
 			return;
@@ -176,18 +164,18 @@ WRITE8_MEMBER(sorcerer_state::sorcerer_fe_w)
 
 		bool sound = BIT(m_iop_config->read(), 3);
 
-		m_cass1->change_state(
+		m_cassette1->change_state(
 			(BIT(data,4) & sound) ? CASSETTE_SPEAKER_ENABLED : CASSETTE_SPEAKER_MUTED, CASSETTE_MASK_SPEAKER);
 
-		m_cass2->change_state(
+		m_cassette2->change_state(
 			(BIT(data,5) & sound) ? CASSETTE_SPEAKER_ENABLED : CASSETTE_SPEAKER_MUTED, CASSETTE_MASK_SPEAKER);
 
 		/* cassette 1 motor */
-		m_cass1->change_state(
+		m_cassette1->change_state(
 			(BIT(data,4)) ? CASSETTE_MOTOR_ENABLED : CASSETTE_MOTOR_DISABLED, CASSETTE_MASK_MOTOR);
 
 		/* cassette 2 motor */
-		m_cass2->change_state(
+		m_cassette2->change_state(
 			(BIT(data,5)) ? CASSETTE_MOTOR_ENABLED : CASSETTE_MOTOR_DISABLED, CASSETTE_MASK_MOTOR);
 
 		if (data & 0x30)
@@ -300,11 +288,10 @@ READ8_MEMBER(sorcerer_state::sorcerer_ff_r)
  Snapshot Handling
 ******************************************************************************/
 
-SNAPSHOT_LOAD(sorcerer)
+SNAPSHOT_LOAD_MEMBER( sorcerer_state,sorcerer)
 {
-	device_t *cpu = image.device().machine().device("maincpu");
-	UINT8 *RAM = image.device().machine().root_device().memregion(cpu->tag())->base();
-	address_space &space = cpu->memory().space(AS_PROGRAM);
+	UINT8 *RAM = memregion(m_maincpu->tag())->base();
+	address_space &space = m_maincpu->space(AS_PROGRAM);
 	UINT8 header[28];
 	unsigned char s_byte;
 
@@ -328,23 +315,23 @@ SNAPSHOT_LOAD(sorcerer)
 	image.fread( RAM+0xc000, 0x4000);
 
 	/* patch CPU registers */
-	cpu->state().set_state_int(Z80_I, header[0]);
-	cpu->state().set_state_int(Z80_HL2, header[1] | (header[2] << 8));
-	cpu->state().set_state_int(Z80_DE2, header[3] | (header[4] << 8));
-	cpu->state().set_state_int(Z80_BC2, header[5] | (header[6] << 8));
-	cpu->state().set_state_int(Z80_AF2, header[7] | (header[8] << 8));
-	cpu->state().set_state_int(Z80_HL, header[9] | (header[10] << 8));
-	cpu->state().set_state_int(Z80_DE, header[11] | (header[12] << 8));
-	cpu->state().set_state_int(Z80_BC, header[13] | (header[14] << 8));
-	cpu->state().set_state_int(Z80_IY, header[15] | (header[16] << 8));
-	cpu->state().set_state_int(Z80_IX, header[17] | (header[18] << 8));
-	cpu->state().set_state_int(Z80_IFF1, header[19]&2 ? 1 : 0);
-	cpu->state().set_state_int(Z80_IFF2, header[19]&4 ? 1 : 0);
-	cpu->state().set_state_int(Z80_R, header[20]);
-	cpu->state().set_state_int(Z80_AF, header[21] | (header[22] << 8));
-	cpu->state().set_state_int(STATE_GENSP, header[23] | (header[24] << 8));
-	cpu->state().set_state_int(Z80_IM, header[25]);
-	cpu->state().set_pc(header[26] | (header[27] << 8));
+	m_maincpu->set_state_int(Z80_I, header[0]);
+	m_maincpu->set_state_int(Z80_HL2, header[1] | (header[2] << 8));
+	m_maincpu->set_state_int(Z80_DE2, header[3] | (header[4] << 8));
+	m_maincpu->set_state_int(Z80_BC2, header[5] | (header[6] << 8));
+	m_maincpu->set_state_int(Z80_AF2, header[7] | (header[8] << 8));
+	m_maincpu->set_state_int(Z80_HL, header[9] | (header[10] << 8));
+	m_maincpu->set_state_int(Z80_DE, header[11] | (header[12] << 8));
+	m_maincpu->set_state_int(Z80_BC, header[13] | (header[14] << 8));
+	m_maincpu->set_state_int(Z80_IY, header[15] | (header[16] << 8));
+	m_maincpu->set_state_int(Z80_IX, header[17] | (header[18] << 8));
+	m_maincpu->set_state_int(Z80_IFF1, header[19]&2 ? 1 : 0);
+	m_maincpu->set_state_int(Z80_IFF2, header[19]&4 ? 1 : 0);
+	m_maincpu->set_state_int(Z80_R, header[20]);
+	m_maincpu->set_state_int(Z80_AF, header[21] | (header[22] << 8));
+	m_maincpu->set_state_int(STATE_GENSP, header[23] | (header[24] << 8));
+	m_maincpu->set_state_int(Z80_IM, header[25]);
+	m_maincpu->set_pc(header[26] | (header[27] << 8));
 
 	return IMAGE_INIT_PASS;
 }
@@ -405,7 +392,7 @@ MACHINE_START_MEMBER(sorcerer_state,sorcererd)
 
 void sorcerer_state::machine_reset()
 {
-	address_space &space = machine().device("maincpu")->memory().space(AS_PROGRAM);
+	address_space &space = m_maincpu->space(AS_PROGRAM);
 
 	/* Initialize cassette interface */
 	m_cass_data.output.length = 0;
@@ -422,10 +409,10 @@ void sorcerer_state::machine_reset()
 
 
 /*-------------------------------------------------
-    QUICKLOAD_LOAD( sorcerer )
+    QUICKLOAD_LOAD_MEMBER( sorcerer_state, sorcerer )
 -------------------------------------------------*/
 
-QUICKLOAD_LOAD( sorcerer )
+QUICKLOAD_LOAD_MEMBER( sorcerer_state, sorcerer )
 {
 	UINT16 execute_address, start_address, end_address;
 	int autorun;
@@ -437,9 +424,9 @@ QUICKLOAD_LOAD( sorcerer )
 	if (execute_address != 0xffff)
 	{
 		/* check to see if autorun is on (I hate how this works) */
-		autorun = image.device().machine().root_device().ioport("CONFIG")->read_safe(0xFF) & 1;
+		autorun = ioport("CONFIG")->read_safe(0xFF) & 1;
 
-		address_space &space = image.device().machine().device("maincpu")->memory().space(AS_PROGRAM);
+		address_space &space = m_maincpu->space(AS_PROGRAM);
 
 		if ((execute_address >= 0xc000) && (execute_address <= 0xdfff) && (space.read_byte(0xdffa) != 0xc3))
 			return IMAGE_INIT_FAIL;     /* can't run a program if the cartridge isn't in */
@@ -475,12 +462,12 @@ QUICKLOAD_LOAD( sorcerer )
 			if ((execute_address != 0xc858) && autorun)
 				space.write_word(0xf028, execute_address);
 
-			image.device().machine().device("maincpu")->state().set_pc(0xf01f);
+			m_maincpu->set_pc(0xf01f);
 		}
 		else
 		{
 			if (autorun)
-				image.device().machine().device("maincpu")->state().set_pc(execute_address);
+				m_maincpu->set_pc(execute_address);
 		}
 
 	}

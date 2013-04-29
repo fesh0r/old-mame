@@ -479,7 +479,8 @@ void maygay1b_state::machine_reset()
 // IRQ from Duart (hopper?)
 static void duart_irq_handler(device_t *device, int state, UINT8 vector)
 {
-	device->machine().device("maincpu")->execute().set_input_line(M6809_IRQ_LINE,  state?ASSERT_LINE:CLEAR_LINE);
+	maygay1b_state *drvstate = device->machine().driver_data<maygay1b_state>();
+	drvstate->m_maincpu->set_input_line(M6809_IRQ_LINE,  state?ASSERT_LINE:CLEAR_LINE);
 	LOG(("6809 irq%d \n",state));
 }
 
@@ -488,7 +489,7 @@ READ8_MEMBER( maygay1b_state::m1_firq_trg_r )
 {
 	static int i = 0xff;
 	i ^= 0xff;
-	space.machine().device("maincpu")->execute().set_input_line(M6809_FIRQ_LINE, HOLD_LINE);
+	m_maincpu->set_input_line(M6809_FIRQ_LINE, HOLD_LINE);
 	LOG(("6809 firq\n"));
 	return i;
 }
@@ -499,7 +500,7 @@ TIMER_DEVICE_CALLBACK_MEMBER( maygay1b_state::maygay1b_nmitimer_callback )
 	if (m_NMIENABLE)
 	{
 		LOG(("6809 nmi\n"));
-		machine().device("maincpu")->execute().set_input_line(INPUT_LINE_NMI, HOLD_LINE);
+		m_maincpu->set_input_line(INPUT_LINE_NMI, HOLD_LINE);
 	}
 }
 
@@ -775,23 +776,20 @@ WRITE8_MEMBER(maygay1b_state::m1_latch_w)
 
 WRITE8_MEMBER(maygay1b_state::latch_ch2_w)
 {
-	device_t *msm6376 = machine().device("msm6376");
-	okim6376_w(msm6376, space, 0, data&0x7f);
-	okim6376_ch2_w(msm6376,data&0x80);
+	okim6376_w(m_msm6376, space, 0, data&0x7f);
+	okim6376_ch2_w(m_msm6376,data&0x80);
 }
 
 //A strange setup this, the address lines are used to move st to the right level
 READ8_MEMBER(maygay1b_state::latch_st_hi)
 {
-	device_t *msm6376 = machine().device("msm6376");
-	okim6376_st_w(msm6376,1);
+	okim6376_st_w(m_msm6376,1);
 	return 0;
 }
 
 READ8_MEMBER(maygay1b_state::latch_st_lo)
 {
-	device_t *msm6376 = machine().device("msm6376");
-	okim6376_st_w(msm6376,0);
+	okim6376_st_w(m_msm6376,0);
 	return 0;
 }
 
@@ -903,7 +901,7 @@ DRIVER_INIT_MEMBER(maygay1b_state,m1)
 	UINT8 *okirom = memregion( "msm6376" )->base();
 
 	if (!okirom) {
-		machine().device("maincpu")->memory().space(AS_PROGRAM).install_write_handler(0x2420, 0x2421, write8_delegate(FUNC(maygay1b_state::m1ab_no_oki_w), this));
+		m_maincpu->space(AS_PROGRAM).install_write_handler(0x2420, 0x2421, write8_delegate(FUNC(maygay1b_state::m1ab_no_oki_w), this));
 	}
 	// print out the rom id / header info to give us some hints
 	// note this isn't always correct, alley cat has 'Calpsyo' still in the ident string?

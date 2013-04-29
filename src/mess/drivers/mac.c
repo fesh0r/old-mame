@@ -445,8 +445,8 @@ WRITE8_MEMBER(mac_state::oss_w)
 
 READ32_MEMBER(mac_state::buserror_r)
 {
-	machine().device("maincpu")->execute().set_input_line(M68K_LINE_BUSERROR, ASSERT_LINE);
-	machine().device("maincpu")->execute().set_input_line(M68K_LINE_BUSERROR, CLEAR_LINE);
+	m_maincpu->set_input_line(M68K_LINE_BUSERROR, ASSERT_LINE);
+	m_maincpu->set_input_line(M68K_LINE_BUSERROR, CLEAR_LINE);
 	return 0;
 }
 
@@ -828,7 +828,7 @@ static const applefdc_interface mac_iwm_interface =
 
 static const struct NCR5380interface macplus_5380intf =
 {
-	mac_scsi_irq    // IRQ (unconnected on the Mac Plus)
+	DEVCB_DRIVER_LINE_MEMBER(mac_state,mac_scsi_irq)    // IRQ (unconnected on the Mac Plus)
 };
 
 static const struct NCR539Xinterface mac_539x_intf =
