@@ -80,6 +80,7 @@ class towns_state : public driver_device
 		: driver_device(mconfig, type, tag),
 			m_maincpu(*this, "maincpu"),
 			m_speaker(*this, "speaker"),
+			m_ram(*this, RAM_TAG),
 			m_nvram(*this, "nvram"),
 			m_nvram16(*this, "nvram16")
 	{ }
@@ -89,15 +90,15 @@ class towns_state : public driver_device
 	device_t* m_dma_1;
 	device_t* m_dma_2;
 	device_t* m_fdc;
-	device_t* m_pic_master;
-	device_t* m_pic_slave;
+	pic8259_device* m_pic_master;
+	pic8259_device* m_pic_slave;
 	device_t* m_pit;
 	ram_device* m_messram;
 	cdrom_image_device* m_cdrom;
-	device_t* m_cdda;
+	cdda_device* m_cdda;
 	required_device<speaker_sound_device> m_speaker;
 	class fmscsi_device* m_scsi;
-	ram_device* m_ram;
+	required_device<ram_device> m_ram;
 
 	UINT16 m_ftimer;
 	UINT16 m_freerun_timer;

@@ -21,22 +21,6 @@ READ8_MEMBER( at_state::get_slave_ack )
 	return 0x00;
 }
 
-const struct pic8259_interface at_pic8259_master_config =
-{
-	DEVCB_CPU_INPUT_LINE("maincpu", 0),
-	DEVCB_LINE_VCC,
-	DEVCB_DRIVER_MEMBER(at_state, get_slave_ack)
-};
-
-const struct pic8259_interface at_pic8259_slave_config =
-{
-	DEVCB_DEVICE_LINE_MEMBER("pic8259_master", pic8259_device, ir2_w),
-	DEVCB_LINE_GND,
-	DEVCB_NULL
-};
-
-
-
 /*************************************************************************
  *
  *      PC Speaker related
@@ -66,7 +50,7 @@ void at_state::at_speaker_set_input(UINT8 data)
 WRITE_LINE_MEMBER( at_state::at_pit8254_out0_changed )
 {
 	if (m_pic8259_master)
-		pic8259_ir0_w(m_pic8259_master, state);
+		m_pic8259_master->ir0_w(state);
 }
 
 

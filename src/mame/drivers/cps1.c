@@ -244,7 +244,6 @@ Stephh's log (2006.09.20) :
 #include "sound/okim6295.h"
 #include "sound/qsound.h"
 #include "sound/msm5205.h"
-#include "machine/timekpr.h"
 #include "machine/kabuki.h"
 #include "includes/cps1.h"       /* External CPS1 definitions */
 
@@ -714,14 +713,14 @@ ADDRESS_MAP_END
 
 #define CPS1_DIFFICULTY_1(diploc) \
 	PORT_DIPNAME( 0x07, 0x04, DEF_STR( Difficulty ) ) PORT_DIPLOCATION(diploc ":1,2,3") \
-	PORT_DIPSETTING(    0x07, "1 (Easiest)" ) \
-	PORT_DIPSETTING(    0x06, "2" ) \
-	PORT_DIPSETTING(    0x05, "3" ) \
-	PORT_DIPSETTING(    0x04, "4 (Normal)" ) \
-	PORT_DIPSETTING(    0x03, "5" ) \
-	PORT_DIPSETTING(    0x02, "6" ) \
-	PORT_DIPSETTING(    0x01, "7" ) \
-	PORT_DIPSETTING(    0x00, "8 (Hardest)" )
+	PORT_DIPSETTING(    0x07, "0 (Easiest)" ) \
+	PORT_DIPSETTING(    0x06, "1" ) \
+	PORT_DIPSETTING(    0x05, "2" ) \
+	PORT_DIPSETTING(    0x04, "3 (Normal)" ) \
+	PORT_DIPSETTING(    0x03, "4" ) \
+	PORT_DIPSETTING(    0x02, "5" ) \
+	PORT_DIPSETTING(    0x01, "6" ) \
+	PORT_DIPSETTING(    0x00, "7 (Hardest)" )
 
 #define CPS1_DIFFICULTY_2(diploc) \
 	PORT_DIPNAME( 0x07, 0x07, DEF_STR( Difficulty ) ) PORT_DIPLOCATION(diploc ":1,2,3") \
@@ -10921,7 +10920,7 @@ READ16_MEMBER(cps_state::ganbare_ram_r)
 	UINT16 result = 0xffff;
 
 	if (ACCESSING_BITS_0_7)
-		result = (result & ~0x00ff) | timekeeper_r(machine().device("m48t35"), space, offset);
+		result = (result & ~0x00ff) | m_m48t35->read(space, offset, 0xff);
 	if (ACCESSING_BITS_8_15)
 		result = (result & ~0xff00) | (m_mainram[offset] & 0xff00);
 
@@ -10933,7 +10932,7 @@ WRITE16_MEMBER(cps_state::ganbare_ram_w)
 	COMBINE_DATA(&m_mainram[offset]);
 
 	if (ACCESSING_BITS_0_7)
-		timekeeper_w(machine().device("m48t35"), space, offset, data & 0xff);
+		m_m48t35->write(space, offset, data & 0xff, 0xff);
 }
 
 DRIVER_INIT_MEMBER(cps_state, ganbare)

@@ -9224,7 +9224,7 @@ List of unconfirmed retail cartridge roms
 		</part>
 	</software>
 
-	<software name="gex">
+	<software name="gex2">
 		<description>Gex - Enter the Gecko (Euro, USA)</description>
 		<year>1998</year>
 		<publisher>Crave Entertainment</publisher>
@@ -10555,7 +10555,7 @@ List of unconfirmed retail cartridge roms
 		</part>
 	</software>
 
-	<software name="honkyoni">
+	<software name="honkmj">
 		<!-- Notes: SGB enhanced, also released by NP in 2000-04 -->
 		<description>Honkaku Yonin Uchi Mahjong - Mahjong Ou (Jpn)</description>
 		<year>1999</year>
@@ -23696,6 +23696,54 @@ These were produced between 2000 and 2001 by Rocket Games, run by Datel Design
 
 <!-- Other Asian Pirate dumps to sort -->
 
+<!-- TODO: study the menu and writes of this cart! -->
+	<software name="m_digi10" supported="no">
+		<description>Shu Ma Bao Long Zhuan Ji 10 in 1 (Chi)</description>
+		<year>200?</year>
+		<publisher>SKOB?</publisher>
+		<info name="alt_title" value="數碼暴龍專集 10 in 1"/>
+		<part name="cart" interface="gameboy_cart">
+			<feature name="slot" value="rom_mbc1" />
+			<!-- cartridge ram -->
+			<dataarea name="rom" size="4194304">
+				<rom name="shu ma bao long zhuan ji 10 in 1 (unlicensed).bin" size="4194304" crc="37603b3a" sha1="37366ff0b3a722da867327c62cae6ad0e51d4a12" offset="000000" />
+			</dataarea>
+		</part>
+	</software>
+
+<!-- This got ripped by m_digi10 -->
+	<software name="digid3">
+		<description>Chao Jin Hua - Shu Ma Bao Bei D-3 (Chi, Ripped from 10 in 1 multicart)</description>
+		<year>200?</year>
+		<publisher>SKOB?</publisher>
+		<info name="alt_title" value="超進化 數碼寶貝D-3"/>
+		<part name="cart" interface="gameboy_cart">
+			<feature name="slot" value="rom_mbc5" />
+			<!-- cartridge ram -->
+			<dataarea name="rom" size="1048576">
+				<rom name="chao jin hua - shu ma bao bei d-3 (unlicensed, chinese) (multicart rip).bin" size="1048576" crc="1517d27e" sha1="0d14f2e2ab630b6f99a8125e5c0120c2d7967270" offset="000000" />
+			</dataarea>
+			<dataarea name="nvram" size="32768">
+			</dataarea>
+		</part>
+	</software>
+
+	<software name="fkdfw">
+		<description>Feng Kuang Da Fu Weng (Chi, Ripped from multicart)</description>
+		<year>200?</year>
+		<publisher>V.Fame</publisher>
+		<info name="alt_title" value="疯狂大富翁"/>
+		<part name="cart" interface="gameboy_cart">
+			<feature name="slot" value="rom_mbc5" />
+			<!-- cartridge ram -->
+			<dataarea name="rom" size="2097152">
+				<rom name="feng kuang da fu weng (unlicensed, chinese) (multicart rip) [raw dump].bin" size="2097152" crc="45b79edc" sha1="cc86e1247a352a7c7134db927cc41a1e9950fb96" offset="000000" />
+			</dataarea>
+			<dataarea name="nvram" size="32768">
+			</dataarea>
+		</part>
+	</software>
+
 	<software name="onimush2">
 		<description>Gui Wu Zhe 2 (Chi)</description>
 		<year>200?</year>
@@ -23934,7 +23982,7 @@ These were produced between 2000 and 2001 by Rocket Games, run by Datel Design
 		<description>Shu Ma Bao Long - Shui Jing Ban II (Chi)</description>
 		<year>200?</year>
 		<publisher>Sintax</publisher>
-		<info name="alt_title" value="數碼暴龍 - 水晶板II"/>
+		<info name="alt_title" value="數碼暴龍 - 水晶版II"/>
 		<part name="cart" interface="gameboy_cart">
 			<feature name="slot" value="rom_sintax" />
 			<!-- cartridge ram -->
@@ -24289,8 +24337,8 @@ These were produced between 2000 and 2001 by Rocket Games, run by Datel Design
 		<info name="alt_title" value="數碼暴龍3-水晶版"/>
 		<part name="cart" interface="gameboy_cart">
 			<feature name="slot" value="rom_mbc5" />
-			<dataarea name="rom" size="2097152">
-				<rom name="shu ma bao long 3 - shui jing ban (unlicensed, chinese) [raw dump].bin" size="2097152" crc="8bfbe00a" sha1="ca35357c3be6c55ca1ec692203ce0944f5082c4c" offset="000000" />
+			<dataarea name="rom" size="1048576">
+				<rom name="shu ma bao long 3 - shui jing ban (unlicensed, chinese) [raw dump].bin" size="1048576" crc="10bf11a4" sha1="a0f81548e3d4184c146d0df1cc9e18930bedf644" offset="000000" />
 			</dataarea>
 			<dataarea name="nvram" size="32768">
 			</dataarea>
@@ -24305,8 +24353,8 @@ These were produced between 2000 and 2001 by Rocket Games, run by Datel Design
 		<info name="alt_title" value="數碼暴龍3-水晶版"/>
 		<part name="cart" interface="gameboy_cart">
 			<feature name="slot" value="rom_mbc5" />
-			<dataarea name="rom" size="4194304">
-				<rom name="shu ma bao long 9 - bao long pian 2002 (unlicensed, chinese) [raw dump].bin" size="4194304" crc="76ab97f6" sha1="c3d9e17c9b01959b64a7c662479c755f757f58c9" offset="000000" />
+			<dataarea name="rom" size="1048576">
+				<rom name="shu ma bao long 9 - bao long pian 2002 (unlicensed, chinese) [raw dump].bin" size="1048576" crc="c10fa909" sha1="bdc4a2ca7170f41bc10b89a2e6e96fb990a44f0b" offset="000000" />
 			</dataarea>
 			<dataarea name="nvram" size="8192"> <!-- Unconfirmed size -->
 			</dataarea>

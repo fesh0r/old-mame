@@ -356,7 +356,7 @@ static ADDRESS_MAP_START( fp_io, AS_IO, 16, fp_state )
 	AM_RANGE(0x02a, 0x02b) AM_WRITE8(palette_w, 0x00ff)
 	AM_RANGE(0x02e, 0x02f) AM_WRITE(video_w)
 	AM_RANGE(0x040, 0x05f) AM_DEVREADWRITE8(I8237_TAG, am9517a_device, read, write, 0x00ff)
-	AM_RANGE(0x068, 0x06b) AM_DEVREADWRITE8_LEGACY(I8259A_TAG, pic8259_r, pic8259_w, 0x00ff)
+	AM_RANGE(0x068, 0x06b) AM_DEVREADWRITE8(I8259A_TAG, pic8259_device, read, write, 0x00ff)
 	AM_RANGE(0x06c, 0x06d) AM_DEVWRITE8(MC6845_TAG, mc6845_device, address_w, 0x00ff)
 	AM_RANGE(0x06e, 0x06f) AM_DEVREADWRITE8(MC6845_TAG, mc6845_device, register_r, register_w, 0x00ff)
 ADDRESS_MAP_END
@@ -433,14 +433,6 @@ static APRICOT_KEYBOARD_INTERFACE( kb_intf )
     INT7    EOP
 
 */
-
-static const struct pic8259_interface pic_intf =
-{
-	DEVCB_CPU_INPUT_LINE(I8086_TAG, INPUT_LINE_IRQ0),
-	DEVCB_LINE_VCC,
-	DEVCB_NULL
-};
-
 
 //-------------------------------------------------
 //  pit8253_config pit_intf
@@ -660,7 +652,7 @@ static MACHINE_CONFIG_START( fp, fp_state )
 	/* Devices */
 	MCFG_APRICOT_KEYBOARD_ADD(kb_intf)
 	MCFG_I8237_ADD(I8237_TAG, 250000, dmac_intf)
-	MCFG_PIC8259_ADD(I8259A_TAG, pic_intf)
+	MCFG_PIC8259_ADD(I8259A_TAG, INPUTLINE(I8086_TAG, INPUT_LINE_IRQ0), VCC, NULL)
 	MCFG_PIT8253_ADD(I8253A5_TAG, pit_intf)
 	MCFG_Z80DART_ADD(Z80SIO0_TAG, 2500000, sio_intf)
 	MCFG_WD2797x_ADD(WD2797_TAG, 2000000)

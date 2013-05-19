@@ -35,7 +35,7 @@ static ADDRESS_MAP_START( b2m_io, AS_IO, 8, b2m_state )
 	AM_RANGE(0x08, 0x0b) AM_DEVREADWRITE("ppi8255_1", i8255_device, read, write)
 	AM_RANGE(0x0c, 0x0c) AM_READWRITE(b2m_localmachine_r,b2m_localmachine_w)
 	AM_RANGE(0x10, 0x13) AM_READWRITE(b2m_palette_r,b2m_palette_w)
-	AM_RANGE(0x14, 0x15) AM_DEVREADWRITE_LEGACY("pic8259", pic8259_r, pic8259_w )
+	AM_RANGE(0x14, 0x15) AM_DEVREADWRITE("pic8259", pic8259_device, read, write )
 	AM_RANGE(0x18, 0x18) AM_DEVREADWRITE("uart", i8251_device, data_r, data_w)
 	AM_RANGE(0x19, 0x19) AM_DEVREADWRITE("uart", i8251_device, status_r, control_w)
 	AM_RANGE(0x1c, 0x1f) AM_DEVREADWRITE("fd1793", fd1793_t, read, write)
@@ -48,7 +48,7 @@ static ADDRESS_MAP_START( b2m_rom_io, AS_IO, 8, b2m_state )
 	AM_RANGE(0x08, 0x0b) AM_DEVREADWRITE("ppi8255_1", i8255_device, read, write)
 	AM_RANGE(0x0c, 0x0c) AM_READWRITE(b2m_localmachine_r,b2m_localmachine_w)
 	AM_RANGE(0x10, 0x13) AM_READWRITE(b2m_palette_r,b2m_palette_w)
-	AM_RANGE(0x14, 0x15) AM_DEVREADWRITE_LEGACY("pic8259", pic8259_r, pic8259_w )
+	AM_RANGE(0x14, 0x15) AM_DEVREADWRITE("pic8259", pic8259_device, read, write )
 	AM_RANGE(0x18, 0x18) AM_DEVREADWRITE("uart", i8251_device, data_r, data_w)
 	AM_RANGE(0x19, 0x19) AM_DEVREADWRITE("uart", i8251_device, status_r, control_w)
 ADDRESS_MAP_END
@@ -207,8 +207,7 @@ static MACHINE_CONFIG_START( b2m, b2m_state )
 
 	MCFG_I8255_ADD( "ppi8255_3", b2m_ppi8255_interface_3 )
 
-	MCFG_PIC8259_ADD( "pic8259", b2m_pic8259_config )
-
+	MCFG_PIC8259_ADD( "pic8259", WRITELINE(b2m_state,b2m_pic_set_int_line), VCC, NULL )
 
 	/* sound */
 	MCFG_SPEAKER_STANDARD_MONO("mono")

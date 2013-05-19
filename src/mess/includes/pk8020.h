@@ -82,7 +82,7 @@ protected:
 	required_device<ram_device> m_ram;
 	required_device<device_t> m_wd1793;
 	required_device<device_t> m_pit8253;
-	required_device<device_t> m_pic8259;
+	required_device<pic8259_device> m_pic8259;
 	required_device<device_t> m_speaker;
 	required_memory_region m_region_maincpu;
 	required_memory_region m_region_gfx1;
@@ -97,6 +97,5 @@ extern const i8255_interface pk8020_ppi8255_interface_1;
 extern const i8255_interface pk8020_ppi8255_interface_2;
 extern const i8255_interface pk8020_ppi8255_interface_3;
 extern const struct pit8253_config pk8020_pit8253_intf;
-extern const struct pic8259_interface pk8020_pic8259_config;
 
 #endif /* pk8020_H_ */

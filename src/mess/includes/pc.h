@@ -17,6 +17,7 @@
 #include "sound/speaker.h"
 #include "imagedev/cassette.h"
 #include "machine/ram.h"
+#include "machine/pic8259.h"
 
 class pc_state : public driver_device
 {
@@ -31,7 +32,7 @@ public:
 		m_ram(*this, RAM_TAG) { }
 
 	required_device<cpu_device> m_maincpu;
-	device_t *m_pic8259;
+	pic8259_device *m_pic8259;
 	optional_device<am9517a_device> m_dma8237;
 	device_t *m_pit8253;
 	optional_device<pc_kbdc_device>  m_pc_kbdc;
@@ -141,6 +142,7 @@ public:
 	DECLARE_WRITE8_MEMBER(pcjr_fdc_dor_w);
 	DECLARE_READ8_MEMBER(pcjx_port_1ff_r);
 	DECLARE_WRITE8_MEMBER(pcjx_port_1ff_w);
+	DECLARE_WRITE8_MEMBER(asst128_fdc_dor_w);
 	void pcjx_set_bank(int unk1, int unk2, int unk3);
 
 	void fdc_interrupt(bool state);
@@ -149,6 +151,7 @@ public:
 	void pc_eop_w(int channel, bool state);
 	void mc1502_fdc_irq_drq(bool state);
 	DECLARE_FLOPPY_FORMATS( floppy_formats );
+	DECLARE_FLOPPY_FORMATS( asst128_formats );
 	IRQ_CALLBACK_MEMBER(pc_irq_callback);
 
 	DECLARE_DEVICE_IMAGE_LOAD_MEMBER( pcjr_cartridge );
@@ -189,11 +192,8 @@ extern const struct am9517a_interface ibm5150_dma8237_config;
 extern const struct pit8253_config ibm5150_pit8253_config;
 extern const struct pit8253_config pcjr_pit8253_config;
 extern const struct pit8253_config mc1502_pit8253_config;
-extern const struct pic8259_interface ibm5150_pic8259_config;
-extern const struct pic8259_interface pcjr_pic8259_config;
 extern const ins8250_interface ibm5150_com_interface[4];
 extern const rs232_port_interface ibm5150_serport_config[4];
-extern const i8255_interface ibm5150_ppi8255_interface;
 extern const i8255_interface ibm5160_ppi8255_interface;
 extern const i8255_interface pc_ppi8255_interface;
 extern const i8255_interface pcjr_ppi8255_interface;

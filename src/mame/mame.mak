@@ -140,6 +140,7 @@ CPUS += HD61700
 CPUS += LC8670
 CPUS += ES5510
 CPUS += SCUDSP
+CPUS += IE15
 
 #-------------------------------------------------
 # specify available sound cores
@@ -1030,6 +1031,7 @@ $(MAMEOBJ)/metro.a: \
 $(MAMEOBJ)/midcoin.a: \
 	$(DRIVERS)/wallc.o \
 	$(DRIVERS)/wink.o \
+	$(DRIVERS)/24cdjuke.o \
 
 $(MAMEOBJ)/midw8080.a: \
 	$(DRIVERS)/8080bw.o $(AUDIO)/8080bw.o $(VIDEO)/8080bw.o \
@@ -1269,7 +1271,6 @@ $(MAMEOBJ)/sega.a: \
 	$(DRIVERS)/coolridr.o \
 	$(DRIVERS)/deniam.o $(VIDEO)/deniam.o \
 	$(DRIVERS)/dotrikun.o \
-	$(VIDEO)/genesis.o \
 	$(DRIVERS)/gpworld.o \
 	$(DRIVERS)/hikaru.o \
 	$(DRIVERS)/hshavoc.o \
@@ -1653,6 +1654,7 @@ $(MAMEOBJ)/yunsung.a: \
 
 $(MAMEOBJ)/zaccaria.a: \
 	$(DRIVERS)/laserbat.o $(AUDIO)/laserbat.o \
+	$(DRIVERS)/seabattl.o \
 	$(DRIVERS)/zac2650.o $(VIDEO)/zac2650.o \
 	$(DRIVERS)/zaccaria.o $(VIDEO)/zaccaria.o \
 
@@ -1932,7 +1934,7 @@ $(MAMEOBJ)/misc.a: \
 	$(DRIVERS)/skylncr.o \
 	$(DRIVERS)/sliver.o \
 	$(DRIVERS)/slotcarn.o \
-	$(DRIVERS)/sms.o \
+	$(DRIVERS)/smsmcorp.o \
 	$(DRIVERS)/sothello.o \
 	$(DRIVERS)/splus.o \
 	$(DRIVERS)/spool99.o \
@@ -1942,6 +1944,7 @@ $(MAMEOBJ)/misc.a: \
 	$(DRIVERS)/sstrangr.o \
 	$(DRIVERS)/statriv2.o \
 	$(DRIVERS)/stellafr.o \
+	$(DRIVERS)/stuntair.o \
 	$(DRIVERS)/su2000.o \
 	$(DRIVERS)/summit.o \
 	$(DRIVERS)/sumt8035.o \
@@ -2060,6 +2063,8 @@ $(DRIVERS)/bfm_sc4.o:   $(LAYOUT)/bfm_sc4.lh \
 
 $(DRIVERS)/bfm_sc4h.o:  $(LAYOUT)/bfm_sc4.lh \
 			$(LAYOUT)/sc4_dmd.lh
+
+$(DRIVERS)/bfm_sc5.o:   $(LAYOUT)/bfm_sc5.lh
 
 $(DRIVERS)/bfmsys85.o:  $(LAYOUT)/bfmsys85.lh
 
@@ -2305,8 +2310,6 @@ $(DRIVERS)/segaorun.o:  $(LAYOUT)/outrun.lh
 
 $(DRIVERS)/segas32.o:   $(LAYOUT)/radr.lh
 
-$(DRIVERS)/segasms.o:   $(LAYOUT)/sms1.lh
-
 $(DRIVERS)/segaybd.o:   $(LAYOUT)/pdrift.lh
 
 $(DRIVERS)/skydiver.o:  $(LAYOUT)/skydiver.lh
@@ -2407,9 +2410,6 @@ $(MACHINE)/megacd.o:  $(LAYOUT)/megacd.lh
 
 $(DRIVERS)/galaxian.o:  $(MAMESRC)/drivers/galdrvr.c
 $(DRIVERS)/neogeo.o:    $(MAMESRC)/drivers/neodrvr.c
-$(MACHINE)/nes_mmc.o:   $(MAMESRC)/machine/nes_ines.c \
-			$(MAMESRC)/machine/nes_pcb.c \
-			$(MAMESRC)/machine/nes_unif.c
 $(VIDEO)/jaguar.o:  $(MAMESRC)/video/jagobj.c \
 			$(MAMESRC)/video/jagblit.c
 $(DRIVERS)/model1.o: $(MAMESRC)/includes/model1.h $(MAMESRC)/audio/dsbz80.h
@@ -2423,4 +2423,3 @@ $(DRIVERS)/bfm_sc5.o: $(MAMESRC)/includes/bfm_sc45.h
 $(DRIVERS)/namcos2.o: $(MAMESRC)/includes/namcos2.h
 $(MACHINE)/namcos2.o: $(MAMESRC)/includes/namcos2.h
 $(VIDEO)/namcos2.o: $(MAMESRC)/includes/namcos2.h
-

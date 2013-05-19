@@ -276,8 +276,8 @@ static ADDRESS_MAP_START( tandy2k_io, AS_IO, 16, tandy2k_state )
 	AM_RANGE(0x00040, 0x00047) AM_DEVREADWRITE8_LEGACY(I8253_TAG, pit8253_r, pit8253_w, 0x00ff)
 	AM_RANGE(0x00052, 0x00053) AM_READ8(kbint_clr_r, 0x00ff)
 	AM_RANGE(0x00050, 0x00057) AM_DEVREADWRITE8(I8255A_TAG, i8255_device, read, write, 0x00ff)
-	AM_RANGE(0x00060, 0x00063) AM_DEVREADWRITE8_LEGACY(I8259A_0_TAG, pic8259_r, pic8259_w, 0x00ff)
-	AM_RANGE(0x00070, 0x00073) AM_DEVREADWRITE8_LEGACY(I8259A_1_TAG, pic8259_r, pic8259_w, 0x00ff)
+	AM_RANGE(0x00060, 0x00063) AM_DEVREADWRITE8(I8259A_0_TAG, pic8259_device, read, write, 0x00ff)
+	AM_RANGE(0x00070, 0x00073) AM_DEVREADWRITE8(I8259A_1_TAG, pic8259_device, read, write, 0x00ff)
 	AM_RANGE(0x00080, 0x00081) AM_DEVREADWRITE8(I8272A_TAG, i8272a_device, mdma_r, mdma_w, 0x00ff)
 //  AM_RANGE(0x00100, 0x0017f) AM_DEVREADWRITE8(CRT9007_TAG, crt9007_device, read, write, 0x00ff) AM_WRITE8(addr_ctrl_w, 0xff00)
 	AM_RANGE(0x00100, 0x0017f) AM_READWRITE(vpac_r, vpac_w)
@@ -568,13 +568,6 @@ static I8255A_INTERFACE( ppi_intf )
 
 */
 
-static const struct pic8259_interface pic0_intf =
-{
-	DEVCB_CPU_INPUT_LINE(I80186_TAG, INPUT_LINE_INT0),
-	DEVCB_LINE_VCC,
-	DEVCB_NULL
-};
-
 /*
 
     IR0     KBDINT10
@@ -587,13 +580,6 @@ static const struct pic8259_interface pic0_intf =
     IR7     BUSINT17
 
 */
-
-static const struct pic8259_interface pic1_intf =
-{
-	DEVCB_CPU_INPUT_LINE(I80186_TAG, INPUT_LINE_INT1),
-	DEVCB_LINE_VCC,
-	DEVCB_NULL
-};
 
 // Intel 8272 Interface
 
@@ -715,8 +701,8 @@ static MACHINE_CONFIG_START( tandy2k, tandy2k_state )
 	MCFG_I8255A_ADD(I8255A_TAG, ppi_intf)
 	MCFG_I8251_ADD(I8251A_TAG, usart_intf)
 	MCFG_PIT8253_ADD(I8253_TAG, pit_intf)
-	MCFG_PIC8259_ADD(I8259A_0_TAG, pic0_intf)
-	MCFG_PIC8259_ADD(I8259A_1_TAG, pic1_intf)
+	MCFG_PIC8259_ADD(I8259A_0_TAG, INPUTLINE(I80186_TAG, INPUT_LINE_INT0), VCC, NULL)
+	MCFG_PIC8259_ADD(I8259A_1_TAG, INPUTLINE(I80186_TAG, INPUT_LINE_INT1), VCC, NULL)
 	MCFG_I8272A_ADD(I8272A_TAG, true)
 	MCFG_FLOPPY_DRIVE_ADD(I8272A_TAG ":0", tandy2k_floppies, "525qd", 0, floppy_image_device::default_floppy_formats)
 	MCFG_FLOPPY_DRIVE_ADD(I8272A_TAG ":1", tandy2k_floppies, "525qd", 0, floppy_image_device::default_floppy_formats)

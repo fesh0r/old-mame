@@ -186,18 +186,6 @@ I8237_INTERFACE( pc_dma8237_config )
  * pic8259 configuration
  *
  *************************************************************/
-WRITE_LINE_MEMBER(ibm5160_mb_device::pc_cpu_line)
-{
-	m_maincpu->set_input_line(INPUT_LINE_IRQ0, state);
-}
-
-const struct pic8259_interface pc_pic8259_config =
-{
-	DEVCB_DEVICE_LINE_MEMBER(DEVICE_SELF_OWNER, ibm5160_mb_device, pc_cpu_line),
-	DEVCB_LINE_VCC,
-	DEVCB_NULL
-};
-
 
 WRITE_LINE_MEMBER(ibm5160_mb_device::pc_speaker_set_spkrdata)
 {
@@ -323,7 +311,7 @@ WRITE_LINE_MEMBER( ibm5160_mb_device::keyboard_clock_w )
 					m_ppi_shift_register = ( m_ppi_shift_register >> 1 ) | ( m_ppi_data_signal << 7 );
 					if ( trigger_irq )
 					{
-						pic8259_ir1_w(m_pic8259, 1);
+						m_pic8259->ir1_w(1);
 						m_ppi_shift_enable = 0;
 						m_ppi_clock_signal = 0;
 						m_pc_kbdc->clock_write_from_mb(m_ppi_clock_signal);
@@ -481,7 +469,7 @@ static MACHINE_CONFIG_FRAGMENT( ibm5160_mb_config )
 
 	MCFG_I8237_ADD( "dma8237", XTAL_14_31818MHz/3, pc_dma8237_config )
 
-	MCFG_PIC8259_ADD( "pic8259", pc_pic8259_config )
+	MCFG_PIC8259_ADD( "pic8259", INPUTLINE(":maincpu", 0), VCC, NULL )
 
 	MCFG_I8255A_ADD( "ppi8255", pc_ppi8255_interface )
 
@@ -565,7 +553,7 @@ ibm5160_mb_device::ibm5160_mb_device(const machine_config &mconfig, const char *
 		m_speaker(*this, "speaker"),
 		m_isabus(*this, "isa"),
 		m_pc_kbdc(*this, "pc_kbdc"),
-		m_ram(*this, RAM_TAG)
+		m_ram(*this, ":" RAM_TAG)
 {
 }
 
@@ -628,7 +616,7 @@ void ibm5160_mb_device::install_device(offs_t start, offs_t end, offs_t mask, of
 void ibm5160_mb_device::device_start()
 {
 	install_device(0x0000, 0x000f, 0, 0, read8_delegate(FUNC(am9517a_device::read), (am9517a_device*)m_dma8237), write8_delegate(FUNC(am9517a_device::write), (am9517a_device*)m_dma8237) );
-	install_device(m_pic8259, 0x0020, 0x0021, 0, 0, FUNC(pic8259_r), FUNC(pic8259_w) );
+	install_device(0x0020, 0x0021, 0, 0, read8_delegate(FUNC(pic8259_device::read), (pic8259_device*)m_pic8259), write8_delegate(FUNC(pic8259_device::write), (pic8259_device*)m_pic8259) );
 	install_device(m_pit8253, 0x0040, 0x0043, 0, 0, FUNC(pit8253_r), FUNC(pit8253_w) );
 
 	//  install_device(m_ppi8255, 0x0060, 0x0063, 0, 0, FUNC(i8255a_r), FUNC(i8255a_w) );

@@ -167,7 +167,7 @@ READ8_MEMBER(pk8020_state::devices_r)
 						case 1 : return m_lan->status_r(space,0);
 					}
 					break;
-		case 0x28: return pic8259_r(m_pic8259,space, offset & 1);
+		case 0x28: return m_pic8259->read(space, offset & 1);
 		case 0x30: return m_ppi8255_2->read(space,offset & 3);
 		case 0x38: return m_ppi8255_1->read(space,offset & 3);
 	}
@@ -197,7 +197,7 @@ WRITE8_MEMBER(pk8020_state::devices_w)
 						case 1 : m_lan->control_w(space,0,data); break;
 					}
 					break;
-		case 0x28: pic8259_w(m_pic8259,space, offset & 1,data);break;
+		case 0x28: m_pic8259->write(space, offset & 1,data);break;
 		case 0x30: m_ppi8255_2->write(space,offset & 3,data); break;
 		case 0x38: m_ppi8255_1->write(space,offset & 3,data); break;
 	}
@@ -946,16 +946,9 @@ WRITE_LINE_MEMBER(pk8020_state::pk8020_pic_set_int_line)
 	m_maincpu->set_input_line(0, state ? HOLD_LINE : CLEAR_LINE);
 }
 
-const struct pic8259_interface pk8020_pic8259_config =
-{
-	DEVCB_DRIVER_LINE_MEMBER(pk8020_state,pk8020_pic_set_int_line),
-	DEVCB_LINE_VCC,
-	DEVCB_NULL
-};
-
 IRQ_CALLBACK_MEMBER(pk8020_state::pk8020_irq_callback)
 {
-	return pic8259_acknowledge(m_pic8259);
+	return m_pic8259->acknowledge();
 }
 
 void pk8020_state::machine_start()
@@ -983,5 +976,5 @@ void pk8020_state::machine_reset()
 INTERRUPT_GEN_MEMBER(pk8020_state::pk8020_interrupt)
 {
 	m_takt ^= 1;
-	pic8259_ir4_w(m_pic8259, 1);
+	m_pic8259->ir4_w(1);
 }

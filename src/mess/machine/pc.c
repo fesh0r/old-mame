@@ -56,10 +56,10 @@
 
 #define DBG_LOG(N,M,A) \
 	do { \
-		if(VERBOSE_DBG>=N) \
+	if(VERBOSE_DBG>=N) \
 		{ \
 			if( M ) \
-				logerror("%11.6f: %-24s",machine.time().as_double(),(char*)M ); \
+				logerror("%11.6f at %s: %-24s",machine().time().as_double(),machine().describe_context(),(char*)M ); \
 			logerror A; \
 		} \
 	} while (0)
@@ -93,10 +93,9 @@ WRITE8_MEMBER(pc_state::ec1841_memboard_w)
 {
 	pc_state *st = space.machine().driver_data<pc_state>();
 	address_space &program = st->m_maincpu->space(AS_PROGRAM);
-	running_machine &machine = space.machine();
 	UINT8 current;
 
-	DBG_LOG(1,"ec1841_memboard_w",("(%d) <- %02X at %s\n", offset, data, machine.describe_context()));
+	DBG_LOG(1,"ec1841_memboard_w",("(%d) <- %02X\n", offset, data));
 
 	// for now, handle only board 0
 	if (offset > 0) {
@@ -280,20 +279,6 @@ I8237_INTERFACE( ibm5150_dma8237_config )
 
 /*************************************************************
  *
- * pic8259 configuration
- *
- *************************************************************/
-
-const struct pic8259_interface ibm5150_pic8259_config =
-{
-	DEVCB_CPU_INPUT_LINE("maincpu", 0),
-	DEVCB_LINE_VCC,
-	DEVCB_NULL
-};
-
-
-/*************************************************************
- *
  * PCJR pic8259 configuration
  *
  * Part of the PCJR CRT POST test at address F0452/F0454 writes
@@ -325,14 +310,6 @@ WRITE_LINE_MEMBER(pc_state::pcjr_pic8259_set_int_line)
 		machine().firstcpu->set_input_line(0, state ? ASSERT_LINE : CLEAR_LINE);
 	}
 }
-
-const struct pic8259_interface pcjr_pic8259_config =
-{
-	DEVCB_DRIVER_LINE_MEMBER(pc_state,pcjr_pic8259_set_int_line),
-	DEVCB_LINE_VCC,
-	DEVCB_NULL
-};
-
 
 /*************************************************************************
  *
@@ -458,12 +435,12 @@ const struct pit8253_config mc1502_pit8253_config =
 /* called when a interrupt is set/cleared from com hardware */
 WRITE_LINE_MEMBER(pc_state::pc_com_interrupt_1)
 {
-	pic8259_ir4_w(m_pic8259, state);
+	m_pic8259->ir4_w(state);
 }
 
 WRITE_LINE_MEMBER(pc_state::pc_com_interrupt_2)
 {
-	pic8259_ir3_w(m_pic8259, state);
+	m_pic8259->ir3_w(state);
 }
 
 const ins8250_interface ibm5150_com_interface[4]=
@@ -741,7 +718,7 @@ WRITE_LINE_MEMBER( pc_state::keyboard_clock_w )
 					m_ppi_shift_register = ( m_ppi_shift_register >> 1 ) | ( m_ppi_data_signal << 7 );
 					if ( trigger_irq )
 					{
-						pic8259_ir1_w(m_pic8259, 1);
+						m_pic8259->ir1_w(1);
 						m_ppi_shift_enable = 0;
 						m_ppi_clock_signal = 0;
 						m_pc_kbdc->clock_write_from_mb(m_ppi_clock_signal);
@@ -833,7 +810,7 @@ WRITE8_MEMBER(pc_state::ibm5160_ppi_portb_w)
 	/* If PB7 is set clear the shift register and reset the IRQ line */
 	if ( m_ppi_keyboard_clear )
 	{
-		pic8259_ir1_w(m_pic8259, 0);
+		m_pic8259->ir1_w(0);
 		m_ppi_shift_register = 0;
 		m_ppi_shift_enable = 1;
 	}
@@ -946,7 +923,7 @@ TIMER_CALLBACK_MEMBER(pc_state::mc1502_keyb_signal_callback)
 	}
 
 	if (mc1502_keyb.pulsing) {
-		pic8259_ir1_w(m_pic8259, (mc1502_keyb.pulsing & 1));
+		m_pic8259->ir1_w(mc1502_keyb.pulsing & 1);
 		mc1502_keyb.pulsing--;
 	}
 }
@@ -963,7 +940,7 @@ WRITE8_MEMBER(pc_state::mc1502_ppi_porta_w)
 	mc1502_keyb.latch = data;
 	if (mc1502_keyb.pulsing)
 		mc1502_keyb.pulsing--;
-	pic8259_ir1_w(m_pic8259, 0);
+	m_pic8259->ir1_w(0);
 }
 
 WRITE8_MEMBER(pc_state::mc1502_ppi_portb_w)
@@ -1147,7 +1124,7 @@ void pc_state::fdc_interrupt(bool state)
 {
 	if (m_pic8259)
 	{
-		pic8259_ir6_w(m_pic8259, state);
+		m_pic8259->ir6_w(state);
 	}
 }
 
@@ -1162,14 +1139,14 @@ static void pc_set_irq_line(running_machine &machine,int irq, int state)
 
 	switch (irq)
 	{
-	case 0: pic8259_ir0_w(st->m_pic8259, state); break;
-	case 1: pic8259_ir1_w(st->m_pic8259, state); break;
-	case 2: pic8259_ir2_w(st->m_pic8259, state); break;
-	case 3: pic8259_ir3_w(st->m_pic8259, state); break;
-	case 4: pic8259_ir4_w(st->m_pic8259, state); break;
-	case 5: pic8259_ir5_w(st->m_pic8259, state); break;
-	case 6: pic8259_ir6_w(st->m_pic8259, state); break;
-	case 7: pic8259_ir7_w(st->m_pic8259, state); break;
+	case 0: st->m_pic8259->ir0_w(state); break;
+	case 1: st->m_pic8259->ir1_w(state); break;
+	case 2: st->m_pic8259->ir2_w(state); break;
+	case 3: st->m_pic8259->ir3_w(state); break;
+	case 4: st->m_pic8259->ir4_w(state); break;
+	case 5: st->m_pic8259->ir5_w(state); break;
+	case 6: st->m_pic8259->ir6_w(state); break;
+	case 7: st->m_pic8259->ir7_w(state); break;
 	}
 }
 
@@ -1323,6 +1300,13 @@ READ8_MEMBER(pc_state::mc1502_wd17xx_motor_r)
 	return data;
 }
 
+WRITE8_MEMBER(pc_state::asst128_fdc_dor_w)
+{
+	pc_fdc_xt_device *fdc = machine().device<pc_fdc_xt_device>("fdc");
+
+	fdc->tc_w((data & 0x80) == 0x80);
+	fdc->dor_w(space, offset, data, mem_mask);
+}
 
 /**********************************************************
  *
@@ -1463,13 +1447,13 @@ DRIVER_INIT_MEMBER(pc_state,mc1502)
 
 IRQ_CALLBACK_MEMBER(pc_state::pc_irq_callback)
 {
-	return pic8259_acknowledge(m_pic8259);
+	return m_pic8259->acknowledge();
 }
 
 
 MACHINE_START_MEMBER(pc_state,pc)
 {
-	m_pic8259 = machine().device("pic8259");
+	m_pic8259 = machine().device<pic8259_device>("pic8259");
 	m_pit8253 = machine().device("pit8253");
 	m_maincpu->set_irq_acknowledge_callback(device_irq_acknowledge_delegate(FUNC(pc_state::pc_irq_callback),this));
 
@@ -1506,7 +1490,7 @@ MACHINE_START_MEMBER(pc_state,mc1502)
 {
 	m_maincpu->set_irq_acknowledge_callback(device_irq_acknowledge_delegate(FUNC(pc_state::pc_irq_callback),this));
 
-	m_pic8259 = machine().device("pic8259");
+	m_pic8259 = machine().device<pic8259_device>("pic8259");
 	m_pit8253 = machine().device("pit8253");
 
 	/*
@@ -1515,7 +1499,7 @@ MACHINE_START_MEMBER(pc_state,mc1502)
 	       40ms (check) for 20ms (check) until all keys are released.
 	       Last pulse causes BIOS to write a 'break' scancode into port 60h.
 	 */
-	pic8259_ir1_w(m_pic8259, 1);
+	m_pic8259->ir1_w(1);
 	memset(&mc1502_keyb, 0, sizeof(mc1502_keyb));
 	mc1502_keyb.keyb_signal_timer = machine().scheduler().timer_alloc(timer_expired_delegate(FUNC(pc_state::mc1502_keyb_signal_callback),this));
 	mc1502_keyb.keyb_signal_timer->adjust( attotime::from_msec(20), 0, attotime::from_msec(20) );
@@ -1536,7 +1520,7 @@ MACHINE_START_MEMBER(pc_state,pcjr)
 	machine().device<upd765a_device>("upd765")->set_ready_line_connected(false);
 
 
-	m_pic8259 = machine().device("pic8259");
+	m_pic8259 = machine().device<pic8259_device>("pic8259");
 	m_pit8253 = machine().device("pit8253");
 }
 

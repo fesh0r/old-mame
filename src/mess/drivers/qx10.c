@@ -564,12 +564,6 @@ READ8_MEMBER( qx10_state::get_slave_ack )
 	return 0x00;
 }
 
-static const struct pic8259_interface qx10_pic8259_master_config =
-{
-	DEVCB_DRIVER_LINE_MEMBER(qx10_state, qx10_pic8259_master_set_int_line),
-	DEVCB_LINE_VCC,
-	DEVCB_DRIVER_MEMBER(qx10_state, get_slave_ack)
-};
 
 /*
     Slave PIC8259
@@ -584,16 +578,9 @@ static const struct pic8259_interface qx10_pic8259_master_config =
 
 */
 
-static const struct pic8259_interface qx10_pic8259_slave_config =
-{
-	DEVCB_DEVICE_LINE_MEMBER("pic8259_master", pic8259_device, ir7_w),
-	DEVCB_LINE_GND,
-	DEVCB_NULL
-};
-
 IRQ_CALLBACK_MEMBER(qx10_state::irq_callback)
 {
-	return pic8259_acknowledge(m_pic_m);
+	return m_pic_m->acknowledge();
 }
 
 READ8_MEMBER( qx10_state::upd7201_r )
@@ -688,8 +675,8 @@ static ADDRESS_MAP_START( qx10_io , AS_IO, 8, qx10_state)
 	ADDRESS_MAP_GLOBAL_MASK(0xff)
 	AM_RANGE(0x00, 0x03) AM_DEVREADWRITE_LEGACY("pit8253_1", pit8253_r, pit8253_w)
 	AM_RANGE(0x04, 0x07) AM_DEVREADWRITE_LEGACY("pit8253_2", pit8253_r, pit8253_w)
-	AM_RANGE(0x08, 0x09) AM_DEVREADWRITE_LEGACY("pic8259_master", pic8259_r, pic8259_w)
-	AM_RANGE(0x0c, 0x0d) AM_DEVREADWRITE_LEGACY("pic8259_slave", pic8259_r, pic8259_w)
+	AM_RANGE(0x08, 0x09) AM_DEVREADWRITE("pic8259_master", pic8259_device, read, write)
+	AM_RANGE(0x0c, 0x0d) AM_DEVREADWRITE("pic8259_slave", pic8259_device, read, write)
 	AM_RANGE(0x10, 0x13) AM_READWRITE(upd7201_r, upd7201_w) //AM_DEVREADWRITE("upd7201", upd7201_device, cd_ba_r, cd_ba_w)
 	AM_RANGE(0x14, 0x17) AM_DEVREADWRITE("i8255", i8255_device, read, write)
 	AM_RANGE(0x18, 0x1b) AM_READ_PORT("DSW") AM_WRITE(qx10_18_w)
@@ -1048,8 +1035,8 @@ static MACHINE_CONFIG_START( qx10, qx10_state )
 	/* Devices */
 	MCFG_PIT8253_ADD("pit8253_1", qx10_pit8253_1_config)
 	MCFG_PIT8253_ADD("pit8253_2", qx10_pit8253_2_config)
-	MCFG_PIC8259_ADD("pic8259_master", qx10_pic8259_master_config)
-	MCFG_PIC8259_ADD("pic8259_slave", qx10_pic8259_slave_config)
+	MCFG_PIC8259_ADD("pic8259_master", WRITELINE(qx10_state, qx10_pic8259_master_set_int_line), VCC, READ8(qx10_state, get_slave_ack))
+	MCFG_PIC8259_ADD("pic8259_slave", DEVWRITELINE("pic8259_master", pic8259_device, ir7_w), GND, NULL)
 	MCFG_UPD7201_ADD("upd7201", MAIN_CLK/4, qx10_upd7201_interface)
 	MCFG_I8255_ADD("i8255", qx10_i8255_interface)
 	MCFG_I8237_ADD("8237dma_1", MAIN_CLK/4, qx10_dma8237_1_interface)

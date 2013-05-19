@@ -304,7 +304,9 @@ public:
 			m_pic(*this, I8214_TAG),
 			m_rtc(*this, UPD1990A_TAG),
 			m_cassette(*this, "cassette"),
-			m_beeper(*this, "beeper")
+			m_beeper(*this, "beeper"),
+			m_opna(*this, "opna"),
+			m_opn(*this, "opn")
 	{ }
 
 	required_device<cpu_device> m_maincpu;
@@ -313,6 +315,8 @@ public:
 	required_device<upd1990a_device> m_rtc;
 	required_device<cassette_image_device> m_cassette;
 	required_device<beep_device> m_beeper;
+	required_device<ym2608_device> m_opna;
+	required_device<ym2203_device> m_opn;
 	UINT8 *m_work_ram;
 	UINT8 *m_hi_work_ram;
 	UINT8 *m_ext_work_ram;
@@ -1696,23 +1700,23 @@ WRITE8_MEMBER(pc8801_state::pc8801_rtc_w)
 READ8_MEMBER(pc8801_state::pc8801_sound_board_r)
 {
 	if(m_has_opna)
-		return ym2608_r(machine().device("opna"), space, offset);
+		return m_opna->read(space, offset);
 
-	return (offset & 2) ? 0xff : ym2203_r(machine().device("opn"), space, offset);
+	return (offset & 2) ? 0xff : m_opn->read(space, offset);
 }
 
 WRITE8_MEMBER(pc8801_state::pc8801_sound_board_w)
 {
 	if(m_has_opna)
-		ym2608_w(machine().device("opna"), space, offset,data);
+		m_opna->write(space, offset,data);
 	else if((offset & 2) == 0)
-		ym2203_w(machine().device("opn"), space, offset,data);
+		m_opn->write(space, offset, data);
 }
 
 READ8_MEMBER(pc8801_state::pc8801_opna_r)
 {
 	if(m_has_opna && (offset & 2) == 0)
-		return ym2608_r(machine().device("opna"), space, (offset & 1) | ((offset & 4) >> 1));
+		return m_opna->read(space, (offset & 1) | ((offset & 4) >> 1));
 
 	return 0xff;
 }
@@ -1720,7 +1724,7 @@ READ8_MEMBER(pc8801_state::pc8801_opna_r)
 WRITE8_MEMBER(pc8801_state::pc8801_opna_w)
 {
 	if(m_has_opna && (offset & 2) == 0)
-		ym2608_w(machine().device("opna"), space, (offset & 1) | ((offset & 4) >> 1),data);
+		m_opna->write(space, (offset & 1) | ((offset & 4) >> 1),data);
 	else if(m_has_opna && offset == 2)
 	{
 		m_sound_irq_mask = ((data & 0x80) == 0);
@@ -2430,10 +2434,10 @@ void pc8801_state::machine_start()
 	m_kanji_rom = memregion("kanji")->base();
 	m_cg_rom = memregion("cgrom")->base();
 
-	state_save_register_global_pointer(machine(), m_work_ram, 0x10000);
-	state_save_register_global_pointer(machine(), m_hi_work_ram, 0x1000);
-	state_save_register_global_pointer(machine(), m_ext_work_ram, 0x8000*0x100);
-	state_save_register_global_pointer(machine(), m_gvram, 0xc000);
+	save_pointer(NAME(m_work_ram), 0x10000);
+	save_pointer(NAME(m_hi_work_ram), 0x1000);
+	save_pointer(NAME(m_ext_work_ram), 0x8000*0x100);
+	save_pointer(NAME(m_gvram), 0xc000);
 }
 
 void pc8801_state::machine_reset()
@@ -2586,30 +2590,24 @@ READ8_MEMBER(pc8801_state::opn_porta_r)
 }
 READ8_MEMBER(pc8801_state::opn_portb_r){ return ioport("OPN_PB")->read(); }
 
-static const ym2203_interface pc88_ym2203_intf =
+static const ay8910_interface ay8910_config =
 {
-	{
-		AY8910_LEGACY_OUTPUT,
-		AY8910_DEFAULT_LOADS,
-		DEVCB_DRIVER_MEMBER(pc8801_state,opn_porta_r),
-		DEVCB_DRIVER_MEMBER(pc8801_state,opn_portb_r),
-		DEVCB_NULL,
-		DEVCB_NULL
-	},
-	DEVCB_DRIVER_LINE_MEMBER(pc8801_state,pc8801_sound_irq)
+	AY8910_LEGACY_OUTPUT,
+	AY8910_DEFAULT_LOADS,
+	DEVCB_DRIVER_MEMBER(pc8801_state,opn_porta_r),
+	DEVCB_DRIVER_MEMBER(pc8801_state,opn_portb_r),
+	DEVCB_NULL,
+	DEVCB_NULL
 };
 
-static const ym2608_interface pc88_ym2608_intf =
+static const ay8910_interface single_ay8910_config =
 {
-	{
-		AY8910_LEGACY_OUTPUT | AY8910_SINGLE_OUTPUT,
-		AY8910_DEFAULT_LOADS,
-		DEVCB_DRIVER_MEMBER(pc8801_state,opn_porta_r),
-		DEVCB_DRIVER_MEMBER(pc8801_state,opn_portb_r),
-		DEVCB_NULL,
-		DEVCB_NULL
-	},
-	DEVCB_DRIVER_LINE_MEMBER(pc8801_state,pc8801_sound_irq)
+	AY8910_LEGACY_OUTPUT | AY8910_SINGLE_OUTPUT,
+	AY8910_DEFAULT_LOADS,
+	DEVCB_DRIVER_MEMBER(pc8801_state,opn_porta_r),
+	DEVCB_DRIVER_MEMBER(pc8801_state,opn_portb_r),
+	DEVCB_NULL,
+	DEVCB_NULL
 };
 
 /* Cassette Configuration */
@@ -2703,11 +2701,13 @@ static MACHINE_CONFIG_START( pc8801, pc8801_state )
 	/* sound hardware */
 	MCFG_SPEAKER_STANDARD_MONO("mono")
 	MCFG_SOUND_ADD("opn", YM2203, MASTER_CLOCK)
-	MCFG_SOUND_CONFIG(pc88_ym2203_intf)
+	MCFG_YM2203_IRQ_HANDLER(WRITELINE(pc8801_state, pc8801_sound_irq))
+	MCFG_YM2203_AY8910_INTF(&ay8910_config)
 	MCFG_SOUND_ROUTE(ALL_OUTPUTS, "mono", 1.00)
 
 	MCFG_SOUND_ADD("opna", YM2608, MASTER_CLOCK*2)
-	MCFG_SOUND_CONFIG(pc88_ym2608_intf)
+	MCFG_YM2608_IRQ_HANDLER(WRITELINE(pc8801_state, pc8801_sound_irq))
+	MCFG_YM2608_AY8910_INTF(&single_ay8910_config)
 	MCFG_SOUND_ROUTE(ALL_OUTPUTS, "mono", 1.00)
 
 	MCFG_SOUND_ADD("beeper", BEEP, 0)

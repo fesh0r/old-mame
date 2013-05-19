@@ -327,8 +327,8 @@ WRITE8_MEMBER( multi8_state::pal_w )
 	}
 }
 
-READ8_MEMBER(multi8_state::ay8912_0_r){ return ay8910_r(machine().device("aysnd"),space, 0); }
-READ8_MEMBER(multi8_state::ay8912_1_r){ return ay8910_r(machine().device("aysnd"),space, 1); }
+READ8_MEMBER(multi8_state::ay8912_0_r){ return machine().device<ay8910_device>("aysnd")->data_r(space, 0); }
+READ8_MEMBER(multi8_state::ay8912_1_r){ return machine().device<ay8910_device>("aysnd")->data_r(space, 1); }
 
 READ8_MEMBER( multi8_state::multi8_kanji_r )
 {
@@ -352,7 +352,7 @@ static ADDRESS_MAP_START(multi8_io, AS_IO, 8, multi8_state)
 	ADDRESS_MAP_GLOBAL_MASK(0xff)
 	AM_RANGE(0x00, 0x00) AM_READ(key_input_r) AM_WRITENOP//keyboard
 	AM_RANGE(0x01, 0x01) AM_READ(key_status_r) AM_WRITENOP//keyboard
-	AM_RANGE(0x18, 0x19) AM_DEVWRITE_LEGACY("aysnd", ay8910_address_data_w)
+	AM_RANGE(0x18, 0x19) AM_DEVWRITE("aysnd", ay8910_device, address_data_w)
 	AM_RANGE(0x18, 0x18) AM_READ(ay8912_0_r)
 	AM_RANGE(0x1a, 0x1a) AM_READ(ay8912_1_r)
 	AM_RANGE(0x1c, 0x1d) AM_WRITE(multi8_6845_w)
@@ -632,16 +632,13 @@ WRITE8_MEMBER( multi8_state::ym2203_porta_w )
 	m_beeper->set_state((data & 0x08));
 }
 
-static const ym2203_interface ym2203_config =
+static const ay8910_interface ay8910_config =
 {
-	{
-		AY8910_LEGACY_OUTPUT,
-		AY8910_DEFAULT_LOADS,
-		DEVCB_NULL,
-		DEVCB_NULL,
-		DEVCB_DRIVER_MEMBER(multi8_state, ym2203_porta_w ),
-		DEVCB_NULL
-	},
+	AY8910_LEGACY_OUTPUT,
+	AY8910_DEFAULT_LOADS,
+	DEVCB_NULL,
+	DEVCB_NULL,
+	DEVCB_DRIVER_MEMBER(multi8_state, ym2203_porta_w ),
 	DEVCB_NULL
 };
 
@@ -680,7 +677,7 @@ static MACHINE_CONFIG_START( multi8, multi8_state )
 	/* Audio */
 	MCFG_SPEAKER_STANDARD_MONO("mono")
 	MCFG_SOUND_ADD("aysnd", AY8912, 1500000) //unknown clock / divider
-	MCFG_SOUND_CONFIG(ym2203_config)
+	MCFG_SOUND_CONFIG(ay8910_config)
 	MCFG_SOUND_ROUTE(ALL_OUTPUTS, "mono", 0.50)
 	MCFG_SOUND_ADD("beeper", BEEP, 0)
 	MCFG_SOUND_ROUTE(ALL_OUTPUTS,"mono",0.50)

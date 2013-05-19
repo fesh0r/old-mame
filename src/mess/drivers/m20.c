@@ -240,12 +240,12 @@ WRITE16_MEMBER(m20_state::port21_w)
 
 READ16_MEMBER(m20_state::m20_i8259_r)
 {
-	return pic8259_r(m_i8259, space, offset)<<1;
+	return m_i8259->read(space, offset)<<1;
 }
 
 WRITE16_MEMBER(m20_state::m20_i8259_w)
 {
-	pic8259_w(m_i8259, space, offset, (data>>1));
+	m_i8259->write(space, offset, (data>>1));
 }
 
 WRITE_LINE_MEMBER( m20_state::pic_irq_line_w )
@@ -804,7 +804,7 @@ IRQ_CALLBACK_MEMBER(m20_state::m20_irq_callback)
 	if (! irqline)
 		return 0xff; // NVI, value ignored
 	else
-		return pic8259_acknowledge(machine().device("i8259"));
+		return m_i8259->acknowledge();
 }
 
 void m20_state::machine_start()
@@ -860,12 +860,12 @@ static I8255A_INTERFACE( ppi_interface )
 
 WRITE_LINE_MEMBER(m20_state::kbd_rxrdy_int)
 {
-	pic8259_ir4_w(machine().device("i8259"), state);
+	m_i8259->ir4_w(state);
 }
 
 void m20_state::fdc_intrq_w(bool state)
 {
-	pic8259_ir0_w(machine().device("i8259"), state);
+	m_i8259->ir0_w(state);
 }
 
 static const i8251_interface kbd_i8251_intf =
@@ -950,13 +950,6 @@ const struct pit8253_config pit8253_intf =
 	}
 };
 
-const struct pic8259_interface pic_intf =
-{
-	DEVCB_DRIVER_LINE_MEMBER(m20_state, pic_irq_line_w),
-	DEVCB_LINE_VCC, // we're the only 8259, so we're the master
-	DEVCB_NULL
-};
-
 static SLOT_INTERFACE_START( m20_floppies )
 	SLOT_INTERFACE( "5dd", FLOPPY_525_DD )
 SLOT_INTERFACE_END
@@ -1003,7 +996,7 @@ static MACHINE_CONFIG_START( m20, m20_state )
 	MCFG_I8251_ADD("i8251_1", kbd_i8251_intf)
 	MCFG_I8251_ADD("i8251_2", tty_i8251_intf)
 	MCFG_PIT8253_ADD("pit8253", pit8253_intf)
-	MCFG_PIC8259_ADD("i8259", pic_intf)
+	MCFG_PIC8259_ADD("i8259", WRITELINE(m20_state, pic_irq_line_w), VCC, NULL)
 
 	MCFG_ASCII_KEYBOARD_ADD(KEYBOARD_TAG, keyboard_intf)
 

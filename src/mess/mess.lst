@@ -148,6 +148,7 @@ astrocdl    // Bally Home Library Computer
 astrocdw    // Bally Computer System (white case)
 
 // RCA
+microkit
 vip    // 1977 Cosmac VIP VP-711
 vp111    // 1977 Cosmac VIP VP-111
 studio2   // 1977 Studio II
@@ -164,6 +165,7 @@ d6800       // Dream 6800
 // Ensoniq
 enmirage    // 1985 Mirage Digital Multi-Sampler
 esq1        // 1986 ESQ-1 Digital Wave Synthesizer
+esqm        // 1986 ESQ-M rack-mount ESQ-1
 sq80        // 1988 SQ-80 Digital Wave Synthesizer
 eps         // 1988 EPS
 vfx         // 1989 VFX
@@ -405,15 +407,15 @@ nc150    // 1992 NC150
 nc200    // 1993 NC200
 
 // Apollo
-dn3500     // Apollo Workstation DN3500 19" monochrome (1989)
-dsp3500    // Apollo Server DSP3500 (1989)
-dn3000     // Apollo Workstation DN3000 19" monochrome (1987)
-dsp3000    // Apollo Server DSP3000 (1987)
-dn3500_15i // Apollo Workstation DN3500 15" monochrome (1989)
-dn3000_15i // Apollo Workstation DN3000 15" monochrome (1988)
-dn5500     // Apollo Workstation DN5500 19" monochrome (1991)
-dsp5500    // Apollo Server DSP5500 (1991)
-dn5500_15i // Apollo Workstation DN5500 15" monochrome (1991)
+dn3500      // Apollo Workstation DN3500 15" Color (1989)
+dn3500_19i  // Apollo Workstation DN3500 19" Monochrome (1989)
+dsp3500     // Apollo Server DSP3500 (1989)
+dn3000      // Apollo Workstation DN3000 15" Color (1988)
+dn3000_19i  // Apollo Workstation DN3000 19" Monochrome (1987)
+dsp3000     // Apollo Server DSP3000 (1987)
+dn5500      // Apollo Workstation DN5500 15" Color (1991)
+dn5500_19i  // Apollo Workstation DN5500 19" Monochrome (1991)
+dsp5500     // Apollo Server DSP5500 (1991)
 
 // Apple
 apple1  // Jul 1976 Apple 1
@@ -742,6 +744,7 @@ xtvga    // 198? PC-XT (VGA, MF2 Keyboard)
 iskr1031
 iskr1030m
 iskr3104
+asst128
 ec1840
 ec1841
 ec1845
@@ -2009,8 +2012,7 @@ pro80
 pimps
 sage2
 zexall // zexall z80 test suite with kevtris' preloader/serial interface at 0000-00ff
-horizdd
-horizsd
+nshrz
 vector1
 tricep
 indiana
@@ -2038,7 +2040,7 @@ supracan
 scv
 scv_pal
 vii // Chintendo / KenSingTon / Jungle Soft / Siatronics Vii
-//vsmile
+vsmile
 walle
 zsbc3
 dms5000
@@ -2193,6 +2195,7 @@ hpz80unk
 itt3030
 vax785
 ms0515
+ie15
 alphasma
 altos5
 merlin
@@ -2210,3 +2213,4 @@ dg680
 besta88
 ravens
 ravens2
+softbox
