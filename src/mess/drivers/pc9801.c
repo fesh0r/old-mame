@@ -2,12 +2,11 @@
 
     PC-9801 (c) 1981 NEC
 
-    preliminary driver by Angelo Salese
+    driver by Angelo Salese
 
     TODO:
     - proper 8251 uart hook-up on keyboard
     - SASI /SCSI support;
-    - kanji support;
     - Write a PC80S31K device (also used on PC-8801 and PC-88VA, it's the FDC + Z80 sub-system);
     - Finish DIP-Switches support
     - text scrolling
@@ -88,7 +87,6 @@
     - Dragon Buster: slight issue with window masking;
     - Far Side Moon: doesn't detect sound board (tied to 0x00ec ports)
     - Jan Borg Suzume: gets stuck at a pic8259 read;
-    - Jump Hero: right status display isn't shown during gameplay (changes the mode dynamically?)
     - Lovely Horror: Doesn't show kanji, tries to read it thru the 0xa9 port;
     - Quarth: should do a split screen effect, it doesn't hence there are broken gfxs
     - Quarth: uploads a PCG charset
@@ -102,7 +100,7 @@
     - Policenauts: EMS error at boot;
 
     Notes:
-    - Animahjong V3 makes advantage of the
+    - Animahjong V3 makes advantage of the possibility of installing 2 sound boards, where SFX and BGMs are played on separate chips.
     - Apple Club 1/2 needs data disks to load properly;
     - Beast Lord: needs a titan.fnt, in MS-DOS
 
@@ -1243,7 +1241,7 @@ READ8_MEMBER(pc9801_state::pc9801_70_r)
 		if(offset & 0x08)
 			printf("Read to undefined port [%02x]\n",offset+0x70);
 		else
-			return pit8253_r(machine().device("pit8253"), space, (offset & 6) >> 1);
+			return machine().device<pit8253_device>("pit8253")->read(space, (offset & 6) >> 1);
 	}
 
 	return 0xff;
@@ -1261,7 +1259,7 @@ WRITE8_MEMBER(pc9801_state::pc9801_70_w)
 	else // odd
 	{
 		if(offset < 0x08)
-			pit8253_w(machine().device("pit8253"), space, (offset & 6) >> 1, data);
+			machine().device<pit8253_device>("pit8253")->write(space, (offset & 6) >> 1, data);
 		//else
 		//  printf("Write to undefined port [%02x] <- %02x\n",offset+0x70,data);
 	}
@@ -2167,7 +2165,7 @@ READ8_MEMBER(pc9801_state::pc9801rs_pit_mirror_r)
 		if(offset & 0x08)
 			printf("Read to undefined port [%02x]\n",offset+0x3fd8);
 		else
-			return pit8253_r(machine().device("pit8253"), space, (offset & 6) >> 1);
+			return machine().device<pit8253_device>("pit8253")->read(space, (offset & 6) >> 1);
 	}
 
 	return 0xff;
@@ -2182,7 +2180,7 @@ WRITE8_MEMBER(pc9801_state::pc9801rs_pit_mirror_w)
 	else // odd
 	{
 		if(offset < 0x08)
-			pit8253_w(machine().device("pit8253"), space, (offset & 6) >> 1, data);
+			machine().device<pit8253_device>("pit8253")->write(space, (offset & 6) >> 1, data);
 		else
 			printf("Write to undefined port [%04x] <- %02x\n",offset+0x3fd8,data);
 	}
@@ -2665,7 +2663,7 @@ CUSTOM_INPUT_MEMBER(pc9801_state::system_type_r)
 
 static INPUT_PORTS_START( pc9801 )
 	PORT_START("DSW1")
-	PORT_BIT(0x0001, IP_ACTIVE_HIGH,IPT_SPECIAL) PORT_READ_LINE_DEVICE_MEMBER("upd1990a", upd1990a_rtc_device, data_out_r)
+	PORT_BIT(0x0001, IP_ACTIVE_HIGH,IPT_SPECIAL) PORT_READ_LINE_DEVICE_MEMBER("upd1990a", upd1990a_device, data_out_r)
 	PORT_DIPNAME( 0x0002, 0x0000, "DSW1" ) // error beep if OFF
 	PORT_DIPSETTING(      0x0002, DEF_STR( Off ) )
 	PORT_DIPSETTING(      0x0000, DEF_STR( On ) )
@@ -2944,7 +2942,7 @@ READ8_MEMBER(pc9801_state::get_slave_ack)
 #define MAIN_CLOCK_X1 XTAL_1_9968MHz
 #define MAIN_CLOCK_X2 XTAL_2_4576MHz
 
-static const struct pit8253_config pc9801_pit8253_config =
+static const struct pit8253_interface pc9801_pit8253_config =
 {
 	{
 		{
@@ -2963,7 +2961,7 @@ static const struct pit8253_config pc9801_pit8253_config =
 	}
 };
 
-static const struct pit8253_config pc9821_pit8253_config =
+static const struct pit8253_interface pc9821_pit8253_config =
 {
 	{
 		{
@@ -3285,12 +3283,6 @@ void pc9801_state::pc9801rs_fdc_drq(bool state)
 		printf("DRQ %02x %d\n",m_fdc_ctrl,state);
 }
 
-static UPD1990A_INTERFACE( pc9801_upd1990a_intf )
-{
-	DEVCB_NULL,
-	DEVCB_NULL
-};
-
 static const i8251_interface pc9801_uart_interface =
 {
 	DEVCB_NULL,
@@ -3534,8 +3526,8 @@ static MACHINE_CONFIG_FRAGMENT( pc9801_mouse )
 MACHINE_CONFIG_END
 
 static MACHINE_CONFIG_FRAGMENT( pc9801_cbus )
-	MCFG_PC9801CBUS_SLOT_ADD("cbus0", pc9801_cbus, "pc9801_26", NULL)
-	MCFG_PC9801CBUS_SLOT_ADD("cbus1", pc9801_cbus, NULL, NULL)
+	MCFG_PC9801CBUS_SLOT_ADD("cbus0", pc9801_cbus, "pc9801_26")
+	MCFG_PC9801CBUS_SLOT_ADD("cbus1", pc9801_cbus, NULL)
 //  TODO: six max slots
 MACHINE_CONFIG_END
 
@@ -3566,15 +3558,15 @@ static MACHINE_CONFIG_START( pc9801, pc9801_state )
 	MCFG_FRAGMENT_ADD(pc9801_mouse)
 	MCFG_FRAGMENT_ADD(pc9801_cbus)
 	MCFG_FRAGMENT_ADD(pc9801_sasi)
-	MCFG_UPD1990A_ADD(UPD1990A_TAG, XTAL_32_768kHz, pc9801_upd1990a_intf)
+	MCFG_UPD1990A_ADD(UPD1990A_TAG, XTAL_32_768kHz, NULL, NULL)
 	MCFG_I8251_ADD(UPD8251_TAG, pc9801_uart_interface)
 
 	MCFG_UPD765A_ADD("upd765_2hd", false, true)
 	MCFG_UPD765A_ADD("upd765_2dd", false, true)
-	MCFG_FLOPPY_DRIVE_ADD("upd765_2hd:0", pc9801_floppies, "525hd", 0, pc9801_state::floppy_formats)
-	MCFG_FLOPPY_DRIVE_ADD("upd765_2hd:1", pc9801_floppies, "525hd", 0, pc9801_state::floppy_formats)
-	MCFG_FLOPPY_DRIVE_ADD("upd765_2dd:0", pc9801_floppies, "525hd", 0, pc9801_state::floppy_formats)
-	MCFG_FLOPPY_DRIVE_ADD("upd765_2dd:1", pc9801_floppies, "525hd", 0, pc9801_state::floppy_formats)
+	MCFG_FLOPPY_DRIVE_ADD("upd765_2hd:0", pc9801_floppies, "525hd", pc9801_state::floppy_formats)
+	MCFG_FLOPPY_DRIVE_ADD("upd765_2hd:1", pc9801_floppies, "525hd", pc9801_state::floppy_formats)
+	MCFG_FLOPPY_DRIVE_ADD("upd765_2dd:0", pc9801_floppies, "525hd", pc9801_state::floppy_formats)
+	MCFG_FLOPPY_DRIVE_ADD("upd765_2dd:1", pc9801_floppies, "525hd", pc9801_state::floppy_formats)
 
 	MCFG_SOFTWARE_LIST_ADD("disk_list","pc98")
 
@@ -3633,13 +3625,13 @@ static MACHINE_CONFIG_START( pc9801rs, pc9801_state )
 	MCFG_I8255_ADD( "ppi8255_fdd", ppi_fdd_intf )
 	MCFG_FRAGMENT_ADD(pc9801_keyboard)
 	MCFG_FRAGMENT_ADD(pc9801_mouse)
-	MCFG_UPD1990A_ADD("upd1990a", XTAL_32_768kHz, pc9801_upd1990a_intf)
+	MCFG_UPD1990A_ADD("upd1990a", XTAL_32_768kHz, NULL, NULL)
 	MCFG_I8251_ADD(UPD8251_TAG, pc9801_uart_interface)
 
 	MCFG_UPD765A_ADD("upd765_2hd", false, true)
 	//"upd765_2dd"
-	MCFG_FLOPPY_DRIVE_ADD("upd765_2hd:0", pc9801_floppies, "525hd", 0, pc9801_state::floppy_formats)
-	MCFG_FLOPPY_DRIVE_ADD("upd765_2hd:1", pc9801_floppies, "525hd", 0, pc9801_state::floppy_formats)
+	MCFG_FLOPPY_DRIVE_ADD("upd765_2hd:0", pc9801_floppies, "525hd", pc9801_state::floppy_formats)
+	MCFG_FLOPPY_DRIVE_ADD("upd765_2hd:1", pc9801_floppies, "525hd", pc9801_state::floppy_formats)
 
 	MCFG_FRAGMENT_ADD(pc9801_cbus)
 
@@ -3699,13 +3691,13 @@ static MACHINE_CONFIG_START( pc9821, pc9801_state )
 	MCFG_I8255_ADD( "ppi8255_fdd", ppi_fdd_intf )
 	MCFG_FRAGMENT_ADD(pc9801_keyboard)
 	MCFG_FRAGMENT_ADD(pc9801_mouse)
-	MCFG_UPD1990A_ADD("upd1990a", XTAL_32_768kHz, pc9801_upd1990a_intf)
+	MCFG_UPD1990A_ADD("upd1990a", XTAL_32_768kHz, NULL, NULL)
 	MCFG_I8251_ADD(UPD8251_TAG, pc9801_uart_interface)
 
 	MCFG_UPD765A_ADD("upd765_2hd", false, true)
 	//"upd765_2dd"
-	MCFG_FLOPPY_DRIVE_ADD("upd765_2hd:0", pc9801_floppies, "525hd", 0, pc9801_state::floppy_formats)
-	MCFG_FLOPPY_DRIVE_ADD("upd765_2hd:1", pc9801_floppies, "525hd", 0, pc9801_state::floppy_formats)
+	MCFG_FLOPPY_DRIVE_ADD("upd765_2hd:0", pc9801_floppies, "525hd", pc9801_state::floppy_formats)
+	MCFG_FLOPPY_DRIVE_ADD("upd765_2hd:1", pc9801_floppies, "525hd", pc9801_state::floppy_formats)
 
 	MCFG_FRAGMENT_ADD(pc9801_cbus)
 

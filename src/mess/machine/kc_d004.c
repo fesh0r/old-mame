@@ -78,10 +78,10 @@ static MACHINE_CONFIG_FRAGMENT(kc_d004)
 	MCFG_Z80CTC_ADD( Z80CTC_TAG, XTAL_8MHz/2, kc_d004_ctc_intf )
 
 	MCFG_UPD765A_ADD(UPD765_TAG, false, false)
-	MCFG_FLOPPY_DRIVE_ADD(UPD765_TAG ":0", kc_d004_floppies, "525hd", 0, kc_d004_device::floppy_formats)
-	MCFG_FLOPPY_DRIVE_ADD(UPD765_TAG ":1", kc_d004_floppies, "525hd", 0, kc_d004_device::floppy_formats)
-	MCFG_FLOPPY_DRIVE_ADD(UPD765_TAG ":2", kc_d004_floppies, "525hd", 0, kc_d004_device::floppy_formats)
-	MCFG_FLOPPY_DRIVE_ADD(UPD765_TAG ":3", kc_d004_floppies, "525hd", 0, kc_d004_device::floppy_formats)
+	MCFG_FLOPPY_DRIVE_ADD(UPD765_TAG ":0", kc_d004_floppies, "525hd", kc_d004_device::floppy_formats)
+	MCFG_FLOPPY_DRIVE_ADD(UPD765_TAG ":1", kc_d004_floppies, "525hd", kc_d004_device::floppy_formats)
+	MCFG_FLOPPY_DRIVE_ADD(UPD765_TAG ":2", kc_d004_floppies, "525hd", kc_d004_device::floppy_formats)
+	MCFG_FLOPPY_DRIVE_ADD(UPD765_TAG ":3", kc_d004_floppies, "525hd", kc_d004_device::floppy_formats)
 MACHINE_CONFIG_END
 
 static MACHINE_CONFIG_FRAGMENT(kc_d004_gide)
@@ -90,7 +90,7 @@ static MACHINE_CONFIG_FRAGMENT(kc_d004_gide)
 	MCFG_CPU_MODIFY(Z80_TAG)
 	MCFG_CPU_IO_MAP(kc_d004_gide_io)
 
-	MCFG_IDE_CONTROLLER_ADD(IDE_TAG, ide_image_devices, "hdd", "hdd", false)
+	MCFG_IDE_CONTROLLER_ADD(IDE_TAG, ide_devices, "hdd", "hdd", false)
 MACHINE_CONFIG_END
 
 
@@ -454,7 +454,16 @@ READ8_MEMBER(kc_d004_gide_device::gide_r)
 				data_shift = 8;
 
 			if (io_addr == 0x06 || io_addr == 0x07 || io_addr > 0x08 || (io_addr == 0x08 && !m_lh))
-				m_ide_data = ide_bus_r(m_ide, ide_cs, io_addr & 0x07);
+			{
+				if (ide_cs == 0 )
+				{
+					m_ide_data = m_ide->read_cs0(space, io_addr & 0x07, 0xffff);
+				}
+				else
+				{
+					m_ide_data = m_ide->read_cs1(space, io_addr & 0x07, 0xffff);
+				}
+			}
 
 			data = (m_ide_data >> data_shift) & 0xff;
 		}
@@ -494,7 +503,16 @@ WRITE8_MEMBER(kc_d004_gide_device::gide_w)
 			m_ide_data = (data << data_shift) | (m_ide_data & (0xff00 >> data_shift));
 
 			if (io_addr == 0x06 || io_addr == 0x07 || io_addr > 0x08 || (io_addr == 0x08 && m_lh))
-				ide_bus_w(m_ide, ide_cs, io_addr & 0x07, m_ide_data);
+			{
+				if (ide_cs == 0)
+				{
+					m_ide->write_cs0(space, io_addr & 0x07, m_ide_data, 0xffff);
+				}
+				else
+				{
+					m_ide->write_cs1(space, io_addr & 0x07, m_ide_data, 0xffff);
+				}
+			}
 		}
 
 		m_lh = (io_addr == 0x08) ? !m_lh : ((io_addr > 0x08) ? 0 : m_lh);

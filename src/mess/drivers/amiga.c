@@ -182,7 +182,7 @@ static ADDRESS_MAP_START( a1200_map, AS_PROGRAM, 32, a1200_state )
 	AM_RANGE(0xf80000, 0xffffff) AM_ROM AM_REGION("user1", 0)   /* Kickstart */
 ADDRESS_MAP_END
 
-static ADDRESS_MAP_START( amiga_mem32, AS_PROGRAM, 32, a1200_state )
+static ADDRESS_MAP_START( amiga_mem32, AS_PROGRAM, 32, amiga_state )
 	ADDRESS_MAP_UNMAP_HIGH
 //  ADDRESS_MAP_GLOBAL_MASK(0xffffff) // not sure
 	AM_RANGE(0x000000, 0x1fffff) AM_RAMBANK("bank1") AM_SHARE("chip_ram")
@@ -678,10 +678,10 @@ static MACHINE_CONFIG_START( ntsc, amiga_state )
 
 	/* fdc */
 	MCFG_AMIGA_FDC_ADD("fdc", AMIGA_68000_NTSC_CLOCK)
-	MCFG_FLOPPY_DRIVE_ADD("fdc:0", amiga_floppies, "35dd", 0, amiga_fdc::floppy_formats)
-	MCFG_FLOPPY_DRIVE_ADD("fdc:1", amiga_floppies, 0,      0, amiga_fdc::floppy_formats)
-	MCFG_FLOPPY_DRIVE_ADD("fdc:2", amiga_floppies, 0,      0, amiga_fdc::floppy_formats)
-	MCFG_FLOPPY_DRIVE_ADD("fdc:3", amiga_floppies, 0,      0, amiga_fdc::floppy_formats)
+	MCFG_FLOPPY_DRIVE_ADD("fdc:0", amiga_floppies, "35dd", amiga_fdc::floppy_formats)
+	MCFG_FLOPPY_DRIVE_ADD("fdc:1", amiga_floppies, 0,      amiga_fdc::floppy_formats)
+	MCFG_FLOPPY_DRIVE_ADD("fdc:2", amiga_floppies, 0,      amiga_fdc::floppy_formats)
+	MCFG_FLOPPY_DRIVE_ADD("fdc:3", amiga_floppies, 0,      amiga_fdc::floppy_formats)
 
 	MCFG_AMIGA_KEYBOARD_ADD("kbd")
 MACHINE_CONFIG_END
@@ -879,10 +879,10 @@ static MACHINE_CONFIG_START( a1200n, a1200_state )
 
 	/* fdc */
 	MCFG_AMIGA_FDC_ADD("fdc", AMIGA_68EC020_NTSC_CLOCK / 2)
-	MCFG_FLOPPY_DRIVE_ADD("fdc:0", amiga_floppies, "35dd", 0, amiga_fdc::floppy_formats)
-	MCFG_FLOPPY_DRIVE_ADD("fdc:1", amiga_floppies, 0,      0, amiga_fdc::floppy_formats)
-	MCFG_FLOPPY_DRIVE_ADD("fdc:2", amiga_floppies, 0,      0, amiga_fdc::floppy_formats)
-	MCFG_FLOPPY_DRIVE_ADD("fdc:3", amiga_floppies, 0,      0, amiga_fdc::floppy_formats)
+	MCFG_FLOPPY_DRIVE_ADD("fdc:0", amiga_floppies, "35dd", amiga_fdc::floppy_formats)
+	MCFG_FLOPPY_DRIVE_ADD("fdc:1", amiga_floppies, 0,      amiga_fdc::floppy_formats)
+	MCFG_FLOPPY_DRIVE_ADD("fdc:2", amiga_floppies, 0,      amiga_fdc::floppy_formats)
+	MCFG_FLOPPY_DRIVE_ADD("fdc:3", amiga_floppies, 0,      amiga_fdc::floppy_formats)
 
 	MCFG_AMIGA_KEYBOARD_ADD("kbd")
 
@@ -980,10 +980,10 @@ static MACHINE_CONFIG_START( a3000n, amiga_state )
 
 	/* fdc */
 	MCFG_AMIGA_FDC_ADD("fdc", AMIGA_68000_NTSC_CLOCK)
-	MCFG_FLOPPY_DRIVE_ADD("fdc:0", amiga_floppies, "35dd", 0, amiga_fdc::floppy_formats)
-	MCFG_FLOPPY_DRIVE_ADD("fdc:1", amiga_floppies, 0,      0, amiga_fdc::floppy_formats)
-	MCFG_FLOPPY_DRIVE_ADD("fdc:2", amiga_floppies, 0,      0, amiga_fdc::floppy_formats)
-	MCFG_FLOPPY_DRIVE_ADD("fdc:3", amiga_floppies, 0,      0, amiga_fdc::floppy_formats)
+	MCFG_FLOPPY_DRIVE_ADD("fdc:0", amiga_floppies, "35dd", amiga_fdc::floppy_formats)
+	MCFG_FLOPPY_DRIVE_ADD("fdc:1", amiga_floppies, 0,      amiga_fdc::floppy_formats)
+	MCFG_FLOPPY_DRIVE_ADD("fdc:2", amiga_floppies, 0,      amiga_fdc::floppy_formats)
+	MCFG_FLOPPY_DRIVE_ADD("fdc:3", amiga_floppies, 0,      amiga_fdc::floppy_formats)
 
 	MCFG_AMIGA_KEYBOARD_ADD("kbd")
 

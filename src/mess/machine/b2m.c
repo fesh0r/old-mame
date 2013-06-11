@@ -11,7 +11,6 @@
 #include "cpu/i8085/i8085.h"
 #include "imagedev/cassette.h"
 #include "machine/i8255.h"
-#include "machine/pit8253.h"
 #include "machine/wd_fdc.h"
 #include "machine/pic8259.h"
 #include "machine/i8251.h"
@@ -144,10 +143,10 @@ void b2m_state::b2m_set_bank(int bank)
 
 WRITE_LINE_MEMBER(b2m_state::bm2_pit_out1)
 {
-	speaker_level_w(m_speaker, state);
+	m_speaker->level_w(state);
 }
 
-const struct pit8253_config b2m_pit8253_intf =
+const struct pit8253_interface b2m_pit8253_intf =
 {
 	{
 		{
@@ -163,7 +162,7 @@ const struct pit8253_config b2m_pit8253_intf =
 		{
 			2000000,
 			DEVCB_NULL,
-			DEVCB_DEVICE_LINE("pit8253", pit8253_clk0_w)
+			DEVCB_DEVICE_LINE_MEMBER("pit8253", pit8253_device, clk0_w)
 		}
 	}
 };

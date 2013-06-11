@@ -172,12 +172,9 @@ static ADDRESS_MAP_START( bw12_io, AS_IO, 8, bw12_state )
 	AM_RANGE(0x11, 0x11) AM_MIRROR(0x0e) AM_DEVREADWRITE(MC6845_TAG, mc6845_device, register_r, register_w)
 	AM_RANGE(0x20, 0x21) AM_MIRROR(0x0e) AM_DEVICE(UPD765_TAG, upd765a_device, map)
 	AM_RANGE(0x30, 0x33) AM_MIRROR(0x0c) AM_DEVREADWRITE(PIA6821_TAG, pia6821_device, read, write)
-	AM_RANGE(0x40, 0x40) AM_MIRROR(0x0c) AM_DEVREADWRITE_LEGACY(Z80SIO_TAG, z80dart_d_r, z80dart_d_w)
-	AM_RANGE(0x41, 0x41) AM_MIRROR(0x0c) AM_DEVREADWRITE_LEGACY(Z80SIO_TAG, z80dart_c_r, z80dart_c_w)
-	AM_RANGE(0x42, 0x42) AM_MIRROR(0x0c) AM_DEVREADWRITE_LEGACY(Z80SIO_TAG, z80dart_d_r, z80dart_d_w)
-	AM_RANGE(0x43, 0x43) AM_MIRROR(0x0c) AM_DEVREADWRITE_LEGACY(Z80SIO_TAG, z80dart_c_r, z80dart_c_w)
+	AM_RANGE(0x40, 0x43) AM_MIRROR(0x0c) AM_DEVREADWRITE(Z80SIO_TAG, z80sio0_device, ba_cd_r, ba_cd_w)
 	AM_RANGE(0x50, 0x50) AM_MIRROR(0x0f) AM_DEVWRITE(MC1408_TAG, dac_device, write_unsigned8)
-	AM_RANGE(0x60, 0x63) AM_MIRROR(0x0c) AM_DEVREADWRITE_LEGACY(PIT8253_TAG, pit8253_r, pit8253_w)
+	AM_RANGE(0x60, 0x63) AM_MIRROR(0x0c) AM_DEVREADWRITE(PIT8253_TAG, pit8253_device, read, write)
 ADDRESS_MAP_END
 
 /* Input Ports */
@@ -450,21 +447,21 @@ static const centronics_interface bw12_centronics_intf =
 
 /* Z80-SIO/0 Interface */
 
-static Z80DART_INTERFACE( sio_intf )
+static Z80SIO_INTERFACE( sio_intf )
 {
 	0, 0, 0, 0,
 
-	DEVCB_NULL,
-	DEVCB_NULL,
-	DEVCB_NULL,
-	DEVCB_NULL,
+	DEVCB_DEVICE_LINE_MEMBER(RS232_A_TAG, serial_port_device, rx),
+	DEVCB_DEVICE_LINE_MEMBER(RS232_A_TAG, serial_port_device, tx),
+	DEVCB_DEVICE_LINE_MEMBER(RS232_A_TAG, rs232_port_device, dtr_w),
+	DEVCB_DEVICE_LINE_MEMBER(RS232_A_TAG, rs232_port_device, rts_w),
 	DEVCB_NULL,
 	DEVCB_NULL,
 
-	DEVCB_NULL,
-	DEVCB_NULL,
-	DEVCB_NULL,
-	DEVCB_NULL,
+	DEVCB_DEVICE_LINE_MEMBER(RS232_B_TAG, serial_port_device, rx),
+	DEVCB_DEVICE_LINE_MEMBER(RS232_B_TAG, serial_port_device, tx),
+	DEVCB_DEVICE_LINE_MEMBER(RS232_B_TAG, rs232_port_device, dtr_w),
+	DEVCB_DEVICE_LINE_MEMBER(RS232_B_TAG, rs232_port_device, rts_w),
 	DEVCB_NULL,
 	DEVCB_NULL,
 
@@ -473,10 +470,10 @@ static Z80DART_INTERFACE( sio_intf )
 
 /* PIT8253 Interface */
 
-WRITE_LINE_MEMBER(bw12_state::pit_out0_w)
+WRITE_LINE_MEMBER( bw12_state::pit_out0_w )
 {
-	z80dart_txca_w(m_sio, state);
-	z80dart_rxca_w(m_sio, state);
+	m_sio->txca_w(state);
+	m_sio->rxca_w(state);
 }
 
 WRITE_LINE_MEMBER( bw12_state::pit_out2_w )
@@ -484,7 +481,7 @@ WRITE_LINE_MEMBER( bw12_state::pit_out2_w )
 	m_pit_out2 = state;
 }
 
-static const struct pit8253_config pit_intf =
+static const struct pit8253_interface pit_intf =
 {
 	{
 		{
@@ -495,7 +492,7 @@ static const struct pit8253_config pit_intf =
 		{
 			XTAL_1_8432MHz,
 			DEVCB_NULL,
-			DEVCB_DEVICE_LINE(Z80SIO_TAG, z80dart_rxtxcb_w)
+			DEVCB_DEVICE_LINE_MEMBER(Z80SIO_TAG, z80dart_device, rxtxcb_w)
 		},
 		{
 			XTAL_1_8432MHz,
@@ -604,6 +601,34 @@ FLOPPY_FORMATS_MEMBER( bw12_state::bw14_floppy_formats )
 	FLOPPY_BW12_FORMAT
 FLOPPY_FORMATS_END
 
+
+//-------------------------------------------------
+//  rs232_port_interface rs232a_intf
+//-------------------------------------------------
+
+static const rs232_port_interface rs232a_intf =
+{
+	DEVCB_NULL,
+	DEVCB_DEVICE_LINE_MEMBER(Z80SIO_TAG, z80dart_device, dcda_w),
+	DEVCB_NULL,
+	DEVCB_NULL,
+	DEVCB_DEVICE_LINE_MEMBER(Z80SIO_TAG, z80dart_device, ctsa_w)
+};
+
+
+//-------------------------------------------------
+//  rs232_port_interface rs232b_intf
+//-------------------------------------------------
+
+static const rs232_port_interface rs232b_intf =
+{
+	DEVCB_NULL,
+	DEVCB_DEVICE_LINE_MEMBER(Z80SIO_TAG, z80dart_device, dcdb_w),
+	DEVCB_NULL,
+	DEVCB_NULL,
+	DEVCB_DEVICE_LINE_MEMBER(Z80SIO_TAG, z80dart_device, ctsb_w)
+};
+
 /* F4 Character Displayer */
 static const gfx_layout bw12_charlayout =
 {
@@ -655,6 +680,8 @@ static MACHINE_CONFIG_START( common, bw12_state )
 	MCFG_Z80SIO0_ADD(Z80SIO_TAG, XTAL_16MHz/4, sio_intf)
 	MCFG_PIT8253_ADD(PIT8253_TAG, pit_intf)
 	MCFG_AY3600_ADD(AY3600PRO002_TAG, 0, bw12_ay3600_intf)
+	MCFG_RS232_PORT_ADD(RS232_A_TAG, rs232a_intf, default_rs232_devices, NULL)
+	MCFG_RS232_PORT_ADD(RS232_B_TAG, rs232b_intf, default_rs232_devices, NULL)
 
 	/* printer */
 	MCFG_CENTRONICS_PRINTER_ADD(CENTRONICS_TAG, bw12_centronics_intf)
@@ -662,8 +689,8 @@ MACHINE_CONFIG_END
 
 static MACHINE_CONFIG_DERIVED( bw12, common )
 	/* floppy drives */
-	MCFG_FLOPPY_DRIVE_ADD(UPD765_TAG ":1", bw12_floppies, "525dd", 0, bw12_state::bw12_floppy_formats)
-	MCFG_FLOPPY_DRIVE_ADD(UPD765_TAG ":2", bw12_floppies, "525dd", 0, bw12_state::bw12_floppy_formats)
+	MCFG_FLOPPY_DRIVE_ADD(UPD765_TAG ":1", bw12_floppies, "525dd", bw12_state::bw12_floppy_formats)
+	MCFG_FLOPPY_DRIVE_ADD(UPD765_TAG ":2", bw12_floppies, "525dd", bw12_state::bw12_floppy_formats)
 
 	// software lists
 	MCFG_SOFTWARE_LIST_ADD("flop_list", "bw12")
@@ -675,8 +702,8 @@ MACHINE_CONFIG_END
 
 static MACHINE_CONFIG_DERIVED( bw14, common )
 	/* floppy drives */
-	MCFG_FLOPPY_DRIVE_ADD(UPD765_TAG ":1", bw14_floppies, "525dd", 0, bw12_state::bw14_floppy_formats)
-	MCFG_FLOPPY_DRIVE_ADD(UPD765_TAG ":2", bw14_floppies, "525dd", 0, bw12_state::bw14_floppy_formats)
+	MCFG_FLOPPY_DRIVE_ADD(UPD765_TAG ":1", bw14_floppies, "525dd", bw12_state::bw14_floppy_formats)
+	MCFG_FLOPPY_DRIVE_ADD(UPD765_TAG ":2", bw14_floppies, "525dd", bw12_state::bw14_floppy_formats)
 
 	/* internal ram */
 	MCFG_RAM_ADD(RAM_TAG)

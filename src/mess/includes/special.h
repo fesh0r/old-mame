@@ -26,12 +26,19 @@ class specimx_sound_device; // defined below
 class special_state : public driver_device
 {
 public:
+	enum
+	{
+		TIMER_RESET,
+		TIMER_PIT8253_GATES
+	};
+
 	special_state(const machine_config &mconfig, device_type type, const char *tag)
 		: driver_device(mconfig, type, tag),
 		m_maincpu(*this, "maincpu"),
 		m_ppi(*this, "ppi8255"),
 		m_fdc(*this, "fd1793"),
 		m_dac(*this, "dac"),
+		m_pit(*this, "pit8253"),
 		m_cassette(*this, "cassette"),
 		m_ram(*this, RAM_TAG),
 		m_p_videoram(*this, "p_videoram"),
@@ -94,6 +101,7 @@ public:
 	optional_device<i8255_device> m_ppi;
 	optional_device<fd1793_t> m_fdc;
 	optional_device<dac_device> m_dac;
+	optional_device<pit8253_device> m_pit;
 	optional_device<cassette_image_device> m_cassette;
 	optional_device<ram_device> m_ram;
 	optional_shared_ptr<UINT8> m_p_videoram;
@@ -114,8 +122,6 @@ public:
 	UINT32 screen_update_erik(screen_device &screen, bitmap_ind16 &bitmap, const rectangle &cliprect);
 	UINT32 screen_update_specialp(screen_device &screen, bitmap_ind16 &bitmap, const rectangle &cliprect);
 	UINT32 screen_update_specimx(screen_device &screen, bitmap_ind16 &bitmap, const rectangle &cliprect);
-	TIMER_CALLBACK_MEMBER(special_reset);
-	TIMER_CALLBACK_MEMBER(setup_pit8253_gates);
 	void fdc_drq(bool state);
 	DECLARE_FLOPPY_FORMATS( specimx_floppy_formats );
 
@@ -140,12 +146,14 @@ protected:
 	required_ioport m_io_line10;
 	required_ioport m_io_line11;
 	required_ioport m_io_line12;
+
+	virtual void device_timer(emu_timer &timer, device_timer_id id, int param, void *ptr);
 };
 
 
 /*----------- defined in machine/special.c -----------*/
 
-extern const struct pit8253_config specimx_pit8253_intf;
+extern const struct pit8253_interface specimx_pit8253_intf;
 extern const i8255_interface specialist_ppi8255_interface;
 
 

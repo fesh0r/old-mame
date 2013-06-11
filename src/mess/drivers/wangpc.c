@@ -557,7 +557,7 @@ static ADDRESS_MAP_START( wangpc_io, AS_IO, 16, wangpc_state )
 	AM_RANGE(0x101c, 0x101d) AM_MIRROR(0x0002) AM_READWRITE8(fdc_tc_r, fdc_tc_w, 0x00ff)
 	AM_RANGE(0x1020, 0x1027) AM_DEVREADWRITE8(I8255A_TAG, i8255_device, read, write, 0x00ff)
 	AM_RANGE(0x1028, 0x1029) //AM_WRITE(?)
-	AM_RANGE(0x1040, 0x1047) AM_DEVREADWRITE8_LEGACY(I8253_TAG, pit8253_r, pit8253_w, 0x00ff)
+	AM_RANGE(0x1040, 0x1047) AM_DEVREADWRITE8(I8253_TAG, pit8253_device, read, write, 0x00ff)
 	AM_RANGE(0x1060, 0x1063) AM_DEVREADWRITE8(I8259A_TAG, pic8259_device, read, write, 0x00ff)
 	AM_RANGE(0x1080, 0x1087) AM_DEVREAD8(SCN2661_TAG, mc2661_device, read, 0x00ff)
 	AM_RANGE(0x1088, 0x108f) AM_DEVWRITE8(SCN2661_TAG, mc2661_device, write, 0x00ff)
@@ -890,7 +890,7 @@ WRITE_LINE_MEMBER( wangpc_state::pit2_w )
 	}
 }
 
-static const struct pit8253_config pit_intf =
+static const struct pit8253_interface pit_intf =
 {
 	{
 		{
@@ -938,8 +938,8 @@ WRITE_LINE_MEMBER( wangpc_state::uart_tbre_w )
 
 static IM6402_INTERFACE( uart_intf )
 {
-	0, // HACK should be 62500
-	62500,
+	0, // HACK should be 62500*16
+	62500*16,
 	DEVCB_NULL,
 	DEVCB_NULL,
 	DEVCB_DRIVER_LINE_MEMBER(wangpc_state, uart_dr_w),
@@ -961,12 +961,12 @@ static MC2661_INTERFACE( epci_intf )
 {
 	0,
 	0,
-	DEVCB_NULL,
-	DEVCB_NULL,
+	DEVCB_DEVICE_LINE_MEMBER(RS232_TAG, serial_port_device, rx),
+	DEVCB_DEVICE_LINE_MEMBER(RS232_TAG, serial_port_device, tx),
 	DEVCB_DRIVER_LINE_MEMBER(wangpc_state, epci_irq_w),
 	DEVCB_NULL,
-	DEVCB_NULL,
-	DEVCB_NULL,
+	DEVCB_DEVICE_LINE_MEMBER(RS232_TAG, rs232_port_device, rts_w),
+	DEVCB_DEVICE_LINE_MEMBER(RS232_TAG, rs232_port_device, dtr_w),
 	DEVCB_DRIVER_LINE_MEMBER(wangpc_state, epci_irq_w),
 	DEVCB_NULL,
 	DEVCB_NULL
@@ -1035,6 +1035,20 @@ static const centronics_interface centronics_intf =
 {
 	DEVCB_DRIVER_LINE_MEMBER(wangpc_state, ack_w),
 	DEVCB_DRIVER_LINE_MEMBER(wangpc_state, busy_w),
+	DEVCB_NULL
+};
+
+
+//-------------------------------------------------
+//  rs232_port_interface rs232_intf
+//-------------------------------------------------
+
+static const rs232_port_interface rs232_intf =
+{
+	DEVCB_NULL,
+	DEVCB_NULL,
+	DEVCB_NULL,
+	DEVCB_NULL,
 	DEVCB_NULL
 };
 
@@ -1202,18 +1216,19 @@ static MACHINE_CONFIG_START( wangpc, wangpc_state )
 	MCFG_IM6402_ADD(IM6402_TAG, uart_intf)
 	MCFG_MC2661_ADD(SCN2661_TAG, 0, epci_intf)
 	MCFG_UPD765A_ADD(UPD765_TAG, false, false)
-	MCFG_FLOPPY_DRIVE_ADD(UPD765_TAG ":0", wangpc_floppies, "525dd", 0, wangpc_state::floppy_formats)
-	MCFG_FLOPPY_DRIVE_ADD(UPD765_TAG ":1", wangpc_floppies, "525dd", 0, wangpc_state::floppy_formats)
+	MCFG_FLOPPY_DRIVE_ADD(UPD765_TAG ":0", wangpc_floppies, "525dd", wangpc_state::floppy_formats)
+	MCFG_FLOPPY_DRIVE_ADD(UPD765_TAG ":1", wangpc_floppies, "525dd", wangpc_state::floppy_formats)
 	MCFG_CENTRONICS_PRINTER_ADD(CENTRONICS_TAG, centronics_intf)
+	MCFG_RS232_PORT_ADD(RS232_TAG, rs232_intf, default_rs232_devices, NULL)
 	MCFG_WANGPC_KEYBOARD_ADD()
 
 	// bus
 	MCFG_WANGPC_BUS_ADD(bus_intf)
-	MCFG_WANGPC_BUS_SLOT_ADD("slot1", 1, wangpc_cards, NULL, NULL)
-	MCFG_WANGPC_BUS_SLOT_ADD("slot2", 2, wangpc_cards, "lvc", NULL)
-	MCFG_WANGPC_BUS_SLOT_ADD("slot3", 3, wangpc_cards, NULL, NULL)
-	MCFG_WANGPC_BUS_SLOT_ADD("slot4", 4, wangpc_cards, NULL, NULL)
-	MCFG_WANGPC_BUS_SLOT_ADD("slot5", 5, wangpc_cards, NULL, NULL)
+	MCFG_WANGPC_BUS_SLOT_ADD("slot1", 1, wangpc_cards, NULL)
+	MCFG_WANGPC_BUS_SLOT_ADD("slot2", 2, wangpc_cards, "mvc")
+	MCFG_WANGPC_BUS_SLOT_ADD("slot3", 3, wangpc_cards, NULL)
+	MCFG_WANGPC_BUS_SLOT_ADD("slot4", 4, wangpc_cards, NULL)
+	MCFG_WANGPC_BUS_SLOT_ADD("slot5", 5, wangpc_cards, NULL)
 
 	// internal ram
 	MCFG_RAM_ADD(RAM_TAG)

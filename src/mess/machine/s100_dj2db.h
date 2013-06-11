@@ -39,6 +39,7 @@ public:
 	virtual ioport_constructor device_input_ports() const;
 
 	// not really public
+	DECLARE_WRITE_LINE_MEMBER( fr_w );
 	void fdc_intrq_w(bool state);
 	void fdc_drq_w(bool state);
 
@@ -53,8 +54,6 @@ protected:
 	virtual UINT8 s100_sinp_r(address_space &space, offs_t offset);
 	virtual void s100_sout_w(address_space &space, offs_t offset, UINT8 data);
 	virtual void s100_phantom_w(int state);
-	virtual bool s100_has_terminal() { return true; }
-	virtual void s100_terminal_w(UINT8 data);
 
 private:
 	// internal state

@@ -99,7 +99,7 @@ READ8_MEMBER( mm1_state::read )
 			break;
 
 		case 3:
-			data = pit8253_r(m_pit, space, offset & 0x03);
+			data = m_pit->read(space, offset & 0x03);
 			break;
 
 		case 4:
@@ -168,7 +168,7 @@ WRITE8_MEMBER( mm1_state::write )
 			break;
 
 		case 3:
-			pit8253_w(m_pit, space, offset & 0x03, data);
+			m_pit->write(space, offset & 0x03, data);
 			break;
 
 		case 4:
@@ -519,12 +519,12 @@ READ8_MEMBER( mm1_state::mpsc_dack_r )
 	// clear data request
 	m_dmac->dreq2_w(CLEAR_LINE);
 
-	return m_mpsc->dtra_r();
+	return 1;//m_mpsc->dtra_r();
 }
 
 WRITE8_MEMBER( mm1_state::mpsc_dack_w )
 {
-	m_mpsc->hai_w(data);
+	//m_mpsc->hai_w(data);
 
 	// clear data request
 	m_dmac->dreq1_w(CLEAR_LINE);
@@ -582,7 +582,7 @@ WRITE_LINE_MEMBER( mm1_state::auxc_w )
 	m_mpsc->rxcb_w(state);
 }
 
-static const struct pit8253_config pit_intf =
+static const struct pit8253_interface pit_intf =
 {
 	{
 		{
@@ -624,36 +624,27 @@ WRITE_LINE_MEMBER( mm1_state::drq1_w )
 
 static UPD7201_INTERFACE( mpsc_intf )
 {
-	DEVCB_NULL,                 // interrupt
-	{
-		{
-			0,                  // receive clock
-			0,                  // transmit clock
-			DEVCB_DRIVER_LINE_MEMBER(mm1_state, drq2_w),    // receive DRQ
-			DEVCB_DRIVER_LINE_MEMBER(mm1_state, drq1_w),    // transmit DRQ
-			DEVCB_NULL,         // receive data
-			DEVCB_NULL,         // transmit data
-			DEVCB_NULL,         // clear to send
-			DEVCB_NULL,         // data carrier detect
-			DEVCB_NULL,         // ready to send
-			DEVCB_NULL,         // data terminal ready
-			DEVCB_NULL,         // wait
-			DEVCB_NULL          // sync output
-		}, {
-			0,                  // receive clock
-			0,                  // transmit clock
-			DEVCB_NULL,         // receive DRQ
-			DEVCB_NULL,         // transmit DRQ
-			DEVCB_NULL,         // receive data
-			DEVCB_NULL,         // transmit data
-			DEVCB_NULL,         // clear to send
-			DEVCB_LINE_GND,     // data carrier detect
-			DEVCB_NULL,         // ready to send
-			DEVCB_NULL,         // data terminal ready
-			DEVCB_NULL,         // wait
-			DEVCB_NULL          // sync output
-		}
-	}
+	0, 0, 0, 0,
+
+	DEVCB_DEVICE_LINE_MEMBER(RS232_A_TAG, serial_port_device, rx),
+	DEVCB_DEVICE_LINE_MEMBER(RS232_A_TAG, serial_port_device, tx),
+	DEVCB_DEVICE_LINE_MEMBER(RS232_A_TAG, rs232_port_device, dtr_w),
+	DEVCB_DEVICE_LINE_MEMBER(RS232_A_TAG, rs232_port_device, rts_w),
+	DEVCB_NULL,
+	DEVCB_NULL,
+
+	DEVCB_NULL,
+	DEVCB_NULL,
+	DEVCB_NULL,
+	DEVCB_NULL,
+	DEVCB_NULL,
+	DEVCB_NULL,
+
+	DEVCB_NULL,
+	DEVCB_DRIVER_LINE_MEMBER(mm1_state, drq2_w),    // receive DRQ
+	DEVCB_DRIVER_LINE_MEMBER(mm1_state, drq1_w),    // transmit DRQ
+	DEVCB_NULL,
+	DEVCB_NULL
 };
 
 
@@ -671,7 +662,7 @@ static I8085_CONFIG( i8085_intf )
 	DEVCB_NULL,         // STATUS changed callback
 	DEVCB_NULL,         // INTE changed callback
 	DEVCB_DRIVER_LINE_MEMBER(mm1_state, dsra_r),    // SID changed callback (I8085A only)
-	DEVCB_DEVICE_LINE("speaker", speaker_level_w) // SOD changed callback (I8085A only)
+	DEVCB_DEVICE_LINE_MEMBER("speaker", speaker_sound_device, level_w) // SOD changed callback (I8085A only)
 };
 
 
@@ -740,7 +731,7 @@ static const rs232_port_interface rs232c_intf =
 	DEVCB_NULL,
 	DEVCB_NULL,
 	DEVCB_NULL,
-	DEVCB_DEVICE_LINE_MEMBER(UPD7201_TAG, upd7201_device, ctsb_w)
+	DEVCB_DEVICE_LINE_MEMBER(UPD7201_TAG, z80dart_device, ctsb_w)
 };
 
 
@@ -819,11 +810,11 @@ static MACHINE_CONFIG_START( mm1, mm1_state )
 	MCFG_PIT8253_ADD(I8253_TAG, pit_intf)
 	MCFG_UPD765A_ADD(UPD765_TAG, /* XTAL_16MHz/2/2 */ true, true)
 	MCFG_UPD7201_ADD(UPD7201_TAG, XTAL_6_144MHz/2, mpsc_intf)
-	MCFG_FLOPPY_DRIVE_ADD(UPD765_TAG ":0", mm1_floppies, "525qd", 0, mm1_state::floppy_formats)
-	MCFG_FLOPPY_DRIVE_ADD(UPD765_TAG ":1", mm1_floppies, "525qd", 0, mm1_state::floppy_formats)
-	MCFG_RS232_PORT_ADD(RS232_A_TAG, rs232a_intf, default_rs232_devices, NULL, NULL)
-	MCFG_RS232_PORT_ADD(RS232_B_TAG, rs232b_intf, default_rs232_devices, NULL, NULL)
-	MCFG_RS232_PORT_ADD(RS232_C_TAG, rs232c_intf, default_rs232_devices, NULL, NULL)
+	MCFG_FLOPPY_DRIVE_ADD(UPD765_TAG ":0", mm1_floppies, "525qd", mm1_state::floppy_formats)
+	MCFG_FLOPPY_DRIVE_ADD(UPD765_TAG ":1", mm1_floppies, "525qd", mm1_state::floppy_formats)
+	MCFG_RS232_PORT_ADD(RS232_A_TAG, rs232a_intf, default_rs232_devices, NULL)
+	MCFG_RS232_PORT_ADD(RS232_B_TAG, rs232b_intf, default_rs232_devices, NULL)
+	MCFG_RS232_PORT_ADD(RS232_C_TAG, rs232c_intf, default_rs232_devices, NULL)
 
 	// internal ram
 	MCFG_RAM_ADD(RAM_TAG)

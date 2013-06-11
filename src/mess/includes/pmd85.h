@@ -8,6 +8,7 @@
 #define PMD85_H_
 
 #include "machine/i8251.h"
+#include "machine/pit8253.h"
 #include "machine/i8255.h"
 #include "imagedev/cassette.h"
 #include "machine/ram.h"
@@ -16,6 +17,13 @@
 class pmd85_state : public driver_device
 {
 public:
+	enum
+	{
+		TIMER_CASSETTE,
+		TIMER_RESET,
+		TIMER_SETUP_MACHINE_STATE
+	};
+
 	pmd85_state(const machine_config &mconfig, device_type type, const char *tag)
 		: driver_device(mconfig, type, tag),
 		m_maincpu(*this, "maincpu"),
@@ -109,7 +117,7 @@ protected:
 	required_device<ram_device> m_ram;
 	required_device<cassette_image_device> m_cassette;
 	required_device<serial_source_device> m_sercas;
-	required_device<device_t> m_pit8253;
+	required_device<pit8253_device> m_pit8253;
 	optional_device<i8251_device> m_uart;
 	optional_device<i8255_device> m_ppi8255_0;
 	optional_device<i8255_device> m_ppi8255_1;
@@ -144,12 +152,13 @@ protected:
 	void c2717_update_memory();
 	void pmd85_common_driver_init();
 	void pmd85_draw_scanline(bitmap_ind16 &bitmap, int pmd85_scanline);
+	virtual void device_timer(emu_timer &timer, device_timer_id id, int param, void *ptr);
 };
 
 
 /*----------- defined in machine/pmd85.c -----------*/
 
-extern const struct pit8253_config pmd85_pit8253_interface;
+extern const struct pit8253_interface pmd85_pit8253_interface;
 extern const i8255_interface pmd85_ppi8255_interface[4];
 extern const i8255_interface alfa_ppi8255_interface[3];
 extern const i8255_interface mato_ppi8255_interface;

@@ -3,18 +3,20 @@
 #ifndef __ATARI_ST__
 #define __ATARI_ST__
 
-
 #include "emu.h"
 #include "cpu/m68000/m68000.h"
 #include "cpu/m6800/m6800.h"
 #include "imagedev/cartslot.h"
-#include "machine/ram.h"
 #include "machine/6850acia.h"
 #include "machine/8530scc.h"
 #include "machine/ctronics.h"
 #include "machine/mc68901.h"
+#include "machine/midiinport.h"
+#include "machine/midioutport.h"
+#include "machine/ram.h"
 #include "machine/rescap.h"
 #include "machine/rp5c15.h"
+#include "machine/serial.h"
 #include "machine/wd_fdc.h"
 #include "sound/ay8910.h"
 #include "sound/lmc1992.h"
@@ -70,13 +72,24 @@ enum
 class st_state : public driver_device
 {
 public:
+	enum
+	{
+		TIMER_MOUSE_TICK,
+		TIMER_SHIFTER_TICK,
+		TIMER_GLUE_TICK,
+		TIMER_BLITTER_TICK
+	};
+
 	st_state(const machine_config &mconfig, device_type type, const char *tag)
 		: driver_device(mconfig, type, tag),
 			m_maincpu(*this, M68000_TAG),
 			m_fdc(*this, WD1772_TAG),
 			m_mfp(*this, MC68901_TAG),
+			m_acia1(*this, MC6850_1_TAG),
 			m_centronics(*this, CENTRONICS_TAG),
 			m_ram(*this, RAM_TAG),
+			m_rs232(*this, RS232_TAG),
+			m_mdout(*this, "mdout"),
 			m_p31(*this, "P31"),
 			m_p32(*this, "P32"),
 			m_p33(*this, "P33"),
@@ -110,8 +123,11 @@ public:
 	required_device<cpu_device> m_maincpu;
 	required_device<wd1772_t> m_fdc;
 	required_device<mc68901_device> m_mfp;
+	required_device<acia6850_device> m_acia1;
 	required_device<centronics_device> m_centronics;
 	required_device<ram_device> m_ram;
+	required_device<rs232_port_device> m_rs232;
+	required_device<serial_port_device> m_mdout;
 	required_ioport m_p31;
 	required_ioport m_p32;
 	required_ioport m_p33;
@@ -216,10 +232,14 @@ public:
 	DECLARE_READ_LINE_MEMBER( ikbd_rx_r );
 	DECLARE_WRITE_LINE_MEMBER( ikbd_tx_w );
 	DECLARE_WRITE_LINE_MEMBER( acia_ikbd_irq_w );
+	DECLARE_READ_LINE_MEMBER( midi_rx_in );
+	DECLARE_WRITE_LINE_MEMBER( midi_tx_out );
 	DECLARE_WRITE_LINE_MEMBER( acia_midi_irq_w );
 
 	DECLARE_READ8_MEMBER( mfp_gpio_r );
 	DECLARE_WRITE_LINE_MEMBER( mfp_tdo_w );
+
+	DECLARE_WRITE_LINE_MEMBER( midi_rx_w );
 
 	void toggle_dma_fifo();
 	void flush_dma_fifo();
@@ -231,6 +251,9 @@ public:
 
 	/* memory state */
 	UINT8 m_mmu;
+
+	// MIDI state
+	int m_midi_rx_state;
 
 	/* keyboard state */
 	int m_acia_ikbd_irq;
@@ -310,12 +333,11 @@ public:
 
 	floppy_image_device *floppy_devices[2];
 
-	DECLARE_FLOPPY_FORMATS( floppy_formats );
-	TIMER_CALLBACK_MEMBER(st_mouse_tick);
-	TIMER_CALLBACK_MEMBER(atarist_shifter_tick);
-	TIMER_CALLBACK_MEMBER(atarist_glue_tick);
-	TIMER_CALLBACK_MEMBER(atarist_blitter_tick);
+	DECLARE_FLOPPY_FORMATS(floppy_formats);
 	IRQ_CALLBACK_MEMBER(atarist_int_ack);
+
+protected:
+	virtual void device_timer(emu_timer &timer, device_timer_id id, int param, void *ptr);
 };
 
 class megast_state : public st_state
@@ -332,6 +354,12 @@ public:
 class ste_state : public st_state
 {
 public:
+	enum
+	{
+		TIMER_DMASOUND_TICK,
+		TIMER_MICROWIRE_TICK
+	};
+
 	ste_state(const machine_config &mconfig, device_type type, const char *tag)
 		: st_state(mconfig, type, tag),
 			m_lmc1992(*this, LMC1992_TAG)
@@ -369,9 +397,6 @@ public:
 
 	DECLARE_READ8_MEMBER( mfp_gpio_r );
 
-	TIMER_CALLBACK_MEMBER(atariste_dmasound_tick);
-	TIMER_CALLBACK_MEMBER(atariste_microwire_tick);
-
 	void dmasound_set_state(int level);
 	void dmasound_tick();
 	void microwire_shift();
@@ -402,6 +427,9 @@ public:
 	// timers
 	emu_timer *m_microwire_timer;
 	emu_timer *m_dmasound_timer;
+
+protected:
+	virtual void device_timer(emu_timer &timer, device_timer_id id, int param, void *ptr);
 };
 
 class megaste_state : public ste_state

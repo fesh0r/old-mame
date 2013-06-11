@@ -91,6 +91,12 @@ struct PBUS_DMA_t
 class ip22_state : public driver_device
 {
 public:
+	enum
+	{
+		TIMER_IP22_DMA,
+		TIMER_IP22_MSEC
+	};
+
 	ip22_state(const machine_config &mconfig, device_type type, const char *tag)
 		: driver_device(mconfig, type, tag),
 	m_maincpu(*this, "maincpu"),
@@ -99,6 +105,7 @@ public:
 	m_mainram(*this, "mainram"),
 	m_lpt0(*this, "lpt_0"),
 	m_pit(*this, "pit8254"),
+	m_newport(*this, "newport"),
 	m_dac(*this, "dac"),
 	m_kbdc8042(*this, "kbdc")
 	{ }
@@ -143,6 +150,7 @@ public:
 	required_shared_ptr<UINT32> m_mainram;
 	required_device<device_t> m_lpt0;
 	required_device<pit8254_device> m_pit;
+	required_device<newport_video_device> m_newport;
 	required_device<dac_device> m_dac;
 	required_device<kbdc8042_device> m_kbdc8042;
 	inline void ATTR_PRINTF(3,4) verboselog(int n_level, const char *s_fmt, ... );
@@ -152,6 +160,9 @@ public:
 	void int3_lower_local1_irq(UINT8 source_mask);
 	void dump_chain(address_space &space, UINT32 ch_base);
 	void rtc_update();
+
+protected:
+	virtual void device_timer(emu_timer &timer, device_timer_id id, int param, void *ptr);
 };
 
 
@@ -173,7 +184,7 @@ inline void ATTR_PRINTF(3,4) ip22_state::verboselog(int n_level, const char *s_f
 
 
 
-static const struct pit8253_config ip22_pit8254_config =
+static const struct pit8253_interface ip22_pit8254_config =
 {
 	{
 		{
@@ -303,19 +314,19 @@ READ32_MEMBER(ip22_state::hpc3_pbus6_r)
 //      mame_printf_info("INT3: r @ %x mask %08x (PC=%x)\n", offset*4, mem_mask, activecpu_get_pc());
 		return m_int3_regs[offset-0x80/4];
 	case 0xb0/4:
-		ret8 = pit8253_r(m_pit, space, 0);
+		ret8 = m_pit->read(space, 0);
 		//verboselog(0, "HPC PBUS6 IOC4 Timer Counter 0 Register Read: 0x%02x (%08x)\n", ret8, mem_mask );
 		return ret8;
 	case 0xb4/4:
-		ret8 = pit8253_r(m_pit, space, 1);
+		ret8 = m_pit->read(space, 1);
 		//verboselog(0, "HPC PBUS6 IOC4 Timer Counter 1 Register Read: 0x%02x (%08x)\n", ret8, mem_mask );
 		return ret8;
 	case 0xb8/4:
-		ret8 = pit8253_r(m_pit, space, 2);
+		ret8 = m_pit->read(space, 2);
 		//verboselog(0, "HPC PBUS6 IOC4 Timer Counter 2 Register Read: 0x%02x (%08x)\n", ret8, mem_mask );
 		return ret8;
 	case 0xbc/4:
-		ret8 = pit8253_r(m_pit, space, 3);
+		ret8 = m_pit->read(space, 3);
 		//verboselog(0, "HPC PBUS6 IOC4 Timer Control Word Register Read: 0x%02x (%08x)\n", ret8, mem_mask );
 		return ret8;
 	default:
@@ -400,19 +411,19 @@ WRITE32_MEMBER(ip22_state::hpc3_pbus6_w)
 		break;
 	case 0xb0/4:
 		//verboselog(0, "HPC PBUS6 IOC4 Timer Counter 0 Register Write: 0x%08x (%08x)\n", data, mem_mask );
-		pit8253_w(m_pit, space, 0, data & 0x000000ff);
+		m_pit->write(space, 0, data & 0x000000ff);
 		return;
 	case 0xb4/4:
 		//verboselog(0, "HPC PBUS6 IOC4 Timer Counter 1 Register Write: 0x%08x (%08x)\n", data, mem_mask );
-		pit8253_w(m_pit, space, 1, data & 0x000000ff);
+		m_pit->write(space, 1, data & 0x000000ff);
 		return;
 	case 0xb8/4:
 		//verboselog(0, "HPC PBUS6 IOC4 Timer Counter 2 Register Write: 0x%08x (%08x)\n", data, mem_mask );
-		pit8253_w(m_pit, space, 2, data & 0x000000ff);
+		m_pit->write(space, 2, data & 0x000000ff);
 		return;
 	case 0xbc/4:
 		//verboselog(0, "HPC PBUS6 IOC4 Timer Control Word Register Write: 0x%08x (%08x)\n", data, mem_mask );
-		pit8253_w(m_pit, space, 3, data & 0x000000ff);
+		m_pit->write(space, 3, data & 0x000000ff);
 		return;
 	default:
 		//verboselog(0, "Unknown HPC PBUS6 Write: 0x%08x: 0x%08x (%08x)\n", 0x1fbd9800 + ( offset << 2 ), data, mem_mask );
@@ -1050,9 +1061,24 @@ WRITE32_MEMBER(ip22_state::hal2_w)
 #define PBUS_DMADESC_BC         0x00003fff
 
 
+void ip22_state::device_timer(emu_timer &timer, device_timer_id id, int param, void *ptr)
+{
+	switch (id)
+	{
+	case TIMER_IP22_DMA:
+		ip22_dma(ptr, param);
+		break;
+	case TIMER_IP22_MSEC:
+		ip22_timer(ptr, param);
+		break;
+	default:
+		assert_always(FALSE, "Unknown id in ip22_state::device_timer");
+	}
+}
+
 TIMER_CALLBACK_MEMBER(ip22_state::ip22_dma)
 {
-	machine().scheduler().timer_set(attotime::never, timer_expired_delegate(FUNC(ip22_state::ip22_dma),this));
+	timer_set(attotime::never, TIMER_IP22_DMA);
 #if 0
 	if( m_PBUS_DMA.nActive )
 	{
@@ -1079,7 +1105,7 @@ TIMER_CALLBACK_MEMBER(ip22_state::ip22_dma)
 				return;
 			}
 		}
-		machine().scheduler().timer_set(attotime::from_hz(44100), timer_expired_delegate(FUNC(ip22_state::ip22_dma),this));
+		timer_set(attotime::from_hz(44100), TIMER_IP22_DMA);
 	}
 #endif
 }
@@ -1149,7 +1175,7 @@ WRITE32_MEMBER(ip22_state::hpc3_pbusdma_w)
 		//verboselog((machine, 0, "    FIFO End: Rowe %04x\n", ( data & PBUS_CTRL_FIFO_END ) >> 24 );
 		if( ( data & PBUS_CTRL_DMASTART ) || ( data & PBUS_CTRL_LOAD_EN ) )
 		{
-			machine().scheduler().timer_set(attotime::from_hz(44100), timer_expired_delegate(FUNC(ip22_state::ip22_dma),this));
+			timer_set(attotime::from_hz(44100), TIMER_IP22_DMA);
 			m_PBUS_DMA.nActive = 1;
 		}
 		return;
@@ -1173,7 +1199,7 @@ WRITE32_MEMBER(ip22_state::hpc3_unkpbus0_w)
 static ADDRESS_MAP_START( ip225015_map, AS_PROGRAM, 32, ip22_state )
 	AM_RANGE( 0x00000000, 0x0007ffff ) AM_RAMBANK( "bank1" )    /* mirror of first 512k of main RAM */
 	AM_RANGE( 0x08000000, 0x0fffffff ) AM_SHARE("mainram") AM_RAM_WRITE(ip22_write_ram)     /* 128 MB of main RAM */
-	AM_RANGE( 0x1f0f0000, 0x1f0f1fff ) AM_READWRITE_LEGACY(newport_rex3_r, newport_rex3_w )
+	AM_RANGE( 0x1f0f0000, 0x1f0f1fff ) AM_DEVREADWRITE("newport", newport_video_device, rex3_r, rex3_w )
 	AM_RANGE( 0x1fa00000, 0x1fa1ffff ) AM_READWRITE_LEGACY(sgi_mc_r, sgi_mc_w )
 	AM_RANGE( 0x1fb90000, 0x1fb9ffff ) AM_READWRITE(hpc3_hd_enet_r, hpc3_hd_enet_w )
 	AM_RANGE( 0x1fbb0000, 0x1fbb0003 ) AM_RAM   /* unknown, but read a lot and discarded */
@@ -1194,7 +1220,7 @@ ADDRESS_MAP_END
 
 TIMER_CALLBACK_MEMBER(ip22_state::ip22_timer)
 {
-	machine().scheduler().timer_set(attotime::from_msec(1), timer_expired_delegate(FUNC(ip22_state::ip22_timer),this));
+	timer_set(attotime::from_msec(1), TIMER_IP22_MSEC);
 }
 
 void ip22_state::machine_reset()
@@ -1205,7 +1231,7 @@ void ip22_state::machine_reset()
 	RTC_REGISTERB = 0x08;
 	RTC_REGISTERD = 0x80;
 
-	machine().scheduler().timer_set(attotime::from_msec(1), timer_expired_delegate(FUNC(ip22_state::ip22_timer),this));
+	timer_set(attotime::from_msec(1), TIMER_IP22_MSEC);
 
 	// set up low RAM mirror
 	membank("bank1")->set_base(m_mainram);
@@ -1479,7 +1505,7 @@ static const struct WD33C93interface wd33c93_intf =
 
 READ8_MEMBER(ip22_state::ip22_get_out2)
 {
-	return pit8253_get_output(m_pit, 2 );
+	return m_pit->get_output(2);
 }
 
 void ip22_state::machine_start()
@@ -1603,6 +1629,7 @@ static const pc_lpt_interface ip22_lpt_config =
 	DEVCB_NULL /* no idea if the lpt irq is connected and where */
 };
 
+
 static MACHINE_CONFIG_START( ip225015, ip22_state )
 	MCFG_CPU_ADD( "maincpu", R5000BE, 50000000*3 )
 	MCFG_CPU_CONFIG( config )
@@ -1621,11 +1648,11 @@ static MACHINE_CONFIG_START( ip225015, ip22_state )
 	MCFG_SCREEN_VBLANK_TIME(ATTOSECONDS_IN_USEC(2500)) /* not accurate */
 	MCFG_SCREEN_SIZE(1280+64, 1024+64)
 	MCFG_SCREEN_VISIBLE_AREA(0, 1279, 0, 1023)
-	MCFG_SCREEN_UPDATE_STATIC( newport )
+	MCFG_SCREEN_UPDATE_DEVICE("newport", newport_video_device, screen_update)
 
 	MCFG_PALETTE_LENGTH(65536)
 
-	MCFG_VIDEO_START( newport )
+	MCFG_NEWPORT_ADD("newport")
 
 	MCFG_PC_LPT_ADD("lpt_0", ip22_lpt_config)
 

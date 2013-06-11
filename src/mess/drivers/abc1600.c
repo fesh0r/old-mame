@@ -44,6 +44,7 @@
     - hard disk
         - 4105 SASI interface card
         - SASI interface (scsibus.c)
+    - connect RS-232 port A
 
 */
 
@@ -266,7 +267,7 @@ UINT8 abc1600_state::read_internal_io(offs_t offset)
 			break;
 
 		case DRT:
-			data = z80dart_ba_cd_r(m_dart, program, A2_A1 ^ 0x03);
+			data = m_dart->ba_cd_r(program, A2_A1 ^ 0x03);
 			break;
 
 		case DMA0:
@@ -520,7 +521,7 @@ void abc1600_state::write_internal_io(offs_t offset, UINT8 data)
 			break;
 
 		case DRT:
-			z80dart_ba_cd_w(m_dart, program, A2_A1 ^ 0x03, data);
+			m_dart->ba_cd_w(program, A2_A1 ^ 0x03, data);
 			break;
 
 		case DMA0:
@@ -1523,15 +1524,15 @@ static Z80DART_INTERFACE( dart_intf )
 {
 	0, 0, 0, 0,
 
-	DEVCB_NULL,
-	DEVCB_NULL,
-	DEVCB_NULL,
-	DEVCB_NULL,
+	DEVCB_DEVICE_LINE_MEMBER(RS232_B_TAG, serial_port_device, rx),
+	DEVCB_DEVICE_LINE_MEMBER(RS232_B_TAG, serial_port_device, tx),
+	DEVCB_DEVICE_LINE_MEMBER(RS232_B_TAG, rs232_port_device, dtr_w),
+	DEVCB_DEVICE_LINE_MEMBER(RS232_B_TAG, rs232_port_device, rts_w),
 	DEVCB_NULL,
 	DEVCB_NULL,
 
-	DEVCB_DEVICE_LINE_MEMBER(ABC99_TAG, abc99_device, txd_r),
-	DEVCB_DEVICE_LINE_MEMBER(ABC99_TAG, abc99_device, rxd_w),
+	DEVCB_DEVICE_LINE_MEMBER(ABC_KEYBOARD_PORT_TAG, abc_keyboard_port_device, rxd_r),
+	DEVCB_DEVICE_LINE_MEMBER(ABC_KEYBOARD_PORT_TAG, abc_keyboard_port_device, txd_w),
 	DEVCB_NULL,
 	DEVCB_NULL,
 	DEVCB_NULL,
@@ -1634,8 +1635,8 @@ WRITE8_MEMBER( abc1600_state::cio_pb_w )
 	// printer baudrate
 	int prbr = BIT(data, 0);
 
-	z80dart_txca_w(m_dart, prbr);
-	z80dart_rxca_w(m_dart, prbr);
+	m_dart->txca_w(prbr);
+	m_dart->rxca_w(prbr);
 }
 
 READ8_MEMBER( abc1600_state::cio_pc_r )
@@ -1730,17 +1731,6 @@ void abc1600_state::fdc_drq_w(bool state)
 
 
 //-------------------------------------------------
-//  ABC99_INTERFACE( abc99_intf )
-//-------------------------------------------------
-
-static ABC99_INTERFACE( abc99_intf )
-{
-	DEVCB_DEVICE_LINE(Z8470AB1_TAG, z80dart_rxtxcb_w),
-	DEVCB_DEVICE_LINE(Z8470AB1_TAG, z80dart_dcdb_w)
-};
-
-
-//-------------------------------------------------
 //  ABC1600BUS_INTERFACE( abcbus_intf )
 //-------------------------------------------------
 
@@ -1789,6 +1779,34 @@ static ABC1600BUS_INTERFACE( bus2_intf )
 	DEVCB_DEVICE_LINE_MEMBER(Z8536B1_TAG, z8536_device, pa0_w), // really inverted but ASSERT_LINE takes care of that
 	DEVCB_NULL, // DEVCB_DEVICE_LINE_MEMBER(Z8410AB1_2_TAG, z80dma_device, iei_w) inverted
 	DEVCB_DEVICE_LINE_MEMBER(Z8410AB1_2_TAG, z80dma_device, rdy_w)
+};
+
+
+//-------------------------------------------------
+//  rs232_port_interface rs232a_intf
+//-------------------------------------------------
+
+static const rs232_port_interface rs232a_intf =
+{
+	DEVCB_NULL,
+	DEVCB_NULL,
+	DEVCB_NULL,
+	DEVCB_NULL,
+	DEVCB_NULL
+};
+
+
+//-------------------------------------------------
+//  rs232_port_interface rs232b_intf
+//-------------------------------------------------
+
+static const rs232_port_interface rs232b_intf =
+{
+	DEVCB_NULL,
+	DEVCB_NULL,
+	DEVCB_NULL,
+	DEVCB_NULL,
+	DEVCB_NULL
 };
 
 
@@ -1921,15 +1939,17 @@ static MACHINE_CONFIG_START( abc1600, abc1600_state )
 	MCFG_NMC9306_ADD(NMC9306_TAG)
 	MCFG_E0516_ADD(E050_C16PC_TAG, XTAL_32_768kHz)
 	MCFG_FD1797x_ADD(SAB1797_02P_TAG, XTAL_64MHz/64)
-	MCFG_FLOPPY_DRIVE_ADD(SAB1797_02P_TAG":0", abc1600_floppies, NULL,    NULL, floppy_image_device::default_floppy_formats)
-	MCFG_FLOPPY_DRIVE_ADD(SAB1797_02P_TAG":1", abc1600_floppies, NULL,    NULL, floppy_image_device::default_floppy_formats)
-	MCFG_FLOPPY_DRIVE_ADD(SAB1797_02P_TAG":2", abc1600_floppies, "525qd", NULL, floppy_image_device::default_floppy_formats)
-	MCFG_ABC99_ADD(abc99_intf)
+	MCFG_FLOPPY_DRIVE_ADD(SAB1797_02P_TAG":0", abc1600_floppies, NULL,    floppy_image_device::default_floppy_formats)
+	MCFG_FLOPPY_DRIVE_ADD(SAB1797_02P_TAG":1", abc1600_floppies, NULL,    floppy_image_device::default_floppy_formats)
+	MCFG_FLOPPY_DRIVE_ADD(SAB1797_02P_TAG":2", abc1600_floppies, "525qd", floppy_image_device::default_floppy_formats)
+	MCFG_RS232_PORT_ADD(RS232_A_TAG, rs232a_intf, default_rs232_devices, NULL)
+	MCFG_RS232_PORT_ADD(RS232_B_TAG, rs232b_intf, default_rs232_devices, NULL)
+	MCFG_ABC_KEYBOARD_PORT_ADD("abc99", DEVWRITELINE(Z8470AB1_TAG, z80dart_device, rxtxcb_w), DEVWRITELINE(Z8470AB1_TAG, z80dart_device, dcdb_w))
 
-	MCFG_ABC1600BUS_SLOT_ADD("bus0i", bus0i_intf, abc1600bus_cards, NULL, NULL)
-	MCFG_ABC1600BUS_SLOT_ADD("bus0x", bus0x_intf, abc1600bus_cards, NULL, NULL)
-	MCFG_ABC1600BUS_SLOT_ADD("bus1", bus1_intf, abc1600bus_cards, NULL, NULL)
-	MCFG_ABC1600BUS_SLOT_ADD("bus2", bus2_intf, abc1600bus_cards, "4105", NULL)
+	MCFG_ABC1600BUS_SLOT_ADD("bus0i", bus0i_intf, abc1600bus_cards, NULL)
+	MCFG_ABC1600BUS_SLOT_ADD("bus0x", bus0x_intf, abc1600bus_cards, NULL)
+	MCFG_ABC1600BUS_SLOT_ADD("bus1", bus1_intf, abc1600bus_cards, NULL)
+	MCFG_ABC1600BUS_SLOT_ADD("bus2", bus2_intf, abc1600bus_cards, "4105")
 
 	// internal ram
 	MCFG_RAM_ADD(RAM_TAG)

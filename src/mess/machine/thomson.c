@@ -885,7 +885,7 @@ READ8_MEMBER( thomson_state::to7_modem_mea8000_r )
 
 	if ( ioport("mconfig")->read() & 1 )
 	{
-		return mea8000_r( m_mea8000, space, offset );
+		return m_mea8000->read(space, offset);
 	}
 	else
 	{
@@ -903,7 +903,7 @@ WRITE8_MEMBER( thomson_state::to7_modem_mea8000_w )
 {
 	if ( ioport("mconfig")->read() & 1 )
 	{
-		mea8000_w( m_mea8000, space, offset, data );
+		m_mea8000->write(space, offset, data);
 	}
 	else
 	{
@@ -4110,12 +4110,24 @@ MACHINE_START_MEMBER( thomson_state, to8 )
 	m_thom_cart_bank = 0;
 	m_thom_vram = ram;
 	membank( THOM_CART_BANK )->configure_entries( 0,  8, mem + 0x10000, 0x4000 );
-	membank( THOM_CART_BANK )->configure_entries( 8, 32, ram, 0x4000 );
+	if ( m_ram->size() == 256*1024 )
+	{
+		membank( THOM_CART_BANK )->configure_entries( 8,    16, ram, 0x4000 );
+		membank( THOM_CART_BANK )->configure_entries( 8+16, 16, ram, 0x4000 );
+		membank( TO8_DATA_LO )->configure_entries( 0, 16, ram + 0x2000, 0x4000 );
+		membank( TO8_DATA_LO )->configure_entries( 16, 16, ram + 0x2000, 0x4000 );
+		membank( TO8_DATA_HI )->configure_entries( 0, 16, ram + 0x0000, 0x4000 );
+		membank( TO8_DATA_HI )->configure_entries( 16, 16, ram + 0x0000, 0x4000 );
+	}
+	else
+	{
+		membank( THOM_CART_BANK )->configure_entries( 8, 32, ram, 0x4000 );
+		membank( TO8_DATA_LO )->configure_entries( 0, 32, ram + 0x2000, 0x4000 );
+		membank( TO8_DATA_HI )->configure_entries( 0, 32, ram + 0x0000, 0x4000 );
+	}
 	membank( THOM_VRAM_BANK )->configure_entries( 0,  2, ram, 0x2000 );
 	membank( TO8_SYS_LO )->configure_entry( 0,  ram + 0x6000);
 	membank( TO8_SYS_HI )->configure_entry( 0,  ram + 0x4000);
-	membank( TO8_DATA_LO )->configure_entries( 0, 32, ram + 0x2000, 0x4000 );
-	membank( TO8_DATA_HI )->configure_entries( 0, 32, ram + 0x0000, 0x4000 );
 	membank( TO8_BIOS_BANK )->configure_entries( 0,  2, mem + 0x30800, 0x2000 );
 	membank( THOM_CART_BANK )->set_entry( 0 );
 	membank( THOM_VRAM_BANK )->set_entry( 0 );

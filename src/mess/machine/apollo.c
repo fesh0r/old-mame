@@ -32,7 +32,7 @@
 
 #include "machine/6840ptm.h"
 #include "machine/68681.h"
-#include "machine/8237dma.h"
+#include "machine/am9517a.h"
 #include "machine/mc146818.h"
 #include "machine/pic8259.h"
 
@@ -332,22 +332,22 @@ static const UINT8 channel2page_register[8] = { 7, 3, 1, 2, 0, 11, 9, 10};
 static UINT8 dn3000_dma_channel1 = 1; // 1 = memory/ctape, 2 = floppy dma channel
 static UINT8 dn3000_dma_channel2 = 5; // 5 = memory dma channel
 
-INLINE i8237_device *get_device_dma8237_1(device_t *device) {
-	return device->machine().driver_data<apollo_state>()->dma8237_1;
+INLINE am9517a_device *get_device_dma8237_1(device_t *device) {
+	return device->machine().driver_data<apollo_state>()->m_dma8237_1;
 }
 
-INLINE i8237_device *get_device_dma8237_2(device_t *device) {
-	return device->machine().driver_data<apollo_state>()->dma8237_2;
+INLINE am9517a_device *get_device_dma8237_2(device_t *device) {
+	return device->machine().driver_data<apollo_state>()->m_dma8237_2;
 }
 
 static void apollo_dma_fdc_drq(device_t *device, int state) {
 	DLOG2(("apollo_dma_fdc_drq: state=%x", state));
-	get_device_dma8237_1(device)->i8237_dreq2_w(state);
+	get_device_dma8237_1(device)->dreq2_w(state);
 }
 
 static void apollo_dma_ctape_drq(device_t *device, int state) {
 	DLOG1(("apollo_dma_ctape_drq: state=%x", state));
-	get_device_dma8237_1(device)->i8237_dreq1_w(state);
+	get_device_dma8237_1(device)->dreq1_w(state);
 }
 
 /*-------------------------------------------------
@@ -356,11 +356,11 @@ static void apollo_dma_ctape_drq(device_t *device, int state) {
 
 WRITE8_MEMBER(apollo_state::apollo_dma_1_w){
 	SLOG1(("apollo_dma_1_w: writing DMA Controller 1 at offset %02x = %02x", offset, data));
-	get_device_dma8237_1(&space.device())->i8237_w(space, offset, data);
+	get_device_dma8237_1(&space.device())->write(space, offset, data);
 }
 
 READ8_MEMBER(apollo_state::apollo_dma_1_r){
-	UINT8 data = get_device_dma8237_1(&space.device())->i8237_r(space, offset);
+	UINT8 data = get_device_dma8237_1(&space.device())->read(space, offset);
 	SLOG1(("apollo_dma_1_r: reading DMA Controller 1 at offset %02x = %02x", offset, data));
 	return data;
 }
@@ -371,11 +371,11 @@ READ8_MEMBER(apollo_state::apollo_dma_1_r){
 
 WRITE8_MEMBER(apollo_state::apollo_dma_2_w){
 	SLOG1(("apollo_dma_2_w: writing DMA Controller 2 at offset %02x = %02x", offset/2, data));
-	get_device_dma8237_2(&space.device())->i8237_w(space, offset / 2, data);
+	get_device_dma8237_2(&space.device())->write(space, offset / 2, data);
 }
 
 READ8_MEMBER(apollo_state::apollo_dma_2_r){
-	UINT8 data = get_device_dma8237_2(&space.device())->i8237_r(space, offset / 2);
+	UINT8 data = get_device_dma8237_2(&space.device())->read(space, offset / 2);
 	SLOG1(("apollo_dma_2_r: reading DMA Controller 2 at offset %02x = %02x", offset/2, data));
 	return data;
 }
@@ -553,10 +553,10 @@ WRITE_LINE_MEMBER(apollo_state::apollo_dma8237_out_eop ) {
 
 WRITE_LINE_MEMBER(apollo_state::apollo_dma_1_hrq_changed ) {
 	// DLOG2(("dma 1 hrq changed state %02x", state));
-	get_device_dma8237_2(machine().device(APOLLO_DMA1_TAG))->i8237_dreq0_w(state);
+	m_dma8237_2->dreq0_w(state);
 
 	/* Assert HLDA */
-	dynamic_cast<i8237_device*>(machine().device(APOLLO_DMA1_TAG))->i8237_hlda_w(state);
+	//m_dma8237_1->hack_w(state);
 
 	// cascade mode?
 	// i8237_hlda_w(get_device_dma8237_2(device), state);
@@ -564,10 +564,10 @@ WRITE_LINE_MEMBER(apollo_state::apollo_dma_1_hrq_changed ) {
 
 WRITE_LINE_MEMBER(apollo_state::apollo_dma_2_hrq_changed ) {
 	// DLOG2(("dma 2 hrq changed state %02x", state));
-	machine().device(MAINCPU)->execute().set_input_line(INPUT_LINE_HALT, state ? ASSERT_LINE : CLEAR_LINE);
+	m_maincpu->set_input_line(INPUT_LINE_HALT, state ? ASSERT_LINE : CLEAR_LINE);
 
 	/* Assert HLDA */
-	dynamic_cast<i8237_device*>(machine().device(APOLLO_DMA2_TAG))->i8237_hlda_w(state);
+	m_dma8237_2->hack_w(state);
 }
 
 static I8237_INTERFACE( apollo_dma8237_1_config )
@@ -600,11 +600,11 @@ static I8237_INTERFACE( apollo_dma8237_2_config )
 #define VERBOSE 0
 
 INLINE pic8259_device *get_pic8259_master(device_t *device) {
-	return device->machine().driver_data<apollo_state>()->pic8259_master;
+	return device->machine().driver_data<apollo_state>()->m_pic8259_master;
 }
 
 INLINE pic8259_device *get_pic8259_slave(device_t *device) {
-	return device->machine().driver_data<apollo_state>()->pic8259_slave;
+	return device->machine().driver_data<apollo_state>()->m_pic8259_slave;
 }
 
 /*-------------------------------------------------
@@ -689,10 +689,17 @@ IRQ_CALLBACK_MEMBER(apollo_state::apollo_pic_acknowledge)
  * pic8259 configuration
  *************************************************************/
 
+READ8_MEMBER( apollo_state::apollo_pic8259_get_slave_ack )
+{
+		MLOG1(("apollo_pic8259_get_slave_ack: offset=%x", offset));
+
+		return offset == 3 ? m_pic8259_slave->inta_r() : 0;
+}
+
 WRITE_LINE_MEMBER( apollo_state::apollo_pic8259_master_set_int_line ) {
 	static int interrupt_line = -1;
 	if (state != interrupt_line) {
-		device_t *device = pic8259_master;
+		device_t *device = m_pic8259_master;
 		DLOG1(("apollo_pic8259_master_set_int_line: %x", state));
 	}
 	interrupt_line = state;
@@ -705,13 +712,13 @@ WRITE_LINE_MEMBER( apollo_state::apollo_pic8259_master_set_int_line ) {
 		apollo_set_cache_status_register(0x10, state ? 0x10 : 0x00);
 	}
 
-	machine().device(MAINCPU)->execute().set_input_line_and_vector(M68K_IRQ_6,state ? ASSERT_LINE : CLEAR_LINE, M68K_INT_ACK_AUTOVECTOR);
+	m_maincpu->set_input_line_and_vector(M68K_IRQ_6,state ? ASSERT_LINE : CLEAR_LINE, M68K_INT_ACK_AUTOVECTOR);
 }
 
 WRITE_LINE_MEMBER( apollo_state::apollo_pic8259_slave_set_int_line ) {
 	static int interrupt_line = -1;
 	if (state != interrupt_line) {
-		device_t *device = pic8259_slave;
+		device_t *device = m_pic8259_slave;
 		DLOG1(("apollo_pic8259_slave_set_int_line: %x", state));
 		interrupt_line = state;
 		apollo_pic_set_irq_line(device, 3, state);
@@ -1367,15 +1374,16 @@ MACHINE_CONFIG_FRAGMENT( apollo )
 
 	MCFG_I8237_ADD( APOLLO_DMA1_TAG, XTAL_14_31818MHz/3, apollo_dma8237_1_config )
 	MCFG_I8237_ADD( APOLLO_DMA2_TAG, XTAL_14_31818MHz/3, apollo_dma8237_2_config )
-	MCFG_PIC8259_ADD( APOLLO_PIC1_TAG, WRITELINE(apollo_state,apollo_pic8259_master_set_int_line), NULL, NULL ) // TODO: Doublecheck config
-	MCFG_PIC8259_ADD( APOLLO_PIC2_TAG, WRITELINE(apollo_state,apollo_pic8259_slave_set_int_line), NULL, NULL ) // TODO: Doublecheck config
+	MCFG_PIC8259_ADD( APOLLO_PIC1_TAG, WRITELINE(apollo_state,apollo_pic8259_master_set_int_line), VCC, READ8(apollo_state, apollo_pic8259_get_slave_ack))
+	MCFG_PIC8259_ADD( APOLLO_PIC2_TAG, WRITELINE(apollo_state,apollo_pic8259_slave_set_int_line), GND, NULL)
+
 	MCFG_PTM6840_ADD(APOLLO_PTM_TAG, apollo_ptm_config)
 	MCFG_MC146818_ADD( APOLLO_RTC_TAG, MC146818_UTC )
 	MCFG_DUART68681_ADD( APOLLO_SIO_TAG, XTAL_3_6864MHz, apollo_sio_config )
 	MCFG_DUART68681_ADD( APOLLO_SIO2_TAG, XTAL_3_6864MHz, apollo_sio2_config )
 
 	MCFG_PC_FDC_AT_ADD(APOLLO_FDC_TAG)
-	MCFG_FLOPPY_DRIVE_ADD(APOLLO_FDC_TAG ":0", apollo_floppies, "525hd", 0, apollo_state::floppy_formats)
+	MCFG_FLOPPY_DRIVE_ADD(APOLLO_FDC_TAG ":0", apollo_floppies, "525hd", apollo_state::floppy_formats)
 
 	MCFG_OMTI8621_ADD(APOLLO_WDC_TAG, apollo_wdc_config)
 	MCFG_SC499_ADD(APOLLO_CTAPE_TAG, apollo_ctape_config)
@@ -1413,11 +1421,6 @@ MACHINE_START_MEMBER(apollo_state,apollo)
 MACHINE_RESET_MEMBER(apollo_state,apollo)
 {
 	//MLOG1(("machine_reset_apollo"));
-
-	dma8237_1 = machine().device<i8237_device>(APOLLO_DMA1_TAG);
-	dma8237_2 = machine().device<i8237_device>(APOLLO_DMA2_TAG);
-	pic8259_master = machine().device<pic8259_device>(APOLLO_PIC1_TAG);
-	pic8259_slave = machine().device<pic8259_device>(APOLLO_PIC2_TAG);
 
 	// set configuration
 	apollo_csr_set_servicemode(apollo_config(APOLLO_CONF_SERVICE_MODE));

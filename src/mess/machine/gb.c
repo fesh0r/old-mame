@@ -135,7 +135,6 @@ void gb_state::save_gbc_only()
 
 void gb_state::save_sgb_only()
 {
-	save_item(NAME(m_sgb_pal_data));
 	save_item(NAME(m_sgb_pal));
 	save_item(NAME(m_sgb_tile_map));
 	save_item(NAME(m_sgb_window_mask));
@@ -152,8 +151,7 @@ void gb_state::save_sgb_only()
 	save_item(NAME(m_sgb_atf));
 
 	save_pointer(NAME(m_sgb_tile_data), 0x2000);
-	for (int i = 0; i < 20; i++)
-		save_item(NAME(m_sgb_pal_map[i]));
+	save_item(NAME(m_sgb_pal_map));
 }
 
 
@@ -248,7 +246,7 @@ MACHINE_RESET_MEMBER(gb_state,gbpocket)
 
 	gb_init_regs();
 
-	m_bios_disable = 0;
+	m_bios_disable = 1;
 
 	/* Initialize the Sound registers */
 	m_custom->sound_w(generic_space(), 0x16, 0x80);

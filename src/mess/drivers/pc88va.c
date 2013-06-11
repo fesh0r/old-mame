@@ -57,6 +57,15 @@ struct tsp_t
 class pc88va_state : public driver_device
 {
 public:
+	enum
+	{
+		TIMER_PC8801FD_UPD765_TC_TO_ZERO,
+		TIMER_T3_MOUSE_CALLBACK,
+		TIMER_PC88VA_FDC_TIMER,
+		TIMER_PC88VA_FDC_MOTOR_START_0,
+		TIMER_PC88VA_FDC_MOTOR_START_1
+	};
+
 	pc88va_state(const machine_config &mconfig, device_type type, const char *tag)
 		: driver_device(mconfig, type, tag),
 		m_maincpu(*this, "maincpu"),
@@ -122,8 +131,6 @@ public:
 	virtual void video_start();
 	UINT32 screen_update_pc88va(screen_device &screen, bitmap_rgb32 &bitmap, const rectangle &cliprect);
 	INTERRUPT_GEN_MEMBER(pc88va_vrtc_irq);
-	TIMER_CALLBACK_MEMBER(pc8801fd_upd765_tc_to_zero);
-	TIMER_CALLBACK_MEMBER(t3_mouse_callback);
 	DECLARE_READ8_MEMBER(cpu_8255_c_r);
 	DECLARE_WRITE8_MEMBER(cpu_8255_c_w);
 	DECLARE_READ8_MEMBER(fdc_8255_c_r);
@@ -139,6 +146,8 @@ public:
 	DECLARE_WRITE_LINE_MEMBER(pc88va_pit_out0_changed);
 //  DECLARE_WRITE_LINE_MEMBER(pc88va_upd765_interrupt);
 	UINT8 m_fdc_ctrl_2;
+	TIMER_CALLBACK_MEMBER(pc8801fd_upd765_tc_to_zero);
+	TIMER_CALLBACK_MEMBER(t3_mouse_callback);
 	TIMER_CALLBACK_MEMBER(pc88va_fdc_timer);
 	TIMER_CALLBACK_MEMBER(pc88va_fdc_motor_start_0);
 	TIMER_CALLBACK_MEMBER(pc88va_fdc_motor_start_1);
@@ -167,6 +176,9 @@ public:
 	void execute_emul_cmd();
 	void execute_spron_cmd();
 	void execute_sprsw_cmd();
+
+protected:
+	virtual void device_timer(emu_timer &timer, device_timer_id id, int param, void *ptr);
 };
 
 
@@ -519,6 +531,30 @@ UINT32 pc88va_state::screen_update_pc88va(screen_device &screen, bitmap_rgb32 &b
 	}
 
 	return 0;
+}
+
+void pc88va_state::device_timer(emu_timer &timer, device_timer_id id, int param, void *ptr)
+{
+	switch (id)
+	{
+	case TIMER_PC8801FD_UPD765_TC_TO_ZERO:
+		pc8801fd_upd765_tc_to_zero(ptr, param);
+		break;
+	case TIMER_T3_MOUSE_CALLBACK:
+		t3_mouse_callback(ptr, param);
+		break;
+	case TIMER_PC88VA_FDC_TIMER:
+		pc88va_fdc_timer(ptr, param);
+		break;
+	case TIMER_PC88VA_FDC_MOTOR_START_0:
+		pc88va_fdc_motor_start_0(ptr, param);
+		break;
+	case TIMER_PC88VA_FDC_MOTOR_START_1:
+		pc88va_fdc_motor_start_1(ptr, param);
+		break;
+	default:
+		assert_always(FALSE, "Unknown id in pc88va_state::device_timer");
+	}
 }
 
 READ16_MEMBER(pc88va_state::sys_mem_r)
@@ -1077,7 +1113,7 @@ WRITE8_MEMBER(pc88va_state::pc88va_fdc_w)
 			{
 				machine().device<floppy_connector>("upd765:0")->get_device()->mon_w(1);
 				if(m_fdc_motor_status[0] == 0)
-					machine().scheduler().timer_set(attotime::from_msec(505), timer_expired_delegate(FUNC(pc88va_state::pc88va_fdc_motor_start_0),this));
+					timer_set(attotime::from_msec(505), TIMER_PC88VA_FDC_MOTOR_START_0);
 				else
 					m_fdc_motor_status[0] = 0;
 			}
@@ -1086,7 +1122,7 @@ WRITE8_MEMBER(pc88va_state::pc88va_fdc_w)
 			{
 				machine().device<floppy_connector>("upd765:1")->get_device()->mon_w(1);
 				if(m_fdc_motor_status[1] == 0)
-					machine().scheduler().timer_set(attotime::from_msec(505), timer_expired_delegate(FUNC(pc88va_state::pc88va_fdc_motor_start_1),this));
+					timer_set(attotime::from_msec(505), TIMER_PC88VA_FDC_MOTOR_START_1);
 				else
 					m_fdc_motor_status[1] = 0;
 			}
@@ -1102,10 +1138,10 @@ WRITE8_MEMBER(pc88va_state::pc88va_fdc_w)
 		case 0x06:
 			//printf("%02x\n",data);
 			if(data & 1)
-				machine().scheduler().timer_set(attotime::from_msec(100), timer_expired_delegate(FUNC(pc88va_state::pc88va_fdc_timer),this));
+				timer_set(attotime::from_msec(100), TIMER_PC88VA_FDC_TIMER);
 
 			if((m_fdc_ctrl_2 & 0x10) != (data & 0x10))
-				upd71071_dmarq(m_dmac,1,2);
+				m_dmac->dmarq(1, 2);
 
 			if(data & 0x80) // correct?
 				machine().device<upd765a_device>("upd765")->reset();
@@ -1242,14 +1278,14 @@ static ADDRESS_MAP_START( pc88va_io_map, AS_IO, 16, pc88va_state )
 	AM_RANGE(0x0156, 0x0157) AM_READ8(rom_bank_r,0x00ff) // ROM bank status
 //  AM_RANGE(0x0158, 0x0159) Interruption Mode Modification
 //  AM_RANGE(0x015c, 0x015f) NMI mask port (strobe port)
-	AM_RANGE(0x0160, 0x016f) AM_DEVREADWRITE8_LEGACY("dmac", upd71071_r, upd71071_w,0xffff) // DMA Controller
+	AM_RANGE(0x0160, 0x016f) AM_DEVREADWRITE8("dmac", upd71071_device, read, write, 0xffff) // DMA Controller
 	AM_RANGE(0x0184, 0x0187) AM_DEVREADWRITE8("pic8259_slave", pic8259_device, read, write, 0x00ff)
 	AM_RANGE(0x0188, 0x018b) AM_DEVREADWRITE8("pic8259_master", pic8259_device, read, write, 0x00ff) // ICU, also controls 8214 emulation
 //  AM_RANGE(0x0190, 0x0191) System Port 5
 //  AM_RANGE(0x0196, 0x0197) Keyboard sub CPU command port
 	AM_RANGE(0x0198, 0x0199) AM_WRITE(backupram_wp_1_w) //Backup RAM write inhibit
 	AM_RANGE(0x019a, 0x019b) AM_WRITE(backupram_wp_0_w) //Backup RAM write permission
-	AM_RANGE(0x01a0, 0x01a7) AM_DEVREADWRITE8_LEGACY("pit8253", pit8253_r, pit8253_w, 0x00ff)// vTCU (timer counter unit)
+	AM_RANGE(0x01a0, 0x01a7) AM_DEVREADWRITE8("pit8253", pit8253_device, read, write, 0x00ff)// vTCU (timer counter unit)
 	AM_RANGE(0x01a8, 0x01a9) AM_WRITE8(timer3_ctrl_reg_w,0x00ff) // General-purpose timer 3 control port
 	AM_RANGE(0x01b0, 0x01b7) AM_READWRITE8(pc88va_fdc_r,pc88va_fdc_w,0x00ff)// FDC related (765)
 	AM_RANGE(0x01b8, 0x01bb) AM_DEVICE8("upd765", upd765a_device, map, 0x00ff)
@@ -1269,6 +1305,11 @@ static ADDRESS_MAP_START( pc88va_io_map, AS_IO, 16, pc88va_state )
 ADDRESS_MAP_END
 // (*) are specific N88 V1 / V2 ports
 
+TIMER_CALLBACK_MEMBER(pc88va_state::pc8801fd_upd765_tc_to_zero)
+{
+	machine().device<upd765a_device>("upd765")->tc_w(false);
+}
+
 /* FDC subsytem CPU */
 #if TEST_SUBFDC
 static ADDRESS_MAP_START( pc88va_z80_map, AS_PROGRAM, 8, pc88va_state )
@@ -1276,15 +1317,10 @@ static ADDRESS_MAP_START( pc88va_z80_map, AS_PROGRAM, 8, pc88va_state )
 	AM_RANGE(0x4000, 0x7fff) AM_RAM
 ADDRESS_MAP_END
 
-TIMER_CALLBACK_MEMBER(pc88va_state::pc8801fd_upd765_tc_to_zero)
-{
-	machine().device<upd765a_device>("upd765")->tc_w(false);
-}
-
 READ8_MEMBER(pc88va_state::upd765_tc_r)
 {
 	machine().device<upd765a_device>("upd765")->tc_w(true);
-	machine().scheduler().timer_set(attotime::from_usec(50), timer_expired_delegate(FUNC(pc88va_state::pc8801fd_upd765_tc_to_zero),this));
+	timer_set(attotime::from_usec(50), TIMER_PC8801FD_UPD765_TC_TO_ZERO);
 	return 0;
 }
 
@@ -1641,7 +1677,7 @@ void pc88va_state::machine_start()
 {
 	m_maincpu->set_irq_acknowledge_callback(device_irq_acknowledge_delegate(FUNC(pc88va_state::pc88va_irq_callback),this));
 
-	m_t3_mouse_timer = machine().scheduler().timer_alloc(timer_expired_delegate(FUNC(pc88va_state::t3_mouse_callback),this));
+	m_t3_mouse_timer = timer_alloc(TIMER_T3_MOUSE_CALLBACK);
 	m_t3_mouse_timer->adjust(attotime::never);
 	m_fdc->setup_drq_cb(upd765a_device::line_cb(FUNC(pc88va_state::fdc_drq), this));
 	m_fdc->setup_intrq_cb(upd765a_device::line_cb(FUNC(pc88va_state::fdc_irq), this));
@@ -1705,7 +1741,7 @@ WRITE_LINE_MEMBER(pc88va_state::pc88va_pit_out0_changed)
 	}
 }
 
-static const struct pit8253_config pc88va_pit8253_config =
+static const struct pit8253_interface pc88va_pit8253_config =
 {
 	{
 		{
@@ -1733,7 +1769,7 @@ static const struct pit8253_config pc88va_pit8253_config =
 void pc88va_state::fdc_drq(bool state)
 {
 	printf("%02x DRQ\n",state);
-	upd71071_dmarq(m_dmac,state,2);
+	m_dmac->dmarq(state, 2);
 }
 
 void pc88va_state::fdc_irq(bool state)
@@ -1846,11 +1882,11 @@ static MACHINE_CONFIG_START( pc88va, pc88va_state )
 
 	MCFG_PIC8259_ADD( "pic8259_slave", DEVWRITELINE("pic8259_master", pic8259_device, ir7_w), GND, NULL )
 
-	MCFG_UPD71071_ADD("dmac",pc88va_dma_config)
+	MCFG_UPD71071_ADD("dmac", pc88va_dma_config)
 
 	MCFG_UPD765A_ADD("upd765", false, true)
-	MCFG_FLOPPY_DRIVE_ADD("upd765:0", pc88va_floppies, "525hd", 0, pc88va_state::floppy_formats)
-	MCFG_FLOPPY_DRIVE_ADD("upd765:1", pc88va_floppies, "525hd", 0, pc88va_state::floppy_formats)
+	MCFG_FLOPPY_DRIVE_ADD("upd765:0", pc88va_floppies, "525hd", pc88va_state::floppy_formats)
+	MCFG_FLOPPY_DRIVE_ADD("upd765:1", pc88va_floppies, "525hd", pc88va_state::floppy_formats)
 	MCFG_SOFTWARE_LIST_ADD("disk_list","pc88va")
 
 	MCFG_PIT8253_ADD("pit8253",pc88va_pit8253_config)

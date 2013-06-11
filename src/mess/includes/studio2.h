@@ -20,6 +20,11 @@
 class studio2_state : public driver_device
 {
 public:
+	enum
+	{
+		TIMER_SETUP_BEEP
+	};
+
 	studio2_state(const machine_config &mconfig, device_type type, const char *tag)
 		: driver_device(mconfig, type, tag),
 			m_maincpu(*this, CDP1802_TAG),
@@ -40,8 +45,6 @@ public:
 	virtual void machine_start();
 	virtual void machine_reset();
 
-	UINT32 screen_update(screen_device &screen, bitmap_ind16 &bitmap, const rectangle &cliprect);
-
 	DECLARE_READ8_MEMBER( dispon_r );
 	DECLARE_WRITE8_MEMBER( keylatch_w );
 	DECLARE_WRITE8_MEMBER( dispon_w );
@@ -56,7 +59,9 @@ public:
 	/* keyboard state */
 	UINT8 m_keylatch;
 	DECLARE_DRIVER_INIT(studio2);
-	TIMER_CALLBACK_MEMBER(setup_beep);
+
+protected:
+	virtual void device_timer(emu_timer &timer, device_timer_id id, int param, void *ptr);
 };
 
 class visicom_state : public studio2_state
@@ -84,8 +89,6 @@ public:
 	required_device<cdp1864_device> m_cti;
 
 	virtual void machine_reset();
-
-	UINT32 screen_update(screen_device &screen, bitmap_ind16 &bitmap, const rectangle &cliprect);
 
 	DECLARE_WRITE8_MEMBER( dma_w );
 	DECLARE_READ_LINE_MEMBER( rdata_r );

@@ -32,7 +32,7 @@ const device_type A2BUS_ZIPDRIVE = &device_creator<a2bus_zipdrive_device>;
 #define ZIPDRIVE_IDE_TAG     "zipdrive_ide"
 
 static MACHINE_CONFIG_FRAGMENT( zipdrive )
-	MCFG_IDE_CONTROLLER_ADD(ZIPDRIVE_IDE_TAG, ide_image_devices, "hdd", "hdd", false)
+	MCFG_IDE_CONTROLLER_ADD(ZIPDRIVE_IDE_TAG, ide_devices, "hdd", "hdd", false)
 MACHINE_CONFIG_END
 
 ROM_START( zipdrive )
@@ -116,10 +116,10 @@ UINT8 a2bus_zipdrivebase_device::read_c0nx(address_space &space, UINT8 offset)
 		case 5:
 		case 6:
 		case 7:
-			return ide_controller_r(m_ide, 0x1f0+offset, 1);
+			return m_ide->read_cs0(space, offset, 0xff);
 
 		case 8: // data port
-			m_lastdata = ide_controller_r(m_ide, 0x1f0, 2);
+			m_lastdata = m_ide->read_cs0(space, offset, 0xffff);
 //          printf("%04x @ IDE data\n", m_lastdata);
 			return m_lastdata&0xff;
 
@@ -152,7 +152,7 @@ void a2bus_zipdrivebase_device::write_c0nx(address_space &space, UINT8 offset, U
 		case 6:
 		case 7:
 //          printf("%02x to IDE controller @ %x\n", data, offset);
-			ide_controller_w(m_ide, 0x1f0+offset, 1, data);
+			m_ide->write_cs0(space, offset, data, 0xff);
 			break;
 
 		case 8:
@@ -164,7 +164,7 @@ void a2bus_zipdrivebase_device::write_c0nx(address_space &space, UINT8 offset, U
 //          printf("%02x to IDE data hi\n", data);
 			m_lastdata &= 0x00ff;
 			m_lastdata |= (data << 8);
-			ide_controller_w(m_ide, 0x1f0, 2, m_lastdata);
+			m_ide->write_cs0(space, offset, m_lastdata, 0xffff);
 			break;
 
 		default:

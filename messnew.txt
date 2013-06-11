@@ -1,3 +1,258 @@
+0.149
+-------
+
+
+MAMETesters Bugs Fixed
+----------------------
+- 05127: [Misc.] (paso1600.c) paso1600: Invalid read of size 4 (Robbbert)
+- 05160: [Crash/Freeze] (thomson.c) to8, to8d: Access Violation with 
+  "-ramsize 262144 -cart 6809ass2" (Wilbert Pol)
+
+ 
+New System Drivers Supported:
+-----------------------------
+- Otrona Attache [Al Kossow, Barry Rodewald]
+
+
+Systems Promoted from GAME_NOT_WORKING:
+---------------------------------------
+- BOB-85 [Robbbert]
+- SSE SoftBox [Curt Coder, Mike Naberezny]
+
+
+Skeleton drivers:
+-----------------
+(none)
+
+
+Software Lists:
+----------------
+-horizon.xml: Added floppy images. [Dave Dunfield, Andrew Lynch]
+
+-cpc_flop.xml: added the available SPS release. [Kaylee]
+
+-softlist: added list for Otrona Attache disks. [Kaylee]
+
+-vsmile.xml: added new German dumps. [TeamEurope]
+
+-hx20: Added floppy software list. [Curt Coder]
+
+-softbox: Added floppy software list. [Mike Naberezny]
+
+-qx10: Added floppy software list. [Curt Coder]
+
+-ep64_cart.xml: Added cartridge software list. [Curt Coder]
+
+-ep64_cass.xml: Added preliminary cassette software list.
+ [Guru, Curt Coder]
+
+-ep64_flop.xml: Added floppy images. [Curt Coder]
+
+-ti99_cart.xml: Almost all cartridges available. [Michael Zapf]
+
+
+Source Changes
+--------------
+
+-superslave: Refactored serial terminal to connect to an RS-232
+ port. [Curt Coder]
+
+-mpz80: Fixed terminal. [Curt Coder]
+
+-Added RS-232 ports to several drivers. [Curt Coder]
+
+-vk100/vt100: Added RS-232 port and COM5016T baud rate
+ generator. [Curt Coder]
+
+-atarist: Added RS-232 and MIDI ports. [Curt Coder]
+
+-sdk86: Added serial terminal. [Curt Coder]
+
+-ql: Added RS-232 ports. [Curt Coder]
+
+-psxcd: fix cdda [Carl, Dr. Venom]
+
+-votrtnt: Added serial terminal [Robbbert]
+
+-68ksbc: Added serial terminal [Robbbert]
+
+-applix: Major improvements, system is mostly working [Robbbert]
+
+-altos5: Major improvements [Robbbert]
+
+-sms/gamegear: Various improvements [Fabio Priuli]
+ * Converted cart handling and mappers to use slot devices
+ * Simplified bios and cart bankswitch mechanism
+ * Added save state support to both systems
+ * Removed on-cart EEPROM from main gamegear now that it can be
+    properly implemented on carts which have it
+ * Added support for the card slot to Master System I console; 
+    use the -card switch to load Sega Card/MyCard dumps in the
+    emulated system
+ * Added backward compatibility to SG-1000 Mark III, for SG-1000 
+    games
+ * Made LCD persistence hack optional (ON by default, it can be
+    turned OFF from Driver Configuration submenu)
+ * Reduced tagmap lookups all across the driver
+ * Updated the systems to rely on xml only for RAM/NVRAM when 
+    loading from softlist
+
+-Ignore unformatted tracks in dsk files [smf]
+
+-td0_dsk: add new floppy system support for teledisk [Carl]
+
+-ehx20: Added slave CPU ROM dump. [Kevtris]
+
+-sg1000: converted the driver to use the new sega 8bit cart
+ slot. [Fabio Priuli]
+
+-sg1000: added emulation of the Card Catcher passthrough cart.
+ [Fabio Priuli]
+
+-gba: updated the driver to use slot devices for carts and
+ removed on-cart flash ram devices from main gba now that they can be
+ properly implemented on carts which have them [Fabio Priuli]
+
+-gba: made save states more robust. [Fabio Priuli]
+
+-nes: fixed nvram mirroring in Family Circuit '91 (Namcot-175
+ board), the game still has some issue when saving to NVRAM. 
+ [Fabio Priuli]
+
+-intv: converted the STIC video chip emulation to be a device.
+ [Fabio Priuli]
+
+-sp0256: modernized the SP0256 Narrator Speech Processor sound
+ device. [Fabio Priuli]
+
+-intv.c: added support for save states to all systems of this
+ driver. [Fabio Priuli]
+
+-coleco: added missing input-related variables to save states,
+ which should now work. [Fabio Priuli]
+
+-pasogo.c: Added readme.  [Guru]
+
+-qx10.c: Hook keyboard up to serial controller [Carl]
+
+-pce.c: converted carts to use slot devices [Fabio Priuli]
+
+-pce.c: moved the cd addon to be a separate device. now save
+ states work in the driver for HuCard games, not yet for CD games.
+ [Fabio Priuli]
+
+-pv1000.c: modernized the sound device and added save state
+ support. [Fabio Priuli]
+
+-scv.c: simplified input reading and added save state support
+ [Fabio Priuli]
+
+-softbox: Promoted driver to working. [Curt Coder, Mike Naberezny] 
+
+-Fixed IEEE-488 bus reset on Commodore drives. [Curt Coder]
+
+-enterp: modernized the Dave sound chip. [Fabio Priuli]
+
+-softbox: Added Corvus hard disk. [Curt Coder, Mike Naberezny]
+
+-pet: Implemented SoftBox IEEE-488 peripheral mode, where a PET
+ computer is used as terminal. [Curt Coder, Mike Naberezny]
+
+-enterp: converted the Nick Graphics Chip to be a device.
+ [Fabio Priuli]
+
+-Fix for Apollo PIC8259 breakage [Hans Ostermeyer]
+
+-gba.c: simplified video code, removing many redundancies.
+ [Fabio Priuli]
+
+-abc80x, abc1600: Added Luxor ABC keyboard port slot interface.
+ [Curt Coder]
+
+-softbox: Added CP/M hard disk installation instructions.
+ [Mike Naberezny]
+
+-pet8032: Fixed lowercase mode. [Mike Naberezny]
+
+-concept: added stub implementation for the expansion slots as
+ slot devices in place of previous outdated custom one. [Fabio Priuli]
+
+-Corrected pitch and readback behavior for the ALF Apple Music II, 
+ and noted it's the same as the ALF AM1. [R. Belmont]
+
+-BOB85: fixed Next key, enabled pasting with standard trainer
+ keys, marked as working [Robbbert]
+
+-softbox: Fixed LEDs. [Mike Naberezny]
+
+-Modernized MEA 8000 sound device. [Fabio Priuli]
+
+-Modernized the Mac Sound device. [Fabio Priuli]
+
+-Modernized uPD1771c sound device. [Fabio Priuli]
+
+-gizmondo: converted the GF4500 to be a device. [Fabio Priuli]
+
+-ip22: converted the SGI Newport graphics board to be a device.
+ [Fabio Priuli]
+
+-enterp: Added Guru-readme and fixed setnames. [Guru]
+
+-Modernized MC68328 (DragonBall) device. [Fabio Priuli]
+
+-pc.c: Added t1000sl2. Hooked up the Tandy 1000 character rom to
+ the other Tandy 1000 drivers. Reimplemented Tandy 1000 ROM banking
+ according to the schematics.  [Cowering, Wilbert Pol]
+
+-Modernized VT100/Rainbow video device. [Fabio Priuli]
+
+-Modernized VIC3 video device. [Fabio Priuli]
+
+-Modernized uPD71071 DMA device. [Fabio Priuli]
+
+-Modernized DS1315 clock device. [Fabio Priuli]
+
+-dsk_dsk: Fixed incorrect sector size bug preventing standard DSK
+ images from working. [Barry Rodewald]
+
+-Modernized Samsung S3C44B0 device. [Fabio Priuli]
+
+-Modernized AY-3-1015 device. [Fabio Priuli]
+
+-bml3.c [jedwidz]
+ * improved keyboard
+ * improved video
+ * disk support
+
+-megadriv: emulated protection for 16 Mahjong Tiles II
+ and Tekken Special [EkeEke, Fabio Priuli]
+
+-ep64: Modernized the Enterprise 64/128 driver. [Curt Coder]
+
+-pet8032: Fixed natural keyboard. [Mike Naberezny]
+
+-marked Game Boy, Game Boy Color, Game Boy Advance, Game Gear,
+ Intellivision, Lynx, Master System, MegaDrive / Genesis, NES /
+ Famicom, Neo Geo Pocket, Neo Geo Pocket Color, PV-1000, Super Cassette
+ Vision, Super NES / Super Famicom, Wonderswan and Wonderswan Color as
+ supporting save states. PC-Engine supports save states too, but only
+ for HuCard games and not for CDs. Please report issues with save and
+ restore in these systems, if any, to MameTesters. [Fabio Priuli]
+
+-ql: Added Merlin Tonto ROM dumps. [Ash Evans]
+
+-pet4032: Fixed natural keyboard. [Mike Naberezny]
+
+-terminal: Fixed natural keyboard. [Mike Naberezny]
+
+-n64: improved PIF / RDRAM initialization [Joe]
+
+-wangpc: Use medium resolution video controller by default. [Curt Coder]
+
+-ti99: Added a new cartridge type "gromemu" for GROM emulators
+
+
+
 0.148u5
 -------
 
@@ -147,7 +402,6 @@ and added save state support to the driver. [Fabio Priuli]
 -ngp.c: added save state support to the driver. [Fabio Priuli]
 
 
-
 0.148u4
 -------
 
@@ -286,7 +540,6 @@ Source Changes
 -csw_cas.c: Fixed CSW header detection regression.  [Wilbert Pol]
 
 
-
 0.148u3
 -------
 
@@ -363,8 +616,7 @@ Source Changes
  get the ball rolling on support for it. [Robert Tuccitto]
 
 
-
-
+ 
 0.148u2
 -------
 
@@ -606,9 +858,8 @@ Source Changes
 -megadriv.c: emulated reset-based Codemaster 2-in-1 carts (2psymmac). 
  [Fabio Priuli]
 
-
-
-0.148u1
+ 
+ 0.148u1
 -------
 
 

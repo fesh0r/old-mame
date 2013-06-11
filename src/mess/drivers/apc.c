@@ -78,6 +78,7 @@ public:
 		m_i8259_s(*this, "pic8259_slave"),
 		m_fdc(*this, "upd765"),
 		m_dmac(*this, "i8237"),
+		m_pit(*this, "pit8253"),
 		m_video_ram_1(*this, "video_ram_1"),
 		m_video_ram_2(*this, "video_ram_2")
 	{ }
@@ -91,6 +92,7 @@ public:
 	required_device<pic8259_device> m_i8259_s;
 	required_device<upd765a_device> m_fdc;
 	required_device<am9517a_device> m_dmac;
+	required_device<pit8253_device> m_pit;
 	UINT8 *m_char_rom;
 	UINT8 *m_aux_pcg;
 
@@ -287,7 +289,7 @@ READ8_MEMBER(apc_state::apc_port_28_r)
 	UINT8 res;
 
 	if(offset & 1)
-		res = pit8253_r(machine().device("pit8253"), space, (offset & 6) >> 1);
+		res = m_pit->read(space, (offset & 6) >> 1);
 	else
 	{
 		if(offset & 4)
@@ -296,7 +298,7 @@ READ8_MEMBER(apc_state::apc_port_28_r)
 			res = 0xff;
 		}
 		else
-			res = machine().device<pic8259_device>("pic8259_slave")->read(space, (offset & 2) >> 1);
+			res = m_i8259_s->read(space, (offset & 2) >> 1);
 	}
 
 	return res;
@@ -305,13 +307,13 @@ READ8_MEMBER(apc_state::apc_port_28_r)
 WRITE8_MEMBER(apc_state::apc_port_28_w)
 {
 	if(offset & 1)
-		pit8253_w(machine().device("pit8253"), space, (offset & 6) >> 1, data);
+		m_pit->write(space, (offset & 6) >> 1, data);
 	else
 	{
 		if(offset & 4)
 			printf("Write undefined port %02x\n",offset+0x28);
 		else
-			machine().device<pic8259_device>("pic8259_slave")->write(space, (offset & 2) >> 1, data);
+			m_i8259_s->write(space, (offset & 2) >> 1, data);
 	}
 }
 
@@ -488,7 +490,7 @@ static ADDRESS_MAP_START( apc_io, AS_IO, 16, apc_state )
 //  0x5a  APU data (Arithmetic Processing Unit!)
 //  0x5b, Power Off
 //  0x5e  APU status/command
-	AM_RANGE(0x60, 0x61) AM_DEVREADWRITE8_LEGACY("upd1771c", upd1771_r, upd1771_w, 0x00ff )
+	AM_RANGE(0x60, 0x61) AM_DEVREADWRITE8("upd1771c", upd1771c_device, read, write, 0x00ff)
 //  AM_RANGE(0x68, 0x6f) i8255 , ODA printer port (A: status (R) B: data (W) C: command (W))
 //  0x70, 0x76 AM_DEVREADWRITE8("upd7220_btm", upd7220_device, read, write, 0x00ff)
 //  0x71, 0x77 IDA Controller
@@ -839,7 +841,7 @@ static ADDRESS_MAP_START( upd7220_2_map, AS_0, 8, apc_state )
 	AM_RANGE(0x00000, 0x3ffff) AM_RAM AM_SHARE("video_ram_2")
 ADDRESS_MAP_END
 
-static const struct pit8253_config pit8253_config =
+static const struct pit8253_interface pit8253_config =
 {
 	{
 		{
@@ -979,12 +981,6 @@ static I8237_INTERFACE( dmac_intf )
 	{ DEVCB_DRIVER_LINE_MEMBER(apc_state, apc_dack0_w), DEVCB_DRIVER_LINE_MEMBER(apc_state, apc_dack1_w), DEVCB_DRIVER_LINE_MEMBER(apc_state, apc_dack2_w), DEVCB_DRIVER_LINE_MEMBER(apc_state, apc_dack3_w) }
 };
 
-static UPD1990A_INTERFACE( apc_upd1990a_intf )
-{
-	DEVCB_NULL,
-	DEVCB_NULL
-};
-
 static const floppy_format_type apc_floppy_formats[] = {
 	FLOPPY_D88_FORMAT,
 	FLOPPY_IMD_FORMAT,
@@ -1021,11 +1017,11 @@ static MACHINE_CONFIG_START( apc, apc_state )
 	MCFG_I8237_ADD("i8237", MAIN_CLOCK, dmac_intf)
 
 	MCFG_NVRAM_ADD_1FILL("cmos")
-	MCFG_UPD1990A_ADD("upd1990a", XTAL_32_768kHz, apc_upd1990a_intf)
+	MCFG_UPD1990A_ADD("upd1990a", XTAL_32_768kHz, NULL, NULL)
 
 	MCFG_UPD765A_ADD("upd765", true, true)
-	MCFG_FLOPPY_DRIVE_ADD("upd765:0", apc_floppies, "8", 0, apc_floppy_formats)
-	MCFG_FLOPPY_DRIVE_ADD("upd765:1", apc_floppies, "8", 0, apc_floppy_formats)
+	MCFG_FLOPPY_DRIVE_ADD("upd765:0", apc_floppies, "8", apc_floppy_formats)
+	MCFG_FLOPPY_DRIVE_ADD("upd765:1", apc_floppies, "8", apc_floppy_formats)
 	MCFG_SOFTWARE_LIST_ADD("disk_list","apc")
 
 	/* video hardware */

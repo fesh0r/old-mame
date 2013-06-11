@@ -9,28 +9,18 @@
 #include "machine/idectrl.h"
 #include "imagedev/harddriv.h"
 
-READ16_MEMBER(isa16_ide_device::ide16_r)
-{
-	return ide_controller16_r(m_ide, space, 0x1f0/2 + offset, mem_mask);
-}
-
-WRITE16_MEMBER(isa16_ide_device::ide16_w)
-{
-	ide_controller16_w(m_ide, space, 0x1f0/2 + offset, data, mem_mask);
-}
-
 READ8_MEMBER(isa16_ide_device::ide16_alt_r )
 {
-	return ide_controller16_r(m_ide, space, 0x3f6/2, 0x00ff);
+	return m_ide->read_cs1_pc(space, 6/2, 0xff);
 }
 
 WRITE8_MEMBER(isa16_ide_device::ide16_alt_w )
 {
-	ide_controller16_w(m_ide, space, 0x3f6/2, data, 0x00ff);
+	m_ide->write_cs1_pc(space, 6/2, data, 0xff);
 }
 
 DEVICE_ADDRESS_MAP_START(map, 16, isa16_ide_device)
-	AM_RANGE(0x0, 0x7) AM_READWRITE(ide16_r, ide16_w)
+	AM_RANGE(0x0, 0x7) AM_DEVREADWRITE("ide", ide_controller_device, read_cs0_pc, write_cs0_pc)
 ADDRESS_MAP_END
 
 DEVICE_ADDRESS_MAP_START(alt_map, 8, isa16_ide_device)
@@ -50,8 +40,8 @@ WRITE_LINE_MEMBER(isa16_ide_device::ide_interrupt)
 }
 
 static MACHINE_CONFIG_FRAGMENT( ide )
-	MCFG_IDE_CONTROLLER_ADD("ide", ide_image_devices, "hdd", "hdd", false)
-	MCFG_IDE_CONTROLLER_IRQ_HANDLER(DEVWRITELINE(DEVICE_SELF, isa16_ide_device, ide_interrupt))
+	MCFG_IDE_CONTROLLER_ADD("ide", ide_devices, "hdd", "hdd", false)
+	MCFG_IDE_CONTROLLER_IRQ_HANDLER(WRITELINE(isa16_ide_device, ide_interrupt))
 MACHINE_CONFIG_END
 
 static INPUT_PORTS_START( ide )

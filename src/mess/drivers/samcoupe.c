@@ -55,6 +55,28 @@
 
 
 /***************************************************************************
+    TIMERS
+***************************************************************************/
+
+void samcoupe_state::device_timer(emu_timer &timer, device_timer_id id, int param, void *ptr)
+{
+	switch (id)
+	{
+	case TIMER_IRQ_OFF:
+		irq_off(ptr, param);
+		break;
+	case TIMER_MOUSE_RESET:
+		samcoupe_mouse_reset(ptr, param);
+		break;
+	case TIMER_VIDEO_UPDATE:
+		sam_video_update_callback(ptr, param);
+		break;
+	default:
+		assert_always(FALSE, "Unknown id in samcoupe_state::device_timer");
+	}
+}
+
+/***************************************************************************
     I/O PORTS
 ***************************************************************************/
 
@@ -251,7 +273,7 @@ WRITE8_MEMBER(samcoupe_state::samcoupe_border_w)
 	m_cassette->output( BIT(data, 3) ? -1.0 : +1.0);
 
 	/* bit 4, beep */
-	speaker_level_w(m_speaker, BIT(data, 4));
+	m_speaker->level_w(BIT(data, 4));
 }
 
 READ8_MEMBER(samcoupe_state::samcoupe_attributes_r)
@@ -334,7 +356,7 @@ void samcoupe_state::samcoupe_irq(UINT8 src)
 {
 	/* assert irq and a timer to set it off again */
 	m_maincpu->set_input_line(0, ASSERT_LINE);
-	machine().scheduler().timer_set(attotime::from_usec(20), timer_expired_delegate(FUNC(samcoupe_state::irq_off),this), src);
+	timer_set(attotime::from_usec(20), TIMER_IRQ_OFF, src);
 
 	/* adjust STATUS register */
 	m_status &= ~src;
@@ -537,8 +559,8 @@ static MACHINE_CONFIG_START( samcoupe, samcoupe_state )
 	MCFG_SOFTWARE_LIST_ADD("cass_list","samcoupe_cass")
 
 	MCFG_WD1772x_ADD("wd1772", SAMCOUPE_XTAL_X1/3)
-	MCFG_FLOPPY_DRIVE_ADD("wd1772:0", samcoupe_floppies, "35dd", 0, samcoupe_state::floppy_formats)
-	MCFG_FLOPPY_DRIVE_ADD("wd1772:1", samcoupe_floppies, "35dd", 0, samcoupe_state::floppy_formats)
+	MCFG_FLOPPY_DRIVE_ADD("wd1772:0", samcoupe_floppies, "35dd", samcoupe_state::floppy_formats)
+	MCFG_FLOPPY_DRIVE_ADD("wd1772:1", samcoupe_floppies, "35dd", samcoupe_state::floppy_formats)
 	MCFG_SOFTWARE_LIST_ADD("flop_list","samcoupe_flop")
 
 	/* sound hardware */

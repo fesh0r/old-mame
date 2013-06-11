@@ -3,7 +3,6 @@
 #ifndef __PC1512__
 #define __PC1512__
 
-
 #include "emu.h"
 #include "cpu/i86/i86.h"
 #include "cpu/mcs48/mcs48.h"
@@ -19,6 +18,7 @@
 #include "machine/pc1512kb.h"
 #include "machine/pc_fdc.h"
 #include "machine/ram.h"
+#include "machine/serial.h"
 #include "sound/speaker.h"
 #include "video/mc6845.h"
 
@@ -36,6 +36,7 @@
 #define SPEAKER_TAG     "speaker"
 #define ISA_BUS_TAG     "isa"
 #define SCREEN_TAG      "screen"
+#define RS232_TAG       "rs232"
 
 class pc1512_state : public driver_device
 {
@@ -138,8 +139,6 @@ public:
 	DECLARE_WRITE_LINE_MEMBER( pit1_w );
 	DECLARE_WRITE_LINE_MEMBER( pit2_w );
 	DECLARE_WRITE_LINE_MEMBER( ack_w );
-	DECLARE_WRITE_LINE_MEMBER( fdc_int_w );
-	DECLARE_WRITE_LINE_MEMBER( fdc_drq_w );
 	DECLARE_WRITE_LINE_MEMBER( hrq_w );
 	DECLARE_WRITE_LINE_MEMBER( eop_w );
 	DECLARE_READ8_MEMBER( memr_r );
@@ -161,6 +160,8 @@ public:
 	DECLARE_INPUT_CHANGED_MEMBER( mouse_y_changed );
 	DECLARE_FLOPPY_FORMATS( floppy_formats );
 	IRQ_CALLBACK_MEMBER(pc1512_irq_callback);
+	void fdc_int_w(bool state);
+	void fdc_drq_w(bool state);
 
 	// system status register
 	int m_pit1;
@@ -238,9 +239,9 @@ public:
 	DECLARE_READ8_MEMBER( iga_r );
 	DECLARE_WRITE8_MEMBER( iga_w );
 	DECLARE_READ8_MEMBER( printer_r );
-	DECLARE_READ8_MEMBER( io_unmapped_r );
 
 	required_ioport m_sw;
+
 
 	// video state
 	int m_opt;
@@ -254,8 +255,6 @@ public:
 	UINT8 m_crtcar;         // CRT controller address register
 	UINT8 m_crtcdr[32];     // CRT controller data registers
 	UINT8 m_plr;            // Plantronics mode register
-
-	bool test_unmapped;     // Temporary for io_r/unmapped_r combination
 };
 
 // ---------- defined in video/pc1512.c ----------

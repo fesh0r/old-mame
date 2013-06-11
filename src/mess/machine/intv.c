@@ -8,7 +8,6 @@
 #define ECS_MASK            0x01
 
 
-
 WRITE16_MEMBER( intv_state::intvkbd_dualport16_w )
 {
 	unsigned char *RAM;
@@ -33,7 +32,7 @@ WRITE8_MEMBER( intv_state::intvkbd_dualport8_lsb_w )
 	m_intvkbd_dualport_ram[offset] |= ((UINT16) data) << 0;
 
 	/* copy over to the 6502 OP RAM, in case they are opcodes */
-	RAM  = m_region_keyboard->base();
+	RAM = m_region_keyboard->base();
 	RAM[offset] = data;
 }
 
@@ -87,26 +86,8 @@ READ8_MEMBER( intv_state::intvkbd_dualport8_msb_r )
 				break;
 			case 0x060: /* Keyboard Read */
 				rv = 0xff;
-				if (m_intvkbd_keyboard_col == 0)
-					rv = m_io_row0->read();
-				if (m_intvkbd_keyboard_col == 1)
-					rv = m_io_row1->read();
-				if (m_intvkbd_keyboard_col == 2)
-					rv = m_io_row2->read();
-				if (m_intvkbd_keyboard_col == 3)
-					rv = m_io_row3->read();
-				if (m_intvkbd_keyboard_col == 4)
-					rv = m_io_row4->read();
-				if (m_intvkbd_keyboard_col == 5)
-					rv = m_io_row5->read();
-				if (m_intvkbd_keyboard_col == 6)
-					rv = m_io_row6->read();
-				if (m_intvkbd_keyboard_col == 7)
-					rv = m_io_row7->read();
-				if (m_intvkbd_keyboard_col == 8)
-					rv = m_io_row8->read();
-				if (m_intvkbd_keyboard_col == 9)
-					rv = m_io_row9->read();
+				if (m_intvkbd_keyboard_col < 10)
+					rv = m_intv_keyboard[m_intvkbd_keyboard_col]->read();
 				break;
 			case 0x80:
 				rv = 0x00;
@@ -264,28 +245,36 @@ WRITE8_MEMBER( intv_state::intvkbd_dualport8_msb_w )
 	}
 }
 
+
+READ16_MEMBER( intv_state::intv_stic_r )
+{
+	if (m_bus_copy_mode || !m_stic->read_stic_handshake())
+		return m_stic->read(space, offset, mem_mask);
+	else
+		return offset;
+}
+
+WRITE16_MEMBER( intv_state::intv_stic_w )
+{
+	if (m_bus_copy_mode || !m_stic->read_stic_handshake())
+		m_stic->write(space, offset, data, mem_mask);
+}
+
+
 READ16_MEMBER( intv_state::intv_gram_r )
 {
 	//logerror("read: %d = GRAM(%d)\n",state->m_gram[offset],offset);
-	if (m_bus_copy_mode || !m_stic_handshake)
-	{
-	return (int)m_gram[offset];
-	}
-	else {return offset;}
-
+	if (m_bus_copy_mode || !m_stic->read_stic_handshake())
+		return m_stic->gram_read(space, offset, mem_mask);
+	else
+		return offset;
 }
 
 WRITE16_MEMBER( intv_state::intv_gram_w )
 {
-	data &= 0xFF;
-	if(m_bus_copy_mode || !m_stic_handshake)
-	{
-		m_gram[offset] = data;
-		m_gramdirtybytes[offset] = 1;
-	m_gramdirty = 1;
-	}
+	if (m_bus_copy_mode || !m_stic->read_stic_handshake())
+		m_stic->gram_write(space, offset, data, mem_mask);
 }
-
 
 READ16_MEMBER( intv_state::intv_ram8_r )
 {
@@ -328,67 +317,75 @@ WRITE16_MEMBER( intv_state::intv_ram16_w )
 {
 	//logerror("%g: WRITING TO GRAM offset = %d\n",machine.time(),offset);
 	//logerror("ram16_w(%x) = %x\n",offset,data);
-	m_ram16[offset] = data&0xffff;
+	m_ram16[offset] = data & 0xffff;
 }
 
 // ECS and Wsmlb bank switching register handlers
 WRITE16_MEMBER( intv_state::ecs_bank1_page_select )
 {
-	if (offset == 0xFFF)
+	if (offset == 0xfff)
 	{
-		if (data == 0x2A50)
+		if (data == 0x2a50)
 		{
-			m_bank1->set_base(m_region_maincpu->base() + (0x2000 << 1));
+			m_ecs_bank_src[0] = 0;
+			m_bank1->set_base(m_bank_base[m_ecs_bank_src[0]] + (0x2000 << 1));
 		}
-		else if (data == 0x2A51)
+		else if (data == 0x2a51)
 		{
-			m_bank1->set_base(m_region_ecs_rom->base() + (0x2000 << 1));
+			m_ecs_bank_src[0] = 1;
+			m_bank1->set_base(m_bank_base[m_ecs_bank_src[0]] + (0x2000 << 1));
 		}
 	}
 }
 
 WRITE16_MEMBER( intv_state::ecs_bank2_page_select )
 {
-	if (offset == 0xFFF)
+	if (offset == 0xfff)
 	{
-		if (data == 0x7A50)
+		if (data == 0x7a50)
 		{
-			m_bank2->set_base(m_region_ecs_rom->base() + (0x7000 << 1)); // ECS ROM at 0x7000 is on page 1
+			m_ecs_bank_src[1] = 1;
+			m_bank2->set_base(m_bank_base[m_ecs_bank_src[1]] + (0x7000 << 1));      // ECS ROM at 0x7000 is on page 1
 		}
-		else if (data == 0x7A51 )
+		else if (data == 0x7a51 )
 		{
-			m_bank2->set_base(m_region_maincpu->base() + (0x7000 << 1));
+			m_ecs_bank_src[1] = 0;
+			m_bank2->set_base(m_bank_base[m_ecs_bank_src[1]] + (0x7000 << 1));
 		}
 	}
 }
 
 WRITE16_MEMBER( intv_state::ecs_bank3_page_select )
 {
-	if (offset == 0xFFF)
+	if (offset == 0xfff)
 	{
-		if (data == 0xEA50)
+		if (data == 0xea50)
 		{
-			m_bank3->set_base(m_region_maincpu->base() + (0xE000 << 1));
+			m_ecs_bank_src[2] = 0;
+			m_bank3->set_base(m_bank_base[m_ecs_bank_src[2]] + (0xe000 << 1));
 		}
-		else if (data == 0xEA51)
+		else if (data == 0xea51)
 		{
-			m_bank3->set_base(m_region_ecs_rom->base() + (0xE000 << 1));
+			m_ecs_bank_src[2] = 1;
+			m_bank3->set_base(m_bank_base[m_ecs_bank_src[2]] + (0xe000 << 1));
 		}
 	}
 }
 
 WRITE16_MEMBER( intv_state::wsmlb_bank_page_select )
 {
-		logerror("offset %x data %x\n",offset,data);
-	if (offset == 0xFFF)
+	logerror("offset %x data %x\n", offset, data);
+	if (offset == 0xfff)
 	{
-		if (data == 0xFA50)
+		if (data == 0xfa50)
 		{
-			m_bank4->set_base(m_region_maincpu->base() + (0xF000 << 1));
+			m_ecs_bank_src[3] = 0;
+			m_bank4->set_base(m_bank_base[m_ecs_bank_src[3]] + (0xf000 << 1));
 		}
-		else if (data == 0xFA51)
+		else if (data == 0xfa51)
 		{
-			m_bank4->set_base(m_region_ecs_rom->base() + (0xF000 << 1));
+			m_ecs_bank_src[3] = 1;
+			m_bank4->set_base(m_bank_base[m_ecs_bank_src[3]] + (0xf000 << 1));
 		}
 	}
 }
@@ -544,7 +541,7 @@ int intv_state::intv_load_rom_file(device_image_interface &image)
 	}
 }
 
-DEVICE_IMAGE_LOAD_MEMBER( intv_state,intv_cart )
+DEVICE_IMAGE_LOAD_MEMBER( intv_state, intv_cart )
 {
 	if (image.software_entry() == NULL)
 		return intv_load_rom_file(image);
@@ -607,12 +604,6 @@ DEVICE_IMAGE_LOAD_MEMBER( intv_state,intv_cart )
 	}
 }
 
-#ifdef UNUSED_FUNCTION
-DRIVER_INIT_MEMBER(intv_state,intv)
-{
-}
-#endif
-
 /* Set Reset and INTR/INTRM Vector */
 void intv_state::machine_reset()
 {
@@ -625,26 +616,104 @@ void intv_state::machine_reset()
 	/* Set initial PC */
 	m_maincpu->set_state_int(CP1610_R7, 0x1000);
 
-	return;
+	if (m_is_ecs)
+	{
+		// ECS can switch between the maincpu and the ecs roms
+		m_ecs_bank_src[0] = 0;  // CPU
+		m_ecs_bank_src[1] = 1;  // ECS
+		m_ecs_bank_src[2] = 0;  // CPU
+		m_ecs_bank_src[3] = 0;  // CPU
+		m_bank_base[0] = m_region_maincpu->base();
+		m_bank_base[1] = m_region_ecs_rom->base();
+		m_bank1->set_base(m_bank_base[m_ecs_bank_src[0]] + (0x2000 << 1));
+		m_bank2->set_base(m_bank_base[m_ecs_bank_src[1]] + (0x7000 << 1));
+		m_bank3->set_base(m_bank_base[m_ecs_bank_src[2]] + (0xe000 << 1));
+		m_bank4->set_base(m_bank_base[m_ecs_bank_src[3]] + (0xf000 << 1));
+	}
 }
 
-MACHINE_RESET_MEMBER(intv_state,intvecs)
+void intv_state::machine_start()
 {
-	m_bank1->set_base(m_region_maincpu->base() + (0x2000 << 1));
-	m_bank2->set_base(m_region_ecs_rom->base() + (0x7000 << 1));
-	m_bank3->set_base(m_region_maincpu->base() + (0xE000 << 1));
-	m_bank4->set_base(m_region_maincpu->base() + (0xF000 << 1));
+	// TODO: split these for intvkbd & intvecs??
+	for (int i = 0; i < 4; i++)
+	{
+		char str[8];
+		sprintf(str, "KEYPAD%i", i + 1);
+		m_keypad[i] = ioport(str);
+	}
+	for (int i = 0; i < 4; i++)
+	{
+		char str[6];
+		sprintf(str, "DISC%i", i + 1);
+		m_disc[i] = ioport(str);
+	}
+	for (int i = 0; i < 4; i++)
+	{
+		char str[7];
+		sprintf(str, "DISCX%i", i + 1);
+		m_discx[i] = ioport(str);
+		sprintf(str, "DISCY%i", i + 1);
+		m_discy[i] = ioport(str);
+	}
 
-	m_maincpu->set_input_line_vector(CP1610_RESET, 0x1000);
+	save_item(NAME(m_bus_copy_mode));
+	save_item(NAME(m_backtab_row));
+	save_item(NAME(m_ram16));
+	save_item(NAME(m_sr1_int_pending));
+	save_item(NAME(m_ram8));
+	save_item(NAME(m_cart_ram8));
 
-	/* These are actually the same vector, and INTR is unused */
-	m_maincpu->set_input_line_vector(CP1610_INT_INTRM, 0x1004);
-	m_maincpu->set_input_line_vector(CP1610_INT_INTR,  0x1004);
+	// ecs
+	if (m_is_ecs)
+	{
+		for (int i = 0; i < 7; i++)
+		{
+			char str[9];
+			sprintf(str, "ECS_ROW%i", i);
+			m_ecs_keyboard[i] = ioport(str);
+		}
+		for (int i = 0; i < 7; i++)
+		{
+			char str[15];
+			sprintf(str, "ECS_SYNTH_ROW%i", i);
+			m_ecs_synth[i] = ioport(str);
+		}
 
-	/* Set initial PC */
-	m_maincpu->set_state_int(CP1610_R7, 0x1000);
+		save_item(NAME(m_ecs_ram8));
+		save_item(NAME(m_ecs_psg_porta));
+		save_item(NAME(m_ecs_bank_src));
+		machine().save().register_postload(save_prepost_delegate(FUNC(intv_state::ecs_banks_restore), this));
+	}
 
-	return;
+	// intvkbd
+	if (m_is_keybd)
+	{
+		for (int i = 0; i < 10; i++)
+		{
+			char str[4];
+			sprintf(str, "ROW%i", i);
+			m_intv_keyboard[i] = ioport(str);
+		}
+
+		save_item(NAME(m_intvkbd_text_blanked));
+		save_item(NAME(m_intvkbd_keyboard_col));
+		save_item(NAME(m_tape_int_pending));
+		save_item(NAME(m_tape_interrupts_enabled));
+		save_item(NAME(m_tape_unknown_write));
+		save_item(NAME(m_tape_motor_mode));
+		save_item(NAME(m_tms9927_num_rows));
+		save_item(NAME(m_tms9927_cursor_col));
+		save_item(NAME(m_tms9927_cursor_row));
+		save_item(NAME(m_tms9927_last_row));
+	}
+}
+
+void intv_state::ecs_banks_restore()
+{
+	m_bank1->set_base(m_bank_base[m_ecs_bank_src[0]] + (0x2000 << 1));
+	m_bank2->set_base(m_bank_base[m_ecs_bank_src[1]] + (0x7000 << 1));
+	m_bank3->set_base(m_bank_base[m_ecs_bank_src[2]] + (0xe000 << 1));
+	m_bank4->set_base(m_bank_base[m_ecs_bank_src[3]] + (0xf000 << 1));
 }
 
 
@@ -656,59 +725,53 @@ TIMER_CALLBACK_MEMBER(intv_state::intv_interrupt_complete)
 
 TIMER_CALLBACK_MEMBER(intv_state::intv_btb_fill)
 {
-	UINT8 column;
 	UINT8 row = m_backtab_row;
 	//m_maincpu->adjust_icount(-STIC_ROW_FETCH);
-	for(column=0; column < STIC_BACKTAB_WIDTH; column++)
-	{
-		m_backtab_buffer[row][column] = m_ram16[column + row * STIC_BACKTAB_WIDTH];
-	}
+
+	for (int column = 0; column < STIC_BACKTAB_WIDTH; column++)
+		m_stic->write_to_btb(row, column,  m_ram16[column + row * STIC_BACKTAB_WIDTH]);
 
 	m_backtab_row += 1;
 }
 
 INTERRUPT_GEN_MEMBER(intv_state::intv_interrupt)
 {
+	int delay = m_stic->read_row_delay();
 	m_maincpu->set_input_line(CP1610_INT_INTRM, ASSERT_LINE);
 	m_sr1_int_pending = 1;
 	m_bus_copy_mode = 1;
 	m_backtab_row = 0;
-	UINT8 row;
+
 	m_maincpu->adjust_icount(-(12*STIC_ROW_BUSRQ+STIC_FRAME_BUSRQ)); // Account for stic cycle stealing
-	machine().scheduler().timer_set(m_maincpu->cycles_to_attotime(STIC_VBLANK_END), timer_expired_delegate(FUNC(intv_state::intv_interrupt_complete),this));
-	for (row=0; row < STIC_BACKTAB_HEIGHT; row++)
+	timer_set(m_maincpu->cycles_to_attotime(STIC_VBLANK_END), TIMER_INTV_INTERRUPT_COMPLETE);
+	for (int row = 0; row < STIC_BACKTAB_HEIGHT; row++)
 	{
-		machine().scheduler().timer_set(m_maincpu
-			->cycles_to_attotime(STIC_FIRST_FETCH-STIC_FRAME_BUSRQ+STIC_CYCLES_PER_SCANLINE*STIC_Y_SCALE*m_row_delay + (STIC_CYCLES_PER_SCANLINE*STIC_Y_SCALE*STIC_CARD_HEIGHT - STIC_ROW_BUSRQ)*row), timer_expired_delegate(FUNC(intv_state::intv_btb_fill),this));
+		timer_set(m_maincpu->cycles_to_attotime(STIC_FIRST_FETCH-STIC_FRAME_BUSRQ+STIC_CYCLES_PER_SCANLINE*STIC_Y_SCALE*delay + (STIC_CYCLES_PER_SCANLINE*STIC_Y_SCALE*STIC_CARD_HEIGHT - STIC_ROW_BUSRQ)*row), TIMER_INTV_BTB_FILL);
 	}
 
-	if (m_row_delay == 0)
+	if (delay == 0)
 	{
 		m_maincpu->adjust_icount(-STIC_ROW_BUSRQ); // extra row fetch occurs if vertical delay == 0
 	}
 
-	intv_stic_screenrefresh();
+	m_stic->screenrefresh();
 }
 
 /* hand 0 == left, 1 == right, 2 == ECS hand controller 1, 3 == ECS hand controller 2 */
 UINT8 intv_state::intv_control_r(int hand)
 {
-	ioport_port *keypad[] = { m_io_keypad1, m_io_keypad2, m_io_keypad3, m_io_keypad4 };
 	static const UINT8 keypad_table[] =
 	{
 		0xFF, 0x3F, 0x9F, 0x5F, 0xD7, 0xB7, 0x77, 0xDB,
 		0xBB, 0x7B, 0xDD, 0xBD, 0x7D, 0xDE, 0xBE, 0x7E
 	};
 
-	ioport_port *disc[] = { m_io_disc1, m_io_disc2, m_io_disc3, m_io_disc4 };
 	static const UINT8 disc_table[] =
 	{
 		0xF3, 0xE3, 0xE7, 0xF7, 0xF6, 0xE6, 0xEE, 0xFE,
 		0xFC, 0xEC, 0xED, 0xFD, 0xF9, 0xE9, 0xEB, 0xFB
 	};
 
-	ioport_port *discx[] = { m_io_discx1, m_io_discx2, m_io_discx3, m_io_discx4 };
-	ioport_port *discy[] = { m_io_discy1, m_io_discy2, m_io_discy3, m_io_discy4 };
 	static const UINT8 discyx_table[5][5] =
 	{
 		{ 0xE3, 0xF3, 0xFB, 0xEB, 0xE9 },
@@ -722,7 +785,7 @@ UINT8 intv_state::intv_control_r(int hand)
 	UINT8 rv = 0xFF;
 
 	/* keypad */
-	x = keypad[hand]->read();
+	x = m_keypad[hand]->read();
 	for (y = 0; y < 16; y++)
 	{
 		if (x & (1 << y))
@@ -736,7 +799,7 @@ UINT8 intv_state::intv_control_r(int hand)
 		case 0: /* disc == digital */
 		default:
 
-			x = disc[hand]->read();
+			x = m_disc[hand]->read();
 			for (y = 0; y < 16; y++)
 			{
 				if (x & (1 << y))
@@ -748,8 +811,8 @@ UINT8 intv_state::intv_control_r(int hand)
 
 		case 1: /* disc == _fake_ analog */
 
-			x = discx[hand]->read();
-			y = discy[hand]->read();
+			x = m_discx[hand]->read();
+			y = m_discy[hand]->read();
 			rv &= discyx_table[y / 32][x / 32];
 	}
 
@@ -784,25 +847,23 @@ READ8_MEMBER( intv_state::intv_ecs_portb_r )
 		}
 		case 0x01: // synthesizer keyboard
 		{
-			ioport_port *ecs_synth_rows[] = { m_io_ecs_synth_row0, m_io_ecs_synth_row1, m_io_ecs_synth_row2, m_io_ecs_synth_row3, m_io_ecs_synth_row4, m_io_ecs_synth_row5, m_io_ecs_synth_row6 };
-			UINT8 rv = 0xFF;
+			UINT8 rv = 0xff;
 			// return correct result if more than one bit of 0xFE is set
-			for (int i=0; i<7; i++)
+			for (int i = 0; i < 7; i++)
 			{
-			if (m_ecs_psg_porta & (1<<i))
-				rv &= ecs_synth_rows[i]->read();
+				if (BIT(m_ecs_psg_porta, i))
+					rv &= m_ecs_synth[i]->read();
 			}
 			return rv;
 		}
 		case 0x02: // ecs keyboard
 		{
-			ioport_port *ecs_keyboard_rows[] = { m_io_ecs_row0, m_io_ecs_row1, m_io_ecs_row2, m_io_ecs_row3, m_io_ecs_row4, m_io_ecs_row5, m_io_ecs_row6 };
-			UINT8 rv = 0xFF;
+			UINT8 rv = 0xff;
 			// return correct result if more than one bit of 0xFE is set
-			for (int i=0; i<7; i++)
+			for (int i = 0; i < 7; i++)
 			{
-			if (m_ecs_psg_porta & (1<<i))
-				rv &= ecs_keyboard_rows[i]->read();
+				if (BIT(m_ecs_psg_porta, i))
+					rv &= m_ecs_keyboard[i]->read();
 			}
 			return rv;
 		}
@@ -813,7 +874,7 @@ READ8_MEMBER( intv_state::intv_ecs_portb_r )
 
 WRITE8_MEMBER( intv_state::intv_ecs_porta_w )
 {
-	m_ecs_psg_porta = (~data) & 0xFF;
+	m_ecs_psg_porta = (~data) & 0xff;
 }
 
 /* Intellivision console + keyboard component */
@@ -842,7 +903,7 @@ DEVICE_IMAGE_LOAD_MEMBER( intv_state,intvkbd_cart )
 		UINT8 *memory = m_region_keyboard->base();
 
 		/* Assume an 8K cart, like BASIC */
-		image.fread( &memory[0xe000], 0x2000);
+		image.fread(&memory[0xe000], 0x2000);
 	}
 
 	return IMAGE_INIT_PASS;

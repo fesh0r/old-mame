@@ -400,7 +400,7 @@ WRITE8_MEMBER(pmd85_state::pmd85_ppi_2_portc_w)
 
 *******************************************************************************/
 
-const struct pit8253_config pmd85_pit8253_interface =
+const struct pit8253_interface pmd85_pit8253_interface =
 {
 	{
 		{ 0,        DEVCB_NULL,     DEVCB_NULL },
@@ -534,7 +534,7 @@ READ8_MEMBER(pmd85_state::pmd85_io_r)
 								case 0x40:      /* 8255 (GPIO/0, GPIO/1) */
 										return m_ppi8255_1->read(space, offset & 0x03);
 								case 0x50:  /* 8253 */
-										return pit8253_r( m_pit8253, space, offset & 0x03);
+										return m_pit8253->read(space, offset & 0x03);
 								case 0x70:  /* 8255 (IMS-2) */
 										return m_ppi8255_2->read(space, offset & 0x03);
 							}
@@ -610,7 +610,7 @@ WRITE8_MEMBER(pmd85_state::pmd85_io_w)
 										m_ppi8255_1->write(space, offset & 0x03, data);
 										break;
 								case 0x50:  /* 8253 */
-										pit8253_w(m_pit8253, space, offset & 0x03, data);
+										m_pit8253->write(space, offset & 0x03, data);
 										logerror ("8253 writing. Address: %02x, Data: %02x\n", offset, data);
 										break;
 								case 0x70:  /* 8255 (IMS-2) */
@@ -752,6 +752,25 @@ I8255_INTERFACE( mato_ppi8255_interface )
 };
 
 
+void pmd85_state::device_timer(emu_timer &timer, device_timer_id id, int param, void *ptr)
+{
+	switch (id)
+	{
+	case TIMER_CASSETTE:
+		pmd85_cassette_timer_callback(ptr, param);
+		break;
+	case TIMER_RESET:
+		pmd_reset(ptr, param);
+		break;
+	case TIMER_SETUP_MACHINE_STATE:
+		setup_machine_state(ptr, param);
+		break;
+	default:
+		assert_always(FALSE, "Unknown id in pmd85_state::device_timer");
+	}
+}
+
+
 TIMER_CALLBACK_MEMBER(pmd85_state::pmd85_cassette_timer_callback)
 {
 	int data;
@@ -826,7 +845,7 @@ TIMER_CALLBACK_MEMBER(pmd85_state::pmd_reset)
 DIRECT_UPDATE_MEMBER(pmd85_state::pmd85_opbaseoverride)
 {
 	if (m_io_reset->read() & 0x01)
-		machine().scheduler().timer_set(attotime::from_usec(10), timer_expired_delegate(FUNC(pmd85_state::pmd_reset),this));
+		timer_set(attotime::from_usec(10), TIMER_RESET);
 	return address;
 }
 
@@ -844,7 +863,7 @@ void pmd85_state::pmd85_common_driver_init()
 
 	m_previous_level = 0;
 	m_clk_level = m_clk_level_tape = 1;
-	m_cassette_timer = machine().scheduler().timer_alloc(timer_expired_delegate(FUNC(pmd85_state::pmd85_cassette_timer_callback),this));
+	m_cassette_timer = timer_alloc(TIMER_CASSETTE);
 	m_cassette_timer->adjust(attotime::zero, 0, attotime::from_hz(2400));
 }
 
@@ -939,7 +958,7 @@ void pmd85_state::machine_reset()
 	m_startup_mem_map = 1;
 	(this->*update_memory)();
 
-	machine().scheduler().timer_set(attotime::zero, timer_expired_delegate(FUNC(pmd85_state::setup_machine_state),this));
+	timer_set(attotime::zero, TIMER_SETUP_MACHINE_STATE);
 
 	m_maincpu->space(AS_PROGRAM).set_direct_update_handler(direct_update_delegate(FUNC(pmd85_state::pmd85_opbaseoverride), this));
 }

@@ -40,15 +40,22 @@ void lviv_state::lviv_update_memory ()
 	}
 }
 
-TIMER_CALLBACK_MEMBER(lviv_state::lviv_reset)
+void lviv_state::device_timer(emu_timer &timer, device_timer_id id, int param, void *ptr)
 {
-	machine().schedule_soft_reset();
+	switch (id)
+	{
+	case TIMER_RESET:
+		machine().schedule_soft_reset();
+		break;
+	default:
+		assert_always(FALSE, "Unknown id in lviv_state::device_timer");
+	}
 }
 
 DIRECT_UPDATE_MEMBER(lviv_state::lviv_directoverride)
 {
 	if (ioport("RESET")->read() & 0x01)
-		machine().scheduler().timer_set(attotime::from_usec(10), timer_expired_delegate(FUNC(lviv_state::lviv_reset),this));
+		timer_set(attotime::from_usec(10), TIMER_RESET);
 	return address;
 }
 
@@ -87,7 +94,7 @@ WRITE8_MEMBER(lviv_state::lviv_ppi_0_portc_w)/* tape in/out, video memory on/off
 {
 	m_ppi_port_outputs[0][2] = data;
 	if (m_ppi_port_outputs[0][1]&0x80)
-		speaker_level_w(m_speaker, data&0x01);
+		m_speaker->level_w(data & 0x01);
 	m_cassette->output((data & 0x01) ? -1.0 : 1.0);
 	lviv_update_memory();
 }

@@ -733,7 +733,7 @@ WRITE8_MEMBER(polgar_state::beep_academy)
 
 WRITE8_MEMBER(polgar_state::megaiv_IO)
 {
-//  if (BIT(data,0)) beep_set_state(machine->device("beep"),1); else beep_set_state(machine->device("beep"),0);
+//  if (BIT(data,0)) beep_set_state(machine->device("beeper"),1); else beep_set_state(machine->device("beeper"),0);
 	logerror("$2400 = %02x\n",data);
 	latch2400 = data;
 }
@@ -1603,7 +1603,7 @@ static MACHINE_CONFIG_START( monteciv, polgar_state )
 	MCFG_MACHINE_START_OVERRIDE(polgar_state, polgar )
 	MCFG_MACHINE_RESET_OVERRIDE(polgar_state, monteciv )
 	MCFG_SPEAKER_STANDARD_MONO("mono")
-	MCFG_SOUND_ADD("beep", BEEP, 0)
+	MCFG_SOUND_ADD("beeper", BEEP, 0)
 	MCFG_SOUND_ROUTE(ALL_OUTPUTS, "mono", 1.0)
 
 	MCFG_TIMER_DRIVER_ADD_PERIODIC("irq_timer", polgar_state, cause_nmi, attotime::from_hz(600))
@@ -1880,17 +1880,17 @@ DRIVER_INIT_MEMBER(polgar_state,polgar)
 
 /*       YEAR  NAME      PARENT   COMPAT  MACHINE    INPUT     INIT     COMPANY                      FULLNAME                     FLAGS */
 	CONS(  1986, polgar,   0,       0,      polgar,    polgar, polgar_state,   polgar,  "Hegener & Glaser",          "Mephisto Polgar Schachcomputer", GAME_REQUIRES_ARTWORK | GAME_CLICKABLE_ARTWORK)
-	CONS(  1987, sfortea,  0,       0,      sfortea,   sfortea, driver_device,  0,       "Novag",                     "Novag Super Forte A Chess Computer", GAME_NO_SOUND|GAME_SUPPORTS_SAVE|GAME_NOT_WORKING | GAME_CLICKABLE_ARTWORK )
+	CONS(  1987, sfortea,  0,       0,      sfortea,   sfortea, driver_device,  0,       "Novag",                     "Novag Super Forte Chess Computer (version A)", GAME_NO_SOUND|GAME_SUPPORTS_SAVE|GAME_NOT_WORKING | GAME_CLICKABLE_ARTWORK )
 	CONS(  1988, alm16,    van16,   0,      alm16,     van16, driver_device,    0,       "Hegener & Glaser Muenchen", "Mephisto Almeria 68000", GAME_SUPPORTS_SAVE|GAME_REQUIRES_ARTWORK | GAME_CLICKABLE_ARTWORK )
 	CONS(  1988, alm32,    van16,   0,      alm32,     van32, driver_device,    0,       "Hegener & Glaser Muenchen", "Mephisto Alimera 68020", GAME_SUPPORTS_SAVE|GAME_REQUIRES_ARTWORK | GAME_CLICKABLE_ARTWORK )
-	CONS(  1988, sforteb,  sfortea, 0,      sfortea,   sfortea, driver_device,  0,       "Novag",                     "Novag Super Forte B Chess Computer", GAME_NO_SOUND|GAME_SUPPORTS_SAVE|GAME_NOT_WORKING | GAME_CLICKABLE_ARTWORK )
-	CONS(  1988, sforteba, sfortea, 0,      sfortea,   sfortea, driver_device,  0,       "Novag",                     "Novag Super Forte B Chess Computer (ALT)", GAME_NO_SOUND|GAME_SUPPORTS_SAVE|GAME_NOT_WORKING | GAME_CLICKABLE_ARTWORK )
-	CONS(  1988, sexpertb, sfortea, 0,      sfortea,   sfortea, driver_device,  0,       "Novag",                     "Novag Expert B Chess Computer", GAME_NO_SOUND|GAME_SUPPORTS_SAVE|GAME_NOT_WORKING | GAME_CLICKABLE_ARTWORK )
+	CONS(  1988, sforteb,  sfortea, 0,      sfortea,   sfortea, driver_device,  0,       "Novag",                     "Novag Super Forte Chess Computer (version B)", GAME_NO_SOUND|GAME_SUPPORTS_SAVE|GAME_NOT_WORKING | GAME_CLICKABLE_ARTWORK )
+	CONS(  1988, sforteba, sfortea, 0,      sfortea,   sfortea, driver_device,  0,       "Novag",                     "Novag Super Forte Chess Computer (version B, alt)", GAME_NO_SOUND|GAME_SUPPORTS_SAVE|GAME_NOT_WORKING | GAME_CLICKABLE_ARTWORK )
+	CONS(  1988, sexpertb, sfortea, 0,      sfortea,   sfortea, driver_device,  0,       "Novag",                     "Novag Super Expert B Chess Computer", GAME_NO_SOUND|GAME_SUPPORTS_SAVE|GAME_NOT_WORKING | GAME_CLICKABLE_ARTWORK )
 	CONS(  1989, academy,  0,       0,      academy,   academy, driver_device,  0,       "Hegener & Glaser",          "Mephisto Academy Schachcomputer", GAME_REQUIRES_ARTWORK|GAME_NOT_WORKING | GAME_CLICKABLE_ARTWORK )
 	CONS(  1989, megaiv,   0,       0,      megaiv,    megaiv, driver_device,   0,       "Hegener & Glaser",          "Mephisto Mega IV Schachcomputer", GAME_SUPPORTS_SAVE|GAME_NOT_WORKING|GAME_REQUIRES_ARTWORK | GAME_CLICKABLE_ARTWORK )
 	CONS(  1989, milano,   polgar,  0,      milano,    polgar, polgar_state,   polgar,  "Hegener & Glaser",          "Mephisto Milano Schachcomputer", GAME_REQUIRES_ARTWORK | GAME_CLICKABLE_ARTWORK )
 //CONS(  1989, montec4,  0,       0,      monteciv,  monteciv, driver_device, 0,       "Hegener & Glaser",          "Mephisto Monte Carlo IV", GAME_SUPPORTS_SAVE|GAME_NOT_WORKING|GAME_REQUIRES_ARTWORK | GAME_CLICKABLE_ARTWORK )
-	CONS(  1989, sfortec,  sfortea, 0,      sfortea,   sfortea, driver_device,  0,       "Novag",                     "Novag Super Forte C Chess Computer", GAME_NO_SOUND|GAME_SUPPORTS_SAVE|GAME_NOT_WORKING | GAME_CLICKABLE_ARTWORK )
+	CONS(  1989, sfortec,  sfortea, 0,      sfortea,   sfortea, driver_device,  0,       "Novag",                     "Novag Super Forte Chess Computer (version C)", GAME_NO_SOUND|GAME_SUPPORTS_SAVE|GAME_NOT_WORKING | GAME_CLICKABLE_ARTWORK )
 	CONS(  1989, sexpertc, sfortea, 0,      sfortea,   sfortea, driver_device,  0,       "Novag",                     "Novag Super Expert C Chess Computer", GAME_NO_SOUND|GAME_SUPPORTS_SAVE|GAME_NOT_WORKING | GAME_CLICKABLE_ARTWORK )
 	CONS(  1990, lyon16,   van16,   0,      alm16,     van16, driver_device,    0,       "Hegener & Glaser Muenchen", "Mephisto Lyon 68000", GAME_SUPPORTS_SAVE|GAME_REQUIRES_ARTWORK | GAME_CLICKABLE_ARTWORK )
 	CONS(  1990, lyon32,   van16,   0,      alm32,     van32, driver_device,    0,       "Hegener & Glaser Muenchen", "Mephisto Lyon 68020", GAME_SUPPORTS_SAVE|GAME_REQUIRES_ARTWORK | GAME_CLICKABLE_ARTWORK )

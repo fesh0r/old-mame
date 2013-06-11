@@ -83,7 +83,7 @@ WRITE8_MEMBER( sage2_state::write )
 static ADDRESS_MAP_START( sage2_mem, AS_PROGRAM, 16, sage2_state )
 	ADDRESS_MAP_UNMAP_HIGH
 	AM_RANGE(0x000000, 0xfeffff) AM_READWRITE8(read, write, 0xffff)
-	AM_RANGE(0xffc000, 0xffc007) AM_DEVREADWRITE8_LEGACY(I8253_1_TAG, pit8253_r, pit8253_w, 0x00ff)
+	AM_RANGE(0xffc000, 0xffc007) AM_DEVREADWRITE8(I8253_1_TAG, pit8253_device, read, write, 0x00ff)
 	AM_RANGE(0xffc010, 0xffc01f) AM_NOP //AM_DEVREADWRITE8(TMS9914_TAG, tms9914_device, read, write, 0x00ff)
 	AM_RANGE(0xffc020, 0xffc027) AM_DEVREADWRITE8(I8255A_0_TAG, i8255_device, read, write, 0x00ff) // i8255, DIPs + Floppy ctrl port
 	AM_RANGE(0xffc030, 0xffc031) AM_DEVREADWRITE8(I8251_1_TAG, i8251_device, data_r, data_w, 0x00ff)
@@ -93,7 +93,7 @@ static ADDRESS_MAP_START( sage2_mem, AS_PROGRAM, 16, sage2_state )
 	AM_RANGE(0xffc060, 0xffc067) AM_DEVREADWRITE8(I8255A_1_TAG, i8255_device, read, write, 0x00ff) // i8255, Printer
 	AM_RANGE(0xffc070, 0xffc071) AM_DEVREADWRITE8(I8251_0_TAG, i8251_device, data_r, data_w, 0x00ff)
 	AM_RANGE(0xffc072, 0xffc073) AM_DEVREADWRITE8(I8251_0_TAG, i8251_device, status_r, control_w, 0x00ff)
-	AM_RANGE(0xffc080, 0xffc087) AM_MIRROR(0x78) AM_DEVREADWRITE8_LEGACY(I8253_0_TAG, pit8253_r, pit8253_w, 0x00ff)
+	AM_RANGE(0xffc080, 0xffc087) AM_MIRROR(0x78) AM_DEVREADWRITE8(I8253_0_TAG, pit8253_device, read, write, 0x00ff)
 //  AM_RANGE(0xffc400, 0xffc407) AM_DEVREADWRITE8(S2651_0_TAG, s2651_device, read, write, 0x00ff)
 //  AM_RANGE(0xffc440, 0xffc447) AM_DEVREADWRITE8(S2651_1_TAG, s2651_device, read, write, 0x00ff)
 //  AM_RANGE(0xffc480, 0xffc487) AM_DEVREADWRITE8(S2651_2_TAG, s2651_device, read, write, 0x00ff)
@@ -366,7 +366,7 @@ static I8255A_INTERFACE( ppi1_intf )
 //  pit8253_config pit0_intf
 //-------------------------------------------------
 
-static const struct pit8253_config pit0_intf =
+static const struct pit8253_interface pit0_intf =
 {
 	{
 		{
@@ -376,7 +376,7 @@ static const struct pit8253_config pit0_intf =
 		}, {
 			XTAL_16MHz/2/125,
 			DEVCB_LINE_VCC,
-			DEVCB_DEVICE_LINE(I8253_0_TAG, pit8253_clk2_w)
+			DEVCB_DEVICE_LINE_MEMBER(I8253_0_TAG, pit8253_device, clk2_w)
 		}, {
 			0, // from OUT2
 			DEVCB_LINE_VCC,
@@ -408,13 +408,13 @@ WRITE_LINE_MEMBER( sage2_state::br2_w )
 	}
 }
 
-static const struct pit8253_config pit1_intf =
+static const struct pit8253_interface pit1_intf =
 {
 	{
 		{
 			XTAL_16MHz/2/125,
 			DEVCB_LINE_VCC,
-			DEVCB_DEVICE_LINE(I8253_0_TAG, pit8253_clk0_w)
+			DEVCB_DEVICE_LINE_MEMBER(I8253_0_TAG, pit8253_device, clk0_w)
 		}, {
 			XTAL_16MHz/2/13,
 			DEVCB_LINE_VCC,
@@ -590,11 +590,12 @@ static MACHINE_CONFIG_START( sage2, sage2_state )
 	MCFG_I8251_ADD(I8251_1_TAG, usart1_intf)
 	MCFG_UPD765A_ADD(UPD765_TAG, false, false)
 	MCFG_CENTRONICS_PRINTER_ADD(CENTRONICS_TAG, centronics_intf)
-	MCFG_FLOPPY_DRIVE_ADD(UPD765_TAG ":0", sage2_floppies, "525qd", 0, floppy_image_device::default_floppy_formats)
-	MCFG_FLOPPY_DRIVE_ADD(UPD765_TAG ":1", sage2_floppies, "525qd", 0, floppy_image_device::default_floppy_formats)
+	MCFG_FLOPPY_DRIVE_ADD(UPD765_TAG ":0", sage2_floppies, "525qd", floppy_image_device::default_floppy_formats)
+	MCFG_FLOPPY_DRIVE_ADD(UPD765_TAG ":1", sage2_floppies, "525qd", floppy_image_device::default_floppy_formats)
 	MCFG_IEEE488_BUS_ADD()
-	MCFG_RS232_PORT_ADD(RS232_A_TAG, rs232a_intf, default_rs232_devices, "serial_terminal", terminal)
-	MCFG_RS232_PORT_ADD(RS232_B_TAG, rs232b_intf, default_rs232_devices, NULL, NULL)
+	MCFG_RS232_PORT_ADD(RS232_A_TAG, rs232a_intf, default_rs232_devices, "serial_terminal")
+	MCFG_DEVICE_CARD_DEVICE_INPUT_DEFAULTS("serial_terminal", terminal)
+	MCFG_RS232_PORT_ADD(RS232_B_TAG, rs232b_intf, default_rs232_devices, NULL)
 
 	// internal ram
 	MCFG_RAM_ADD(RAM_TAG)

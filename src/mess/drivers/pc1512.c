@@ -18,6 +18,7 @@
 */
 
 #include "includes/pc1512.h"
+#include "video/isa_ega.h"
 
 
 
@@ -123,7 +124,7 @@ WRITE8_MEMBER( pc1512_state::system_w )
 
 		m_port61 = data;
 
-		pit8253_gate2_w(m_pit, BIT(data, 0));
+		m_pit->gate2_w(BIT(data, 0));
 
 		m_speaker_drive = BIT(data, 1);
 		update_speaker();
@@ -466,20 +467,25 @@ WRITE8_MEMBER( pc1512_state::printer_w )
 //  io_r -
 //-------------------------------------------------
 
-READ8_MEMBER( pc1640_state::io_unmapped_r )
-{
-	test_unmapped = true;
-	return 0xff;
-}
-
-
 READ8_MEMBER( pc1640_state::io_r )
 {
-	test_unmapped = false;
+	UINT8 data = 0;
+	offs_t addr = offset & 0x3ff;
+	bool decoded = false;
 
-	UINT8 data = space.read_byte(offset + 0x10000);
+	if      (                 addr <= 0x00f) { data = m_dmac->read(space, offset & 0x0f); decoded = true; }
+	else if (addr >= 0x020 && addr <= 0x021) { data = m_pic->read(space, offset & 0x01); decoded = true; }
+	else if (addr >= 0x040 && addr <= 0x043) { data = m_pit->read(space, offset & 0x03); decoded = true; }
+	else if (addr >= 0x060 && addr <= 0x06f) { data = system_r(space, offset & 0x0f); decoded = true; }
+	else if (addr >= 0x070 && addr <= 0x073) { data = m_rtc->read(space, offset & 0x01); decoded = true; }
+	else if (addr >= 0x078 && addr <= 0x07f) { data = mouse_r(space, offset & 0x07); decoded = true; }
+	else if (addr >= 0x378 && addr <= 0x37b) { data = printer_r(space, offset & 0x03); decoded = true; }
+	else if (addr >= 0x3b0 && addr <= 0x3df) { data = iga_r(space, addr - 0x3b0); decoded = true; }
+	else if (addr >= 0x3f4 && addr <= 0x3f4) { data = m_fdc->fdc->msr_r(space, offset & 0x01); decoded = true; }
+	else if (addr >= 0x3f5 && addr <= 0x3f5) { data = m_fdc->fdc->fifo_r(space, offset & 0x01); decoded = true; }
+	else if (addr >= 0x3f8 && addr <= 0x3ff) { data = m_uart->ins8250_r(space, offset & 0x07); decoded = true; }
 
-	if (!test_unmapped)
+	if (decoded)
 	{
 		if (BIT(offset, 7))
 		{
@@ -531,7 +537,7 @@ static ADDRESS_MAP_START( pc1512_io, AS_IO, 16, pc1512_state )
 	ADDRESS_MAP_GLOBAL_MASK(0x3ff)
 	AM_RANGE(0x000, 0x00f) AM_DEVREADWRITE8(I8237A5_TAG, am9517a_device, read, write, 0xffff)
 	AM_RANGE(0x020, 0x021) AM_DEVREADWRITE8(I8259A2_TAG, pic8259_device, read, write, 0xffff)
-	AM_RANGE(0x040, 0x043) AM_DEVREADWRITE8_LEGACY(I8253_TAG, pit8253_r, pit8253_w, 0xffff)
+	AM_RANGE(0x040, 0x043) AM_DEVREADWRITE8(I8253_TAG, pit8253_device, read, write, 0xffff)
 	AM_RANGE(0x060, 0x06f) AM_READWRITE8(system_r, system_w, 0xffff)
 	AM_RANGE(0x070, 0x071) AM_MIRROR(0x02) AM_DEVREADWRITE8(MC146818_TAG, mc146818_device, read, write, 0xffff)
 	AM_RANGE(0x078, 0x07f) AM_READWRITE8(mouse_r, mouse_w, 0xffff)
@@ -564,21 +570,19 @@ ADDRESS_MAP_END
 static ADDRESS_MAP_START( pc1640_io, AS_IO, 16, pc1640_state )
 	AM_RANGE(0x0000, 0xffff) AM_READ8(io_r, 0xffff)
 
-	// Mirrored over to 10000 for indirect reads through io_r
-
-	AM_RANGE(0x000, 0x00f) AM_MIRROR(0x10000) AM_DEVWRITE8(I8237A5_TAG, am9517a_device, write, 0xffff)
-	AM_RANGE(0x020, 0x021) AM_MIRROR(0x10000) AM_DEVWRITE8(I8259A2_TAG, pic8259_device, write, 0xffff)
-	AM_RANGE(0x040, 0x043) AM_MIRROR(0x10000) AM_DEVWRITE8_LEGACY(I8253_TAG, pit8253_w, 0xffff)
-	AM_RANGE(0x060, 0x06f) AM_MIRROR(0x10000) AM_WRITE8(system_w, 0xffff)
-	AM_RANGE(0x070, 0x071) AM_MIRROR(0x10000) AM_MIRROR(0x02) AM_DEVWRITE8(MC146818_TAG, mc146818_device, write, 0xffff)
-	AM_RANGE(0x078, 0x07f) AM_MIRROR(0x10000) AM_WRITE8(mouse_w, 0xffff)
-	AM_RANGE(0x080, 0x083) AM_MIRROR(0x10000) AM_WRITE8(dma_page_w, 0xffff)
-	AM_RANGE(0x0a0, 0x0a1) AM_MIRROR(0x10000) AM_WRITE8(nmi_mask_w, 0xff00)
-	AM_RANGE(0x378, 0x37b) AM_MIRROR(0x10000) AM_WRITE8(printer_w, 0xffff)
-	AM_RANGE(0x3b0, 0x3df) AM_MIRROR(0x10000) AM_WRITE8(iga_w, 0xffff)
-	AM_RANGE(0x3f0, 0x3f7) AM_MIRROR(0x10000) AM_DEVICE8(PC_FDC_XT_TAG, pc_fdc_xt_device, map, 0xffff)
-	AM_RANGE(0x3f8, 0x3ff) AM_MIRROR(0x10000) AM_DEVWRITE8(INS8250_TAG, ins8250_device, ins8250_w, 0xffff)
-	AM_RANGE(0x10000, 0x1ffff) AM_READ8(io_unmapped_r, 0xffff)
+	AM_RANGE(0x000, 0x00f) AM_DEVWRITE8(I8237A5_TAG, am9517a_device, write, 0xffff)
+	AM_RANGE(0x020, 0x021) AM_DEVWRITE8(I8259A2_TAG, pic8259_device, write, 0xffff)
+	AM_RANGE(0x040, 0x043) AM_DEVWRITE8(I8253_TAG, pit8253_device, write, 0xffff)
+	AM_RANGE(0x060, 0x06f) AM_WRITE8(system_w, 0xffff)
+	AM_RANGE(0x070, 0x071) AM_MIRROR(0x02) AM_DEVWRITE8(MC146818_TAG, mc146818_device, write, 0xffff)
+	AM_RANGE(0x078, 0x07f) AM_WRITE8(mouse_w, 0xffff)
+	AM_RANGE(0x080, 0x083) AM_WRITE8(dma_page_w, 0xffff)
+	AM_RANGE(0x0a0, 0x0a1) AM_WRITE8(nmi_mask_w, 0xff00)
+	AM_RANGE(0x378, 0x37b) AM_WRITE8(printer_w, 0xffff)
+	AM_RANGE(0x3b0, 0x3df) AM_WRITE8(iga_w, 0xffff)
+	AM_RANGE(0x3f2, 0x3f3) AM_DEVWRITE8(PC_FDC_XT_TAG, pc_fdc_xt_device, dor_w, 0x00ff)
+	AM_RANGE(0x3f4, 0x3f5) AM_DEVWRITE8(PC_FDC_XT_TAG ":upd765", upd765_family_device, fifo_w, 0xff00)
+	AM_RANGE(0x3f8, 0x3ff) AM_DEVWRITE8(INS8250_TAG, ins8250_device, ins8250_w, 0xffff)
 ADDRESS_MAP_END
 
 
@@ -773,12 +777,6 @@ WRITE_LINE_MEMBER( pc1512_state::kbclk_w )
 	m_kbclk = state;
 }
 
-static PC1512_KEYBOARD_INTERFACE( kb_intf )
-{
-	DEVCB_DRIVER_LINE_MEMBER(pc1512_state, kbdata_w),
-	DEVCB_DRIVER_LINE_MEMBER(pc1512_state, kbclk_w)
-};
-
 
 //-------------------------------------------------
 //  I8237_INTERFACE( dmac_intf )
@@ -923,7 +921,7 @@ IRQ_CALLBACK_MEMBER(pc1512_state::pc1512_irq_callback)
 
 void pc1512_state::update_speaker()
 {
-	speaker_level_w(m_speaker, m_speaker_drive & m_pit2);
+	m_speaker->level_w(m_speaker_drive & m_pit2);
 }
 
 WRITE_LINE_MEMBER( pc1512_state::pit1_w )
@@ -943,7 +941,7 @@ WRITE_LINE_MEMBER( pc1512_state::pit2_w )
 	update_speaker();
 }
 
-static const struct pit8253_config pit_intf =
+static const struct pit8253_interface pit_intf =
 {
 	{
 		{
@@ -993,17 +991,18 @@ void pc1512_state::update_fdc_drq()
 		m_dmac->dreq2_w(0);
 }
 
-WRITE_LINE_MEMBER( pc1512_state::fdc_int_w )
+void pc1512_state::fdc_int_w(bool state)
 {
 	m_dint = state;
 	update_fdc_int();
 }
 
-WRITE_LINE_MEMBER( pc1512_state::fdc_drq_w )
+void pc1512_state::fdc_drq_w(bool state)
 {
 	m_ddrq = state;
 	update_fdc_drq();
 }
+
 
 //-------------------------------------------------
 //  ins8250_interface uart_intf
@@ -1011,9 +1010,9 @@ WRITE_LINE_MEMBER( pc1512_state::fdc_drq_w )
 
 static const ins8250_interface uart_intf =
 {
-	DEVCB_NULL,
-	DEVCB_NULL,
-	DEVCB_NULL,
+	DEVCB_DEVICE_LINE_MEMBER(RS232_TAG, serial_port_device, tx),
+	DEVCB_DEVICE_LINE_MEMBER(RS232_TAG, rs232_port_device, dtr_w),
+	DEVCB_DEVICE_LINE_MEMBER(RS232_TAG, rs232_port_device, rts_w),
 	DEVCB_DEVICE_LINE_MEMBER(I8259A2_TAG, pic8259_device, ir4_w),
 	DEVCB_NULL,
 	DEVCB_NULL
@@ -1052,6 +1051,7 @@ static const centronics_interface centronics_intf =
 
 static SLOT_INTERFACE_START( pc1512_isa8_cards )
 	SLOT_INTERFACE("wdxt_gen", WDXT_GEN)
+	SLOT_INTERFACE("ega", ISA8_EGA)
 SLOT_INTERFACE_END
 
 static const isa8bus_interface isabus_intf =
@@ -1079,6 +1079,21 @@ static SLOT_INTERFACE_START( ibmpc_floppies )
 SLOT_INTERFACE_END
 
 
+//-------------------------------------------------
+//  rs232_port_interface rs232_intf
+//-------------------------------------------------
+
+static const rs232_port_interface rs232_intf =
+{
+	DEVCB_DEVICE_LINE_MEMBER(INS8250_TAG, ins8250_uart_device, rx_w),
+	DEVCB_DEVICE_LINE_MEMBER(INS8250_TAG, ins8250_uart_device, dcd_w),
+	DEVCB_DEVICE_LINE_MEMBER(INS8250_TAG, ins8250_uart_device, dsr_w),
+	DEVCB_DEVICE_LINE_MEMBER(INS8250_TAG, ins8250_uart_device, ri_w),
+	DEVCB_DEVICE_LINE_MEMBER(INS8250_TAG, ins8250_uart_device, cts_w)
+};
+
+
+
 //**************************************************************************
 //  MACHINE INITIALIZATION
 //**************************************************************************
@@ -1091,6 +1106,8 @@ void pc1512_state::machine_start()
 {
 	// register CPU IRQ callback
 	m_maincpu->set_irq_acknowledge_callback(device_irq_acknowledge_delegate(FUNC(pc1512_state::pc1512_irq_callback),this));
+	m_fdc->setup_intrq_cb(pc_fdc_interface::line_cb(FUNC(pc1512_state::fdc_int_w), this));
+	m_fdc->setup_drq_cb(pc_fdc_interface::line_cb(FUNC(pc1512_state::fdc_drq_w), this));
 
 	// set RAM size
 	size_t ram_size = m_ram->size();
@@ -1171,6 +1188,8 @@ void pc1640_state::machine_start()
 {
 	// register CPU IRQ callback
 	m_maincpu->set_irq_acknowledge_callback(device_irq_acknowledge_delegate(FUNC(pc1512_state::pc1512_irq_callback),this));
+	m_fdc->setup_intrq_cb(pc_fdc_interface::line_cb(FUNC(pc1512_state::fdc_int_w), this));
+	m_fdc->setup_drq_cb(pc_fdc_interface::line_cb(FUNC(pc1512_state::fdc_drq_w), this));
 
 	// state saving
 	save_item(NAME(m_pit1));
@@ -1235,7 +1254,7 @@ static MACHINE_CONFIG_START( pc1512, pc1512_state )
 	MCFG_SOUND_ROUTE(ALL_OUTPUTS, "mono", 0.80)
 
 	// devices
-	MCFG_PC1512_KEYBOARD_ADD(kb_intf)
+	MCFG_PC1512_KEYBOARD_ADD(WRITELINE(pc1512_state, kbclk_w), WRITELINE(pc1512_state, kbdata_w))
 	MCFG_I8237_ADD(I8237A5_TAG, XTAL_24MHz/6, dmac_intf)
 	MCFG_PIC8259_ADD(I8259A2_TAG, INPUTLINE(I8086_TAG, INPUT_LINE_IRQ0), VCC, NULL)
 	MCFG_PIT8253_ADD(I8253_TAG, pit_intf)
@@ -1243,14 +1262,15 @@ static MACHINE_CONFIG_START( pc1512, pc1512_state )
 	MCFG_PC_FDC_XT_ADD(PC_FDC_XT_TAG)
 	MCFG_INS8250_ADD(INS8250_TAG, uart_intf, XTAL_1_8432MHz)
 	MCFG_CENTRONICS_PRINTER_ADD(CENTRONICS_TAG, centronics_intf)
-	MCFG_FLOPPY_DRIVE_ADD(PC_FDC_XT_TAG ":0", ibmpc_floppies, "525dd", 0, pc1512_state::floppy_formats)
-	MCFG_FLOPPY_DRIVE_ADD(PC_FDC_XT_TAG ":1", ibmpc_floppies, "525dd", 0, pc1512_state::floppy_formats)
+	MCFG_FLOPPY_DRIVE_ADD(PC_FDC_XT_TAG ":0", ibmpc_floppies, "525dd", pc1512_state::floppy_formats)
+	MCFG_FLOPPY_DRIVE_ADD(PC_FDC_XT_TAG ":1", ibmpc_floppies, "525dd", pc1512_state::floppy_formats)
+	MCFG_RS232_PORT_ADD(RS232_TAG, rs232_intf, default_rs232_devices, NULL)
 
 	// ISA8 bus
 	MCFG_ISA8_BUS_ADD(ISA_BUS_TAG, ":" I8086_TAG, isabus_intf)
-	MCFG_ISA8_SLOT_ADD(ISA_BUS_TAG, "isa1", pc1512_isa8_cards, NULL, NULL, false)
-	MCFG_ISA8_SLOT_ADD(ISA_BUS_TAG, "isa2", pc1512_isa8_cards, NULL, NULL, false)
-	MCFG_ISA8_SLOT_ADD(ISA_BUS_TAG, "isa3", pc1512_isa8_cards, NULL, NULL, false)
+	MCFG_ISA8_SLOT_ADD(ISA_BUS_TAG, "isa1", pc1512_isa8_cards, NULL, false)
+	MCFG_ISA8_SLOT_ADD(ISA_BUS_TAG, "isa2", pc1512_isa8_cards, NULL, false)
+	MCFG_ISA8_SLOT_ADD(ISA_BUS_TAG, "isa3", pc1512_isa8_cards, NULL, false)
 
 	// internal ram
 	MCFG_RAM_ADD(RAM_TAG)
@@ -1280,7 +1300,7 @@ static MACHINE_CONFIG_START( pc1640, pc1640_state )
 	MCFG_SOUND_ROUTE(ALL_OUTPUTS, "mono", 0.80)
 
 	// devices
-	MCFG_PC1512_KEYBOARD_ADD(kb_intf)
+	MCFG_PC1512_KEYBOARD_ADD(WRITELINE(pc1512_state, kbclk_w), WRITELINE(pc1512_state, kbdata_w))
 	MCFG_I8237_ADD(I8237A5_TAG, XTAL_24MHz/6, dmac_intf)
 	MCFG_PIC8259_ADD(I8259A2_TAG, INPUTLINE(I8086_TAG, INPUT_LINE_IRQ0), VCC, NULL)
 	MCFG_PIT8253_ADD(I8253_TAG, pit_intf)
@@ -1288,14 +1308,15 @@ static MACHINE_CONFIG_START( pc1640, pc1640_state )
 	MCFG_PC_FDC_XT_ADD(PC_FDC_XT_TAG)
 	MCFG_INS8250_ADD(INS8250_TAG, uart_intf, XTAL_1_8432MHz)
 	MCFG_CENTRONICS_PRINTER_ADD(CENTRONICS_TAG, centronics_intf)
-	MCFG_FLOPPY_DRIVE_ADD(PC_FDC_XT_TAG ":0", ibmpc_floppies, "525dd", 0, pc1512_state::floppy_formats)
-	MCFG_FLOPPY_DRIVE_ADD(PC_FDC_XT_TAG ":1", ibmpc_floppies, "525dd", 0, pc1512_state::floppy_formats)
+	MCFG_FLOPPY_DRIVE_ADD(PC_FDC_XT_TAG ":0", ibmpc_floppies, "525dd", pc1512_state::floppy_formats)
+	MCFG_FLOPPY_DRIVE_ADD(PC_FDC_XT_TAG ":1", ibmpc_floppies, "525dd", pc1512_state::floppy_formats)
+	MCFG_RS232_PORT_ADD(RS232_TAG, rs232_intf, default_rs232_devices, NULL)
 
 	// ISA8 bus
 	MCFG_ISA8_BUS_ADD(ISA_BUS_TAG, ":" I8086_TAG, isabus_intf)
-	MCFG_ISA8_SLOT_ADD(ISA_BUS_TAG, "isa1", pc1512_isa8_cards, "wdxt_gen", NULL, false)
-	MCFG_ISA8_SLOT_ADD(ISA_BUS_TAG, "isa2", pc1512_isa8_cards, NULL, NULL, false)
-	MCFG_ISA8_SLOT_ADD(ISA_BUS_TAG, "isa3", pc1512_isa8_cards, NULL, NULL, false)
+	MCFG_ISA8_SLOT_ADD(ISA_BUS_TAG, "isa1", pc1512_isa8_cards, "wdxt_gen", false)
+	MCFG_ISA8_SLOT_ADD(ISA_BUS_TAG, "isa2", pc1512_isa8_cards, NULL, false)
+	MCFG_ISA8_SLOT_ADD(ISA_BUS_TAG, "isa3", pc1512_isa8_cards, NULL, false)
 
 	// internal ram
 	MCFG_RAM_ADD(RAM_TAG)

@@ -66,7 +66,7 @@ const device_type A2BUS_VULCAN = &device_creator<a2bus_vulcan_device>;
 #define VULCAN_IDE_TAG     "vulcan_ide"
 
 static MACHINE_CONFIG_FRAGMENT( vulcan )
-	MCFG_IDE_CONTROLLER_ADD(VULCAN_IDE_TAG, ide_image_devices, "hdd", "hdd", false)
+	MCFG_IDE_CONTROLLER_ADD(VULCAN_IDE_TAG, ide_devices, "hdd", "hdd", false)
 MACHINE_CONFIG_END
 
 ROM_START( vulcan )
@@ -151,7 +151,7 @@ UINT8 a2bus_vulcanbase_device::read_c0nx(address_space &space, UINT8 offset)
 	switch (offset)
 	{
 		case 0:
-			m_lastdata = ide_controller_r(m_ide, 0x1f0+offset, 2);
+			m_lastdata = m_ide->read_cs0(space, offset, 0xffff);
 //          printf("IDE: read %04x\n", m_lastdata);
 			m_last_read_was_0 = true;
 			return m_lastdata&0xff;
@@ -164,7 +164,7 @@ UINT8 a2bus_vulcanbase_device::read_c0nx(address_space &space, UINT8 offset)
 			}
 			else
 			{
-				return ide_controller_r(m_ide, 0x1f0+offset, 1);
+				return m_ide->read_cs0(space, offset, 0xff);
 			}
 			break;
 
@@ -174,7 +174,7 @@ UINT8 a2bus_vulcanbase_device::read_c0nx(address_space &space, UINT8 offset)
 		case 5:
 		case 6:
 		case 7:
-			return ide_controller_r(m_ide, 0x1f0+offset, 1);
+			return m_ide->read_cs0(space, offset, 0xff);
 
 		default:
 //          printf("Read @ C0n%x\n", offset);
@@ -206,11 +206,11 @@ void a2bus_vulcanbase_device::write_c0nx(address_space &space, UINT8 offset, UIN
 				m_lastdata &= 0x00ff;
 				m_lastdata |= (data << 8);
 //              printf("IDE: write %04x\n", m_lastdata);
-				ide_controller_w(m_ide, 0x1f0, 2, m_lastdata);
+				m_ide->write_cs0(space, offset, m_lastdata, 0xffff);
 			}
 			else
 			{
-				ide_controller_w(m_ide, 0x1f0+offset, 1, data);
+				m_ide->write_cs0(space, offset, data, 0xff);
 			}
 			break;
 
@@ -221,7 +221,7 @@ void a2bus_vulcanbase_device::write_c0nx(address_space &space, UINT8 offset, UIN
 		case 6:
 		case 7:
 //          printf("%02x to IDE controller @ %x\n", data, offset);
-			ide_controller_w(m_ide, 0x1f0+offset, 1, data);
+			m_ide->write_cs0(space, offset, data, 0xff);
 			break;
 
 		case 9: // ROM bank

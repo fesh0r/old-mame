@@ -30,13 +30,13 @@ READ8_MEMBER( at_state::get_slave_ack )
 void at_state::at_speaker_set_spkrdata(UINT8 data)
 {
 	m_at_spkrdata = data ? 1 : 0;
-	speaker_level_w( m_speaker, m_at_spkrdata & m_at_speaker_input);
+	m_speaker->level_w(m_at_spkrdata & m_at_speaker_input);
 }
 
 void at_state::at_speaker_set_input(UINT8 data)
 {
 	m_at_speaker_input = data ? 1 : 0;
-	speaker_level_w( m_speaker, m_at_spkrdata & m_at_speaker_input);
+	m_speaker->level_w(m_at_spkrdata & m_at_speaker_input);
 }
 
 
@@ -49,8 +49,7 @@ void at_state::at_speaker_set_input(UINT8 data)
 
 WRITE_LINE_MEMBER( at_state::at_pit8254_out0_changed )
 {
-	if (m_pic8259_master)
-		m_pic8259_master->ir0_w(state);
+	m_pic8259_master->ir0_w(state);
 }
 
 
@@ -60,7 +59,7 @@ WRITE_LINE_MEMBER( at_state::at_pit8254_out2_changed )
 }
 
 
-const struct pit8253_config at_pit8254_config =
+const struct pit8253_interface at_pit8254_config =
 {
 	{
 		{
@@ -277,7 +276,7 @@ READ8_MEMBER( at_state::at_portb_r )
 	}
 	data = (data & ~0x10) | ( m_at_offset1 & 0x10 );
 
-	if ( pit8253_get_output(m_pit8254, 2 ) )
+	if (m_pit8254->get_output(2))
 		data |= 0x20;
 	else
 		data &= ~0x20; /* ps2m30 wants this */
@@ -288,7 +287,7 @@ READ8_MEMBER( at_state::at_portb_r )
 WRITE8_MEMBER( at_state::at_portb_w )
 {
 	m_at_speaker = data;
-	pit8253_gate2_w(m_pit8254, BIT(data, 0));
+	m_pit8254->gate2_w(BIT(data, 0));
 	at_speaker_set_spkrdata( BIT(data, 1));
 	m_channel_check = BIT(data, 3);
 	m_isabus->set_nmi_state((m_nmi_enabled==0) && (m_channel_check==0));

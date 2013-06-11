@@ -885,14 +885,6 @@ static INPUT_PORTS_START( olivm10 )
 	PORT_CONFSETTING( 0x00, "Low Battery" )
 INPUT_PORTS_END
 
-/* uPD1990A Interface */
-
-static UPD1990A_INTERFACE( kc85_upd1990a_intf )
-{
-	DEVCB_NULL,
-	DEVCB_CPU_INPUT_LINE(I8085_TAG, I8085_RST75_LINE)
-};
-
 /* RP5C01A Interface */
 
 static RP5C01_INTERFACE( tandy200_rtc_intf )
@@ -968,7 +960,7 @@ WRITE8_MEMBER( kc85_state::i8155_pb_w )
 	m_buzzer = BIT(data, 2);
 	m_bell = BIT(data, 5);
 
-	if (m_buzzer) speaker_level_w(m_speaker, m_bell);
+	if (m_buzzer) m_speaker->level_w(m_bell);
 
 	// RS-232
 	m_rs232->dtr_w(BIT(data, 6));
@@ -1010,7 +1002,7 @@ WRITE_LINE_MEMBER( kc85_state::i8155_to_w )
 {
 	if (!m_buzzer && m_bell)
 	{
-		speaker_level_w(m_speaker, state);
+		m_speaker->level_w(state);
 	}
 
 	m_uart->trc_w(state);
@@ -1074,7 +1066,7 @@ WRITE8_MEMBER( tandy200_state::i8155_pb_w )
 	m_buzzer = BIT(data, 2);
 	m_bell = BIT(data, 5);
 
-	if (m_buzzer) speaker_level_w(m_speaker, m_bell);
+	if (m_buzzer) m_speaker->level_w(m_bell);
 }
 
 READ8_MEMBER( tandy200_state::i8155_pc_r )
@@ -1108,7 +1100,7 @@ WRITE_LINE_MEMBER( tandy200_state::i8155_to_w )
 {
 	if (!m_buzzer && m_bell)
 	{
-		speaker_level_w(m_speaker, state);
+		m_speaker->level_w(state);
 	}
 }
 
@@ -1352,9 +1344,9 @@ static MACHINE_CONFIG_START( kc85, kc85_state )
 
 	/* devices */
 	MCFG_I8155_ADD(I8155_TAG, XTAL_4_9152MHz/2, kc85_8155_intf)
-	MCFG_UPD1990A_ADD(UPD1990A_TAG, XTAL_32_768kHz, kc85_upd1990a_intf)
+	MCFG_UPD1990A_ADD(UPD1990A_TAG, XTAL_32_768kHz, NULL, INPUTLINE(I8085_TAG, I8085_RST75_LINE))
 	MCFG_IM6402_ADD(IM6402_TAG, uart_intf)
-	MCFG_RS232_PORT_ADD(RS232_TAG, rs232_intf, default_rs232_devices, NULL, NULL)
+	MCFG_RS232_PORT_ADD(RS232_TAG, rs232_intf, default_rs232_devices, NULL)
 	MCFG_CENTRONICS_PRINTER_ADD(CENTRONICS_TAG, standard_centronics)
 	MCFG_CASSETTE_ADD("cassette", kc85_cassette_interface)
 
@@ -1390,9 +1382,9 @@ static MACHINE_CONFIG_START( pc8201, pc8201_state )
 
 	/* devices */
 	MCFG_I8155_ADD(I8155_TAG, XTAL_4_9152MHz/2, kc85_8155_intf)
-	MCFG_UPD1990A_ADD(UPD1990A_TAG, XTAL_32_768kHz, kc85_upd1990a_intf)
+	MCFG_UPD1990A_ADD(UPD1990A_TAG, XTAL_32_768kHz, NULL, INPUTLINE(I8085_TAG, I8085_RST75_LINE))
 	MCFG_IM6402_ADD(IM6402_TAG, uart_intf)
-	MCFG_RS232_PORT_ADD(RS232_TAG, rs232_intf, default_rs232_devices, NULL, NULL)
+	MCFG_RS232_PORT_ADD(RS232_TAG, rs232_intf, default_rs232_devices, NULL)
 	MCFG_CENTRONICS_PRINTER_ADD(CENTRONICS_TAG, standard_centronics)
 	MCFG_CASSETTE_ADD("cassette", kc85_cassette_interface)
 
@@ -1434,9 +1426,9 @@ static MACHINE_CONFIG_START( trsm100, trsm100_state )
 
 	/* devices */
 	MCFG_I8155_ADD(I8155_TAG, XTAL_4_9152MHz/2, kc85_8155_intf)
-	MCFG_UPD1990A_ADD(UPD1990A_TAG, XTAL_32_768kHz, kc85_upd1990a_intf)
+	MCFG_UPD1990A_ADD(UPD1990A_TAG, XTAL_32_768kHz, NULL, INPUTLINE(I8085_TAG, I8085_RST75_LINE))
 	MCFG_IM6402_ADD(IM6402_TAG, uart_intf)
-	MCFG_RS232_PORT_ADD(RS232_TAG, rs232_intf, default_rs232_devices, NULL, NULL)
+	MCFG_RS232_PORT_ADD(RS232_TAG, rs232_intf, default_rs232_devices, NULL)
 	MCFG_CENTRONICS_PRINTER_ADD(CENTRONICS_TAG, standard_centronics)
 	MCFG_CASSETTE_ADD("cassette", kc85_cassette_interface)
 //  MCFG_MC14412_ADD(MC14412_TAG, XTAL_1MHz)
@@ -1485,7 +1477,7 @@ static MACHINE_CONFIG_START( tandy200, tandy200_state )
 	MCFG_I8155_ADD(I8155_TAG, XTAL_4_9152MHz/2, tandy200_8155_intf)
 	MCFG_RP5C01_ADD(RP5C01A_TAG, XTAL_32_768kHz, tandy200_rtc_intf)
 	MCFG_I8251_ADD(I8251_TAG, /*XTAL_4_9152MHz/2,*/ tandy200_uart_intf)
-	MCFG_RS232_PORT_ADD(RS232_TAG, rs232_intf, default_rs232_devices, NULL, NULL)
+	MCFG_RS232_PORT_ADD(RS232_TAG, rs232_intf, default_rs232_devices, NULL)
 //  MCFG_MC14412_ADD(MC14412_TAG, XTAL_1MHz)
 	MCFG_CENTRONICS_PRINTER_ADD(CENTRONICS_TAG, standard_centronics)
 	MCFG_CASSETTE_ADD("cassette", kc85_cassette_interface)

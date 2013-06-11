@@ -293,8 +293,8 @@ static MACHINE_CONFIG_FRAGMENT( luxor_55_21046 )
 	MCFG_Z80DMA_ADD(Z80DMA_TAG, XTAL_16MHz/4, dma_intf)
 	MCFG_FD1793x_ADD(SAB1793_TAG, XTAL_16MHz/8)
 
-	MCFG_FLOPPY_DRIVE_ADD(SAB1793_TAG":0", abc_floppies, "525dd", NULL, floppy_image_device::default_floppy_formats)
-	MCFG_FLOPPY_DRIVE_ADD(SAB1793_TAG":1", abc_floppies, "525dd", NULL, floppy_image_device::default_floppy_formats)
+	MCFG_FLOPPY_DRIVE_ADD(SAB1793_TAG":0", abc_floppies, "525dd", floppy_image_device::default_floppy_formats)
+	MCFG_FLOPPY_DRIVE_ADD(SAB1793_TAG":1", abc_floppies, "525dd", floppy_image_device::default_floppy_formats)
 MACHINE_CONFIG_END
 
 
@@ -465,19 +465,6 @@ void luxor_55_21046_device::device_reset()
 void luxor_55_21046_device::abcbus_cs(UINT8 data)
 {
 	m_cs = (data == m_sw3->read());
-}
-
-
-//-------------------------------------------------
-//  abcbus_rst -
-//-------------------------------------------------
-
-void luxor_55_21046_device::abcbus_rst(int state)
-{
-	if (!state)
-	{
-		device_reset();
-	}
 }
 
 

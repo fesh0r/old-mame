@@ -19,6 +19,13 @@
 class zx_state : public driver_device
 {
 public:
+	enum
+	{
+		TIMER_TAPE_PULSE,
+		TIMER_ULA_NMI,
+		TIMER_ULA_IRQ
+	};
+
 	zx_state(const machine_config &mconfig, device_type type, const char *tag)
 		: driver_device(mconfig, type, tag),
 		m_maincpu(*this, "maincpu"),
@@ -83,7 +90,7 @@ protected:
 	required_device<ram_device> m_ram;
 	required_device<screen_device> m_screen;
 	required_device<cassette_image_device> m_cassette;
-	required_device<device_t> m_speaker;
+	required_device<speaker_sound_device> m_speaker;
 	required_memory_region m_region_maincpu;
 	optional_memory_region m_region_gfx1;
 	required_ioport m_io_row0;
@@ -97,6 +104,7 @@ protected:
 	optional_ioport m_io_config;
 
 	void zx_ula_r(int offs, memory_region *region, const UINT8 param);
+	virtual void device_timer(emu_timer &timer, device_timer_id id, int param, void *ptr);
 };
 
 #endif /* ZX_H_ */

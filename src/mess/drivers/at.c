@@ -96,7 +96,7 @@ static ADDRESS_MAP_START( at16_io, AS_IO, 16, at_state )
 	ADDRESS_MAP_UNMAP_HIGH
 	AM_RANGE(0x0000, 0x001f) AM_DEVREADWRITE8("dma8237_1", am9517a_device, read, write, 0xffff)
 	AM_RANGE(0x0020, 0x003f) AM_DEVREADWRITE8("pic8259_master", pic8259_device, read, write, 0xffff)
-	AM_RANGE(0x0040, 0x005f) AM_DEVREADWRITE8_LEGACY("pit8254", pit8253_r, pit8253_w, 0xffff)
+	AM_RANGE(0x0040, 0x005f) AM_DEVREADWRITE8("pit8254", pit8254_device, read, write, 0xffff)
 	AM_RANGE(0x0060, 0x0063) AM_READWRITE8(at_keybc_r, at_keybc_w, 0xffff)
 	AM_RANGE(0x0064, 0x0067) AM_DEVREADWRITE8("keybc", at_keyboard_controller_device, status_r, command_w, 0xffff)
 	AM_RANGE(0x0070, 0x007f) AM_DEVREAD8("rtc", mc146818_device, read, 0xffff) AM_WRITE8(write_rtc , 0xffff)
@@ -128,7 +128,7 @@ static ADDRESS_MAP_START( neat_io, AS_IO, 16, at_state )
 	AM_RANGE(0x0000, 0x001f) AM_DEVREADWRITE8("dma8237_1", am9517a_device, read, write, 0xffff)
 	AM_RANGE(0x0020, 0x0021) AM_DEVREADWRITE8("pic8259_master", pic8259_device, read, write, 0xffff)
 	AM_RANGE(0x0022, 0x0023) AM_READWRITE(neat_chipset_r, neat_chipset_w)
-	AM_RANGE(0x0040, 0x005f) AM_DEVREADWRITE8_LEGACY("pit8254", pit8253_r, pit8253_w, 0xffff)
+	AM_RANGE(0x0040, 0x005f) AM_DEVREADWRITE8("pit8254", pit8254_device, read, write, 0xffff)
 	AM_RANGE(0x0060, 0x0063) AM_READWRITE8(at_keybc_r, at_keybc_w, 0xffff)
 	AM_RANGE(0x0064, 0x0067) AM_DEVREADWRITE8("keybc", at_keyboard_controller_device, status_r, command_w, 0xffff)
 	AM_RANGE(0x0070, 0x007f) AM_DEVREADWRITE8("rtc", mc146818_device, read, write , 0xffff)
@@ -141,7 +141,7 @@ static ADDRESS_MAP_START( at386_io, AS_IO, 32, at_state )
 	ADDRESS_MAP_UNMAP_HIGH
 	AM_RANGE(0x0000, 0x001f) AM_DEVREADWRITE8("dma8237_1", am9517a_device, read, write, 0xffffffff)
 	AM_RANGE(0x0020, 0x003f) AM_DEVREADWRITE8("pic8259_master", pic8259_device, read, write, 0xffffffff)
-	AM_RANGE(0x0040, 0x005f) AM_DEVREADWRITE8_LEGACY("pit8254", pit8253_r, pit8253_w, 0xffffffff)
+	AM_RANGE(0x0040, 0x005f) AM_DEVREADWRITE8("pit8254", pit8254_device, read, write, 0xffffffff)
 	AM_RANGE(0x0060, 0x0063) AM_READWRITE8(at_keybc_r, at_keybc_w, 0xffff)
 	AM_RANGE(0x0064, 0x0067) AM_DEVREADWRITE8("keybc", at_keyboard_controller_device, status_r, command_w, 0xffff)
 	AM_RANGE(0x0070, 0x007f) AM_DEVREADWRITE8("rtc", mc146818_device, read, write , 0xffffffff)
@@ -184,7 +184,7 @@ static ADDRESS_MAP_START( ct486_io, AS_IO, 32, at_state )
 	ADDRESS_MAP_UNMAP_HIGH
 	AM_RANGE(0x0000, 0x001f) AM_DEVREADWRITE8("dma8237_1", am9517a_device, read, write, 0xffffffff)
 	AM_RANGE(0x0020, 0x0023) AM_READWRITE(ct486_chipset_r, ct486_chipset_w)
-	AM_RANGE(0x0040, 0x005f) AM_DEVREADWRITE8_LEGACY("pit8254", pit8253_r, pit8253_w, 0xffffffff)
+	AM_RANGE(0x0040, 0x005f) AM_DEVREADWRITE8("pit8254", pit8254_device, read, write, 0xffffffff)
 	AM_RANGE(0x0060, 0x0063) AM_READWRITE8(at_keybc_r, at_keybc_w, 0xffff)
 	AM_RANGE(0x0064, 0x0067) AM_DEVREADWRITE8("keybc", at_keyboard_controller_device, status_r, command_w, 0xffff)
 	AM_RANGE(0x0070, 0x007f) AM_DEVREADWRITE8("rtc", mc146818_device, read, write , 0xffffffff)
@@ -203,7 +203,7 @@ static ADDRESS_MAP_START( megapc_io, AS_IO, 32, at_state )
 	ADDRESS_MAP_UNMAP_HIGH
 	AM_RANGE(0x0000, 0x001f) AM_DEVREADWRITE8("dma8237_1", am9517a_device, read, write, 0xffffffff)
 	AM_RANGE(0x0020, 0x003f) AM_DEVREADWRITE8("pic8259_master", pic8259_device, read, write, 0xffffffff)
-	AM_RANGE(0x0040, 0x005f) AM_DEVREADWRITE8_LEGACY("pit8254", pit8253_r, pit8253_w, 0xffffffff)
+	AM_RANGE(0x0040, 0x005f) AM_DEVREADWRITE8("pit8254", pit8254_device, read, write, 0xffffffff)
 	AM_RANGE(0x0060, 0x0063) AM_READWRITE8(at_keybc_r, at_keybc_w, 0xffff) // TODO: is this the correct type?
 	AM_RANGE(0x0064, 0x0067) AM_DEVREADWRITE8("keybc", at_keyboard_controller_device, status_r, command_w, 0xffff)
 	AM_RANGE(0x0070, 0x007f) AM_DEVREADWRITE8("rtc", mc146818_device, read, write , 0xffffffff)
@@ -214,7 +214,7 @@ ADDRESS_MAP_END
 
 
 static INPUT_PORTS_START( atcga )
-	PORT_START("DSW0") /* IN1 */
+	PORT_START("DSW0")
 	PORT_DIPNAME( 0xc0, 0x40, "Number of floppy drives")
 	PORT_DIPSETTING(    0x00, "1" )
 	PORT_DIPSETTING(    0x40, "2" )
@@ -239,7 +239,7 @@ static INPUT_PORTS_START( atcga )
 INPUT_PORTS_END
 
 static INPUT_PORTS_START( atvga )
-	PORT_START("IN0") /* IN0 */
+	PORT_START("IN0")
 	PORT_DIPNAME( 0x08, 0x00, "VGA 1")
 	PORT_DIPSETTING(    0x08, DEF_STR( Off ) )
 	PORT_DIPSETTING(    0x00, DEF_STR( On ) )
@@ -253,7 +253,7 @@ static INPUT_PORTS_START( atvga )
 	PORT_DIPSETTING(    0x01, DEF_STR( Off ) )
 	PORT_DIPSETTING(    0x00, DEF_STR( On ) )
 
-	PORT_START("DSW0") /* IN1 */
+	PORT_START("DSW0")
 	PORT_DIPNAME( 0xc0, 0x40, "Number of floppy drives")
 	PORT_DIPSETTING(    0x00, "1" )
 	PORT_DIPSETTING(    0x40, "2" )
@@ -385,7 +385,7 @@ static MACHINE_CONFIG_FRAGMENT( at_motherboard )
 
 	MCFG_AT_KEYBOARD_CONTROLLER_ADD("keybc", XTAL_12MHz, keyboard_controller_intf)
 	MCFG_PC_KBDC_ADD("pc_kbdc", pc_kbdc_intf)
-	MCFG_PC_KBDC_SLOT_ADD("pc_kbdc", "kbd", pc_at_keyboards, STR_KBD_MICROSOFT_NATURAL, NULL)
+	MCFG_PC_KBDC_SLOT_ADD("pc_kbdc", "kbd", pc_at_keyboards, STR_KBD_MICROSOFT_NATURAL)
 
 	MCFG_MC146818_IRQ_ADD( "rtc", MC146818_STANDARD, at_mc146818_config )
 
@@ -409,10 +409,10 @@ static MACHINE_CONFIG_START( ibm5170, at_state )
 
 	MCFG_FRAGMENT_ADD( at_motherboard )
 	MCFG_ISA16_BUS_ADD("isabus", ":maincpu", isabus_intf)
-	MCFG_ISA16_SLOT_ADD("isabus","isa1", pc_isa16_cards, "ega", NULL, false)
-	MCFG_ISA16_SLOT_ADD("isabus","isa2", pc_isa16_cards, "fdc", NULL, false)
-	MCFG_ISA16_SLOT_ADD("isabus","isa3", pc_isa16_cards, "comat", NULL, false)
-	MCFG_ISA16_SLOT_ADD("isabus","isa4", pc_isa16_cards, "ide", NULL, false)
+	MCFG_ISA16_SLOT_ADD("isabus","isa1", pc_isa16_cards, "ega", false)
+	MCFG_ISA16_SLOT_ADD("isabus","isa2", pc_isa16_cards, "fdc", false)
+	MCFG_ISA16_SLOT_ADD("isabus","isa3", pc_isa16_cards, "comat", false)
+	MCFG_ISA16_SLOT_ADD("isabus","isa4", pc_isa16_cards, "ide", false)
 
 	/* software lists */
 	MCFG_SOFTWARE_LIST_ADD("disk_list","ibm5170")
@@ -446,10 +446,10 @@ static MACHINE_CONFIG_START( ibm5162, at_state )
 	MCFG_FRAGMENT_ADD( at_motherboard )
 
 	MCFG_ISA16_BUS_ADD("isabus", ":maincpu", isabus_intf)
-	MCFG_ISA16_SLOT_ADD("isabus","isa1", pc_isa16_cards, "fdc", NULL, false)
-	MCFG_ISA16_SLOT_ADD("isabus","isa2", pc_isa16_cards, "ide", NULL, false)
-	MCFG_ISA16_SLOT_ADD("isabus","isa3", pc_isa16_cards, "comat", NULL, false)
-	MCFG_ISA16_SLOT_ADD("isabus","isa4", pc_isa16_cards, "cga", NULL, false)
+	MCFG_ISA16_SLOT_ADD("isabus","isa1", pc_isa16_cards, "fdc", false)
+	MCFG_ISA16_SLOT_ADD("isabus","isa2", pc_isa16_cards, "ide", false)
+	MCFG_ISA16_SLOT_ADD("isabus","isa3", pc_isa16_cards, "comat", false)
+	MCFG_ISA16_SLOT_ADD("isabus","isa4", pc_isa16_cards, "cga", false)
 
 	/* internal ram */
 	MCFG_RAM_ADD(RAM_TAG)
@@ -468,10 +468,10 @@ static MACHINE_CONFIG_START( ps2m30286, at_state )
 	MCFG_FRAGMENT_ADD( at_motherboard )
 
 	MCFG_ISA16_BUS_ADD("isabus", ":maincpu", isabus_intf)
-	MCFG_ISA16_SLOT_ADD("isabus","isa1", pc_isa16_cards, "fdc", NULL, false)
-	MCFG_ISA16_SLOT_ADD("isabus","isa2", pc_isa16_cards, "ide", NULL, false)
-	MCFG_ISA16_SLOT_ADD("isabus","isa3", pc_isa16_cards, "comat", NULL, false)
-	MCFG_ISA16_SLOT_ADD("isabus","isa4", pc_isa16_cards, "svga_et4k", NULL, false)
+	MCFG_ISA16_SLOT_ADD("isabus","isa1", pc_isa16_cards, "fdc", false)
+	MCFG_ISA16_SLOT_ADD("isabus","isa2", pc_isa16_cards, "ide", false)
+	MCFG_ISA16_SLOT_ADD("isabus","isa3", pc_isa16_cards, "comat", false)
+	MCFG_ISA16_SLOT_ADD("isabus","isa4", pc_isa16_cards, "svga_et4k", false)
 
 	/* internal ram */
 	MCFG_RAM_ADD(RAM_TAG)
@@ -490,10 +490,10 @@ static MACHINE_CONFIG_START( neat, at_state )
 	MCFG_FRAGMENT_ADD( at_motherboard )
 
 	MCFG_ISA16_BUS_ADD("isabus", ":maincpu", isabus_intf)
-	MCFG_ISA16_SLOT_ADD("isabus", "isa1", pc_isa16_cards, "fdc", NULL, false)
-	MCFG_ISA16_SLOT_ADD("isabus", "isa2", pc_isa16_cards, "ide", NULL, false)
-	MCFG_ISA16_SLOT_ADD("isabus", "isa3", pc_isa16_cards, "comat", NULL, false)
-	MCFG_ISA16_SLOT_ADD("isabus","isa4", pc_isa16_cards, "svga_et4k", NULL, false)
+	MCFG_ISA16_SLOT_ADD("isabus", "isa1", pc_isa16_cards, "fdc", false)
+	MCFG_ISA16_SLOT_ADD("isabus", "isa2", pc_isa16_cards, "ide", false)
+	MCFG_ISA16_SLOT_ADD("isabus", "isa3", pc_isa16_cards, "comat", false)
+	MCFG_ISA16_SLOT_ADD("isabus","isa4", pc_isa16_cards, "svga_et4k", false)
 
 	MCFG_CS8221_ADD("cs8221", "maincpu", "isa", "bios")
 
@@ -513,11 +513,11 @@ static MACHINE_CONFIG_START( atvga, at_state )
 	MCFG_FRAGMENT_ADD( at_motherboard )
 
 	MCFG_ISA16_BUS_ADD("isabus", ":maincpu", isabus_intf)
-	MCFG_ISA16_SLOT_ADD("isabus","isa1", pc_isa16_cards, "fdcsmc", NULL, false)
-	MCFG_ISA16_SLOT_ADD("isabus","isa2", pc_isa16_cards, "ide", NULL, false)
-	MCFG_ISA16_SLOT_ADD("isabus","isa3", pc_isa16_cards, "comat", NULL, false)
-	MCFG_ISA16_SLOT_ADD("isabus","isa4", pc_isa16_cards, "ne2000", NULL, false)
-	MCFG_ISA16_SLOT_ADD("isabus","isa5", pc_isa16_cards, "svga_et4k", NULL, false)
+	MCFG_ISA16_SLOT_ADD("isabus","isa1", pc_isa16_cards, "fdcsmc", false)
+	MCFG_ISA16_SLOT_ADD("isabus","isa2", pc_isa16_cards, "ide", false)
+	MCFG_ISA16_SLOT_ADD("isabus","isa3", pc_isa16_cards, "comat", false)
+	MCFG_ISA16_SLOT_ADD("isabus","isa4", pc_isa16_cards, "ne2000", false)
+	MCFG_ISA16_SLOT_ADD("isabus","isa5", pc_isa16_cards, "svga_et4k", false)
 
 	/* internal ram */
 	MCFG_RAM_ADD(RAM_TAG)
@@ -535,10 +535,10 @@ static MACHINE_CONFIG_START( xb42639, at_state )
 	MCFG_FRAGMENT_ADD( at_motherboard )
 
 	MCFG_ISA16_BUS_ADD("isabus", ":maincpu", isabus_intf)
-	MCFG_ISA16_SLOT_ADD("isabus","isa1", pc_isa16_cards, "fdc", NULL, false)
-	MCFG_ISA16_SLOT_ADD("isabus","isa2", pc_isa16_cards, "ide", NULL, false)
-	MCFG_ISA16_SLOT_ADD("isabus","isa3", pc_isa16_cards, "comat", NULL, false)
-	MCFG_ISA16_SLOT_ADD("isabus","isa4", pc_isa16_cards, "svga_et4k", NULL, false)
+	MCFG_ISA16_SLOT_ADD("isabus","isa1", pc_isa16_cards, "fdc", false)
+	MCFG_ISA16_SLOT_ADD("isabus","isa2", pc_isa16_cards, "ide", false)
+	MCFG_ISA16_SLOT_ADD("isabus","isa3", pc_isa16_cards, "comat", false)
+	MCFG_ISA16_SLOT_ADD("isabus","isa4", pc_isa16_cards, "svga_et4k", false)
 
 	/* internal ram */
 	MCFG_RAM_ADD(RAM_TAG)
@@ -564,16 +564,17 @@ static MACHINE_CONFIG_START( at386, at_state )
 
 	MCFG_ISA16_BUS_ADD("isabus", ":maincpu", isabus_intf)
 	// on board devices
-	MCFG_ISA16_SLOT_ADD("isabus","board1", pc_isa16_cards, "fdcsmc", NULL, true)
-	MCFG_ISA16_SLOT_ADD("isabus","board2", pc_isa16_cards, "comat", NULL, true)
-	MCFG_ISA16_SLOT_ADD("isabus","board3", pc_isa16_cards, "ide", NULL, true)
-	MCFG_ISA16_SLOT_ADD("isabus","board4", pc_isa16_cards, "lpt", NULL, true)
+	MCFG_ISA16_SLOT_ADD("isabus","board1", pc_isa16_cards, "fdcsmc", true)
+	MCFG_ISA16_SLOT_ADD("isabus","board2", pc_isa16_cards, "comat", true)
+	MCFG_ISA16_SLOT_ADD("isabus","board3", pc_isa16_cards, "ide", true)
+	MCFG_ISA16_SLOT_ADD("isabus","board4", pc_isa16_cards, "lpt", true)
 	// ISA cards
-	MCFG_ISA16_SLOT_ADD("isabus","isa1", pc_isa16_cards, "svga_et4k", NULL, false)
-	MCFG_ISA16_SLOT_ADD("isabus","isa2", pc_isa16_cards, NULL, NULL, false)
-	MCFG_ISA16_SLOT_ADD("isabus","isa3", pc_isa16_cards, NULL, NULL, false)
-	MCFG_ISA16_SLOT_ADD("isabus","isa4", pc_isa16_cards, NULL, NULL, false)
-	MCFG_ISA16_SLOT_ADD("isabus","isa5", pc_isa16_cards, "ide_cd", ide_2nd, false) //2nd-ary IDE
+	MCFG_ISA16_SLOT_ADD("isabus","isa1", pc_isa16_cards, "svga_et4k", false)
+	MCFG_ISA16_SLOT_ADD("isabus","isa2", pc_isa16_cards, NULL, false)
+	MCFG_ISA16_SLOT_ADD("isabus","isa3", pc_isa16_cards, NULL, false)
+	MCFG_ISA16_SLOT_ADD("isabus","isa4", pc_isa16_cards, NULL, false)
+	MCFG_ISA16_SLOT_ADD("isabus","isa5", pc_isa16_cards, "ide_cd", false) //2nd-ary IDE
+	MCFG_DEVICE_CARD_DEVICE_INPUT_DEFAULTS("ide_cd", ide_2nd)
 
 	/* internal ram */
 	MCFG_RAM_ADD(RAM_TAG)
@@ -615,14 +616,14 @@ static MACHINE_CONFIG_START( k286i, at_state )
 
 	MCFG_FRAGMENT_ADD( at_motherboard )
 	MCFG_ISA16_BUS_ADD("isabus", ":maincpu", isabus_intf)
-	MCFG_ISA16_SLOT_ADD("isabus","isa1", pc_isa16_cards, "cga", NULL, false)
-	MCFG_ISA16_SLOT_ADD("isabus","isa2", pc_isa16_cards, "fdc", NULL, false)
-	MCFG_ISA16_SLOT_ADD("isabus","isa3", pc_isa16_cards, "comat", NULL, false)
-	MCFG_ISA16_SLOT_ADD("isabus","isa4", pc_isa16_cards, NULL, NULL, false)
-	MCFG_ISA16_SLOT_ADD("isabus","isa5", pc_isa16_cards, NULL, NULL, false)
-	MCFG_ISA16_SLOT_ADD("isabus","isa6", pc_isa16_cards, NULL, NULL, false)
-	MCFG_ISA16_SLOT_ADD("isabus","isa7", pc_isa16_cards, NULL, NULL, false)
-	MCFG_ISA16_SLOT_ADD("isabus","isa8", pc_isa16_cards, NULL, NULL, false)
+	MCFG_ISA16_SLOT_ADD("isabus","isa1", pc_isa16_cards, "cga", false)
+	MCFG_ISA16_SLOT_ADD("isabus","isa2", pc_isa16_cards, "fdc", false)
+	MCFG_ISA16_SLOT_ADD("isabus","isa3", pc_isa16_cards, "comat", false)
+	MCFG_ISA16_SLOT_ADD("isabus","isa4", pc_isa16_cards, NULL, false)
+	MCFG_ISA16_SLOT_ADD("isabus","isa5", pc_isa16_cards, NULL, false)
+	MCFG_ISA16_SLOT_ADD("isabus","isa6", pc_isa16_cards, NULL, false)
+	MCFG_ISA16_SLOT_ADD("isabus","isa7", pc_isa16_cards, NULL, false)
+	MCFG_ISA16_SLOT_ADD("isabus","isa8", pc_isa16_cards, NULL, false)
 
 	/* internal ram */
 	MCFG_RAM_ADD(RAM_TAG)
@@ -654,14 +655,17 @@ static MACHINE_CONFIG_START( at586, at586_state )
 	MCFG_RAM_EXTRA_OPTIONS("1M,2M,8M,16M,32M,64M,128M,256M")
 
 	MCFG_PCI_BUS_ADD("pcibus", 0)
-	MCFG_PCI_BUS_DEVICE("pcibus:0", pci_devices, "i82439tx", NULL, &tx_config, 0, true)
-	MCFG_PCI_BUS_DEVICE("pcibus:1", pci_devices, "i82371ab", NULL, NULL,       0, true)
+	MCFG_PCI_BUS_DEVICE("pcibus:0", pci_devices, "i82439tx", true)
+	MCFG_DEVICE_CARD_CONFIG("i82439tx", &tx_config)
 
-	MCFG_ISA16_SLOT_ADD(":pcibus:1:i82371ab:isabus","isa1", pc_isa16_cards, "svga_et4k", NULL, false)
-	MCFG_ISA16_SLOT_ADD(":pcibus:1:i82371ab:isabus","isa2", pc_isa16_cards, NULL, NULL, false)
-	MCFG_ISA16_SLOT_ADD(":pcibus:1:i82371ab:isabus","isa3", pc_isa16_cards, NULL, NULL, false)
-	MCFG_ISA16_SLOT_ADD(":pcibus:1:i82371ab:isabus","isa4", pc_isa16_cards, NULL, NULL, false)
-	MCFG_ISA16_SLOT_ADD(":pcibus:1:i82371ab:isabus","isa5", pc_isa16_cards, "ide_cd", ide_2nd, false) //2nd-ary IDE
+	MCFG_PCI_BUS_DEVICE("pcibus:1", pci_devices, "i82371ab", true)
+
+	MCFG_ISA16_SLOT_ADD(":pcibus:1:i82371ab:isabus","isa1", pc_isa16_cards, "svga_et4k", false)
+	MCFG_ISA16_SLOT_ADD(":pcibus:1:i82371ab:isabus","isa2", pc_isa16_cards, NULL, false)
+	MCFG_ISA16_SLOT_ADD(":pcibus:1:i82371ab:isabus","isa3", pc_isa16_cards, NULL, false)
+	MCFG_ISA16_SLOT_ADD(":pcibus:1:i82371ab:isabus","isa4", pc_isa16_cards, NULL, false)
+	MCFG_ISA16_SLOT_ADD(":pcibus:1:i82371ab:isabus","isa5", pc_isa16_cards, "ide_cd", false) //2nd-ary IDE
+	MCFG_DEVICE_CARD_DEVICE_INPUT_DEFAULTS("ide_cd", ide_2nd)
 MACHINE_CONFIG_END
 
 static MACHINE_CONFIG_START( at586x3, at586_state )
@@ -674,14 +678,17 @@ static MACHINE_CONFIG_START( at586x3, at586_state )
 	MCFG_RAM_EXTRA_OPTIONS("1M,2M,8M,16M,32M,64M")
 
 	MCFG_PCI_BUS_ADD("pcibus", 0)
-	MCFG_PCI_BUS_DEVICE("pcibus:0", pci_devices, "i82439tx", NULL, &tx_config, 0, true)
-	MCFG_PCI_BUS_DEVICE("pcibus:1", pci_devices, "i82371sb", NULL, NULL,       0, true)
+	MCFG_PCI_BUS_DEVICE("pcibus:0", pci_devices, "i82439tx", true)
+	MCFG_DEVICE_CARD_CONFIG("i82439tx", &tx_config)
 
-	MCFG_ISA16_SLOT_ADD(":pcibus:1:i82371sb:isabus","isa1", pc_isa16_cards, "svga_et4k", NULL, false)
-	MCFG_ISA16_SLOT_ADD(":pcibus:1:i82371sb:isabus","isa2", pc_isa16_cards, NULL, NULL, false)
-	MCFG_ISA16_SLOT_ADD(":pcibus:1:i82371sb:isabus","isa3", pc_isa16_cards, NULL, NULL, false)
-	MCFG_ISA16_SLOT_ADD(":pcibus:1:i82371sb:isabus","isa4", pc_isa16_cards, NULL, NULL, false)
-	MCFG_ISA16_SLOT_ADD(":pcibus:1:i82371sb:isabus","isa5", pc_isa16_cards, "ide_cd", ide_2nd, false) //2nd-ary IDE
+	MCFG_PCI_BUS_DEVICE("pcibus:1", pci_devices, "i82371sb", true)
+
+	MCFG_ISA16_SLOT_ADD(":pcibus:1:i82371sb:isabus","isa1", pc_isa16_cards, "svga_et4k", false)
+	MCFG_ISA16_SLOT_ADD(":pcibus:1:i82371sb:isabus","isa2", pc_isa16_cards, NULL, false)
+	MCFG_ISA16_SLOT_ADD(":pcibus:1:i82371sb:isabus","isa3", pc_isa16_cards, NULL, false)
+	MCFG_ISA16_SLOT_ADD(":pcibus:1:i82371sb:isabus","isa4", pc_isa16_cards, NULL, false)
+	MCFG_ISA16_SLOT_ADD(":pcibus:1:i82371sb:isabus","isa5", pc_isa16_cards, "ide_cd", false) //2nd-ary IDE
+	MCFG_DEVICE_CARD_DEVICE_INPUT_DEFAULTS("ide_cd", ide_2nd)
 MACHINE_CONFIG_END
 
 static MACHINE_CONFIG_DERIVED( at386sx, atvga )

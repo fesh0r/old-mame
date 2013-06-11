@@ -43,8 +43,7 @@ void tandy2k_state::dma_request(int line, int state)
 void tandy2k_state::speaker_update()
 {
 	int level = !(m_spkrdata & m_outspkr);
-
-	speaker_level_w(m_speaker, level);
+	m_speaker->level_w(level);
 }
 
 READ8_MEMBER( tandy2k_state::videoram_r )
@@ -107,15 +106,15 @@ WRITE8_MEMBER( tandy2k_state::enable_w )
 	m_extclk = BIT(data, 1);
 
 	// m_speaker gate
-	pit8253_gate0_w(m_pit, BIT(data, 2));
+	m_pit->gate0_w(BIT(data, 2));
 
 	// m_speaker data
 	m_spkrdata = BIT(data, 3);
 	speaker_update();
 
 	// refresh and baud rate clocks
-	pit8253_gate1_w(m_pit, BIT(data, 4));
-	pit8253_gate2_w(m_pit, BIT(data, 4));
+	m_pit->gate1_w(BIT(data, 4));
+	m_pit->gate2_w(BIT(data, 4));
 
 	// FDC reset
 	if(BIT(data, 5))
@@ -273,7 +272,7 @@ static ADDRESS_MAP_START( tandy2k_io, AS_IO, 16, tandy2k_state )
 	AM_RANGE(0x00004, 0x00005) AM_READWRITE8(fldtc_r, fldtc_w, 0x00ff)
 	AM_RANGE(0x00010, 0x00013) AM_DEVREADWRITE8(I8251A_TAG, i8251_device, data_r, data_w, 0x00ff)
 	AM_RANGE(0x00030, 0x00033) AM_DEVICE8(I8272A_TAG, i8272a_device, map, 0x00ff)
-	AM_RANGE(0x00040, 0x00047) AM_DEVREADWRITE8_LEGACY(I8253_TAG, pit8253_r, pit8253_w, 0x00ff)
+	AM_RANGE(0x00040, 0x00047) AM_DEVREADWRITE8(I8253_TAG, pit8253_device, read, write, 0x00ff)
 	AM_RANGE(0x00052, 0x00053) AM_READ8(kbint_clr_r, 0x00ff)
 	AM_RANGE(0x00050, 0x00057) AM_DEVREADWRITE8(I8255A_TAG, i8255_device, read, write, 0x00ff)
 	AM_RANGE(0x00060, 0x00063) AM_DEVREADWRITE8(I8259A_0_TAG, pic8259_device, read, write, 0x00ff)
@@ -411,11 +410,11 @@ WRITE_LINE_MEMBER( tandy2k_state::txrdy_w )
 
 static const i8251_interface usart_intf =
 {
-	DEVCB_NULL,
-	DEVCB_NULL,
-	DEVCB_NULL,
-	DEVCB_NULL,
-	DEVCB_NULL,
+	DEVCB_DEVICE_LINE_MEMBER(RS232_TAG, serial_port_device, rx),
+	DEVCB_DEVICE_LINE_MEMBER(RS232_TAG, serial_port_device, tx),
+	DEVCB_DEVICE_LINE_MEMBER(RS232_TAG, rs232_port_device, dsr_r),
+	DEVCB_DEVICE_LINE_MEMBER(RS232_TAG, rs232_port_device, dtr_w),
+	DEVCB_DEVICE_LINE_MEMBER(RS232_TAG, rs232_port_device, rts_w),
 	DEVCB_DRIVER_LINE_MEMBER(tandy2k_state, rxrdy_w),
 	DEVCB_DRIVER_LINE_MEMBER(tandy2k_state, txrdy_w),
 	DEVCB_NULL,
@@ -443,7 +442,7 @@ WRITE_LINE_MEMBER( tandy2k_state::rfrqpulse_w )
 {
 }
 
-static const struct pit8253_config pit_intf =
+static const struct pit8253_interface pit_intf =
 {
 	{
 		{
@@ -606,6 +605,19 @@ static const centronics_interface centronics_intf =
 	DEVCB_NULL                                      // NOT BUSY output
 };
 
+//-------------------------------------------------
+//  rs232_port_interface rs232_intf
+//-------------------------------------------------
+
+static const rs232_port_interface rs232_intf =
+{
+	DEVCB_NULL,
+	DEVCB_NULL,
+	DEVCB_NULL,
+	DEVCB_NULL,
+	DEVCB_NULL
+};
+
 // Keyboard
 
 WRITE_LINE_MEMBER( tandy2k_state::kbdclk_w )
@@ -629,12 +641,6 @@ WRITE_LINE_MEMBER( tandy2k_state::kbddat_w )
 
 	m_kbddat = state;
 }
-
-static TANDY2K_KEYBOARD_INTERFACE( kb_intf )
-{
-	DEVCB_DRIVER_LINE_MEMBER(tandy2k_state, kbdclk_w),
-	DEVCB_DRIVER_LINE_MEMBER(tandy2k_state, kbddat_w)
-};
 
 // Machine Initialization
 
@@ -704,10 +710,11 @@ static MACHINE_CONFIG_START( tandy2k, tandy2k_state )
 	MCFG_PIC8259_ADD(I8259A_0_TAG, INPUTLINE(I80186_TAG, INPUT_LINE_INT0), VCC, NULL)
 	MCFG_PIC8259_ADD(I8259A_1_TAG, INPUTLINE(I80186_TAG, INPUT_LINE_INT1), VCC, NULL)
 	MCFG_I8272A_ADD(I8272A_TAG, true)
-	MCFG_FLOPPY_DRIVE_ADD(I8272A_TAG ":0", tandy2k_floppies, "525qd", 0, floppy_image_device::default_floppy_formats)
-	MCFG_FLOPPY_DRIVE_ADD(I8272A_TAG ":1", tandy2k_floppies, "525qd", 0, floppy_image_device::default_floppy_formats)
+	MCFG_FLOPPY_DRIVE_ADD(I8272A_TAG ":0", tandy2k_floppies, "525qd", floppy_image_device::default_floppy_formats)
+	MCFG_FLOPPY_DRIVE_ADD(I8272A_TAG ":1", tandy2k_floppies, "525qd", floppy_image_device::default_floppy_formats)
 	MCFG_CENTRONICS_PRINTER_ADD(CENTRONICS_TAG, standard_centronics)
-	MCFG_TANDY2K_KEYBOARD_ADD(kb_intf)
+	MCFG_RS232_PORT_ADD(RS232_TAG, rs232_intf, default_rs232_devices, NULL)
+	MCFG_TANDY2K_KEYBOARD_ADD(WRITELINE(tandy2k_state, kbdclk_w), WRITELINE(tandy2k_state, kbddat_w))
 
 	// software lists
 	MCFG_SOFTWARE_LIST_ADD("flop_list", "tandy2k")

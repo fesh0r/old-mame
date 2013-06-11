@@ -27,6 +27,27 @@ TIMER_CALLBACK_MEMBER(sorcerer_state::sorcerer_serial_tc)
 #endif
 
 
+void sorcerer_state::device_timer(emu_timer &timer, device_timer_id id, int param, void *ptr)
+{
+	switch (id)
+	{
+	case TIMER_SERIAL:
+#if SORCERER_USING_RS232
+		sorcerer_serial_tc(ptr, param);
+#endif
+		break;
+	case TIMER_CASSETTE:
+		sorcerer_cassette_tc(ptr, param);
+		break;
+	case TIMER_RESET:
+		sorcerer_reset(ptr, param);
+		break;
+	default:
+		assert_always(FALSE, "Unknown id in sorcerer_state::device_timer");
+	}
+}
+
+
 /* timer to read cassette waveforms */
 
 TIMER_CALLBACK_MEMBER(sorcerer_state::sorcerer_cassette_tc)
@@ -48,7 +69,7 @@ TIMER_CALLBACK_MEMBER(sorcerer_state::sorcerer_cassette_tc)
 				m_cass_data.input.level = cass_ws;
 				m_cass_data.input.bit = ((m_cass_data.input.length < 0x6) || (m_cass_data.input.length > 0x20)) ? 1 : 0;
 				m_cass_data.input.length = 0;
-				ay31015_set_input_pin( m_uart, AY31015_SI, m_cass_data.input.bit );
+				m_uart->set_input_pin(AY31015_SI, m_cass_data.input.bit);
 			}
 
 			/* saving a tape - convert the serial stream from the uart, into 1200 and 2400 Hz frequencies.
@@ -57,7 +78,7 @@ TIMER_CALLBACK_MEMBER(sorcerer_state::sorcerer_cassette_tc)
 			m_cass_data.output.length++;
 			if (!(m_cass_data.output.length & 0x1f))
 			{
-				cass_ws = ay31015_get_output_pin( m_uart, AY31015_SO );
+				cass_ws = m_uart->get_output_pin(AY31015_SO);
 				if (cass_ws != m_cass_data.output.bit)
 				{
 					m_cass_data.output.bit = cass_ws;
@@ -89,7 +110,7 @@ TIMER_CALLBACK_MEMBER(sorcerer_state::sorcerer_cassette_tc)
 					m_cass_data.input.length = 0;
 					m_cass_data.input.level = cass_ws;
 				}
-				ay31015_set_input_pin( m_uart, AY31015_SI, m_cass_data.input.bit );
+				m_uart->set_input_pin(AY31015_SI, m_cass_data.input.bit);
 			}
 
 			/* saving a tape - convert the serial stream from the uart, into 600 and 1200 Hz frequencies. */
@@ -97,7 +118,7 @@ TIMER_CALLBACK_MEMBER(sorcerer_state::sorcerer_cassette_tc)
 			m_cass_data.output.length++;
 			if (!(m_cass_data.output.length & 7))
 			{
-				cass_ws = ay31015_get_output_pin( m_uart, AY31015_SO );
+				cass_ws = m_uart->get_output_pin(AY31015_SO);
 				if (cass_ws != m_cass_data.output.bit)
 				{
 					m_cass_data.output.bit = cass_ws;
@@ -126,7 +147,7 @@ TIMER_CALLBACK_MEMBER(sorcerer_state::sorcerer_reset)
 
 WRITE8_MEMBER(sorcerer_state::sorcerer_fc_w)
 {
-	ay31015_set_transmit_data( m_uart, data );
+	m_uart->set_transmit_data(data);
 }
 
 
@@ -134,13 +155,13 @@ WRITE8_MEMBER(sorcerer_state::sorcerer_fd_w)
 {
 	/* Translate data to control signals */
 
-	ay31015_set_input_pin( m_uart, AY31015_CS, 0 );
-	ay31015_set_input_pin( m_uart, AY31015_NB1, data & 1);
-	ay31015_set_input_pin( m_uart, AY31015_NB2, (BIT(data, 1)) ? 1 : 0 );
-	ay31015_set_input_pin( m_uart, AY31015_TSB, (BIT(data, 2)) ? 1 : 0 );
-	ay31015_set_input_pin( m_uart, AY31015_EPS, (BIT(data, 3)) ? 1 : 0 );
-	ay31015_set_input_pin( m_uart, AY31015_NP,  (BIT(data, 4)) ? 1 : 0 );
-	ay31015_set_input_pin( m_uart, AY31015_CS, 1 );
+	m_uart->set_input_pin(AY31015_CS, 0);
+	m_uart->set_input_pin(AY31015_NB1, BIT(data, 0));
+	m_uart->set_input_pin(AY31015_NB2, BIT(data, 1));
+	m_uart->set_input_pin(AY31015_TSB, BIT(data, 2));
+	m_uart->set_input_pin(AY31015_EPS, BIT(data, 3));
+	m_uart->set_input_pin(AY31015_NP,  BIT(data, 4));
+	m_uart->set_input_pin(AY31015_CS, 1);
 }
 
 WRITE8_MEMBER(sorcerer_state::sorcerer_fe_w)
@@ -194,8 +215,8 @@ WRITE8_MEMBER(sorcerer_state::sorcerer_fe_w)
 	// bit 6 baud rate */
 	if (BIT(changed_bits, 6))
 	{
-		ay31015_set_receiver_clock( m_uart, (BIT(data, 6)) ? 19200.0 : 4800.0);
-		ay31015_set_transmitter_clock( m_uart, (BIT(data, 6)) ? 19200.0 : 4800.0);
+		m_uart->set_receiver_clock(BIT(data, 6) ? 19200.0 : 4800.0);
+		m_uart->set_transmitter_clock(BIT(data, 6) ? 19200.0 : 4800.0);
 	}
 }
 
@@ -225,9 +246,9 @@ WRITE8_MEMBER(sorcerer_state::sorcerer_ff_w)
 
 READ8_MEMBER(sorcerer_state::sorcerer_fc_r)
 {
-	UINT8 data = ay31015_get_received_data( m_uart );
-	ay31015_set_input_pin( m_uart, AY31015_RDAV, 0 );
-	ay31015_set_input_pin( m_uart, AY31015_RDAV, 1 );
+	UINT8 data = m_uart->get_received_data();
+	m_uart->set_input_pin(AY31015_RDAV, 0);
+	m_uart->set_input_pin(AY31015_RDAV, 1);
 	return data;
 }
 
@@ -236,13 +257,13 @@ READ8_MEMBER(sorcerer_state::sorcerer_fd_r)
 	/* set unused bits high */
 	UINT8 data = 0xe0;
 
-	ay31015_set_input_pin( m_uart, AY31015_SWE, 0 );
-	data |= ay31015_get_output_pin( m_uart, AY31015_TBMT ) ? 0x01 : 0;
-	data |= ay31015_get_output_pin( m_uart, AY31015_DAV  ) ? 0x02 : 0;
-	data |= ay31015_get_output_pin( m_uart, AY31015_OR   ) ? 0x04 : 0;
-	data |= ay31015_get_output_pin( m_uart, AY31015_FE   ) ? 0x08 : 0;
-	data |= ay31015_get_output_pin( m_uart, AY31015_PE   ) ? 0x10 : 0;
-	ay31015_set_input_pin( m_uart, AY31015_SWE, 1 );
+	m_uart->set_input_pin(AY31015_SWE, 0);
+	data |= m_uart->get_output_pin(AY31015_TBMT) ? 0x01 : 0;
+	data |= m_uart->get_output_pin(AY31015_DAV ) ? 0x02 : 0;
+	data |= m_uart->get_output_pin(AY31015_OR  ) ? 0x04 : 0;
+	data |= m_uart->get_output_pin(AY31015_FE  ) ? 0x08 : 0;
+	data |= m_uart->get_output_pin(AY31015_PE  ) ? 0x10 : 0;
+	m_uart->set_input_pin(AY31015_SWE, 1);
 
 	return data;
 }
@@ -338,9 +359,9 @@ SNAPSHOT_LOAD_MEMBER( sorcerer_state,sorcerer)
 
 void sorcerer_state::machine_start()
 {
-	m_cassette_timer = machine().scheduler().timer_alloc(timer_expired_delegate(FUNC(sorcerer_state::sorcerer_cassette_tc),this));
+	m_cassette_timer = timer_alloc(TIMER_CASSETTE);
 #if SORCERER_USING_RS232
-	m_serial_timer = machine().scheduler().timer_alloc(timer_expired_delegate(FUNC(sorcerer_state::sorcerer_serial_tc),this));
+	m_serial_timer = timer_alloc(TIMER_SERIAL);
 #endif
 
 	UINT16 endmem = 0xbfff;
@@ -365,9 +386,9 @@ void sorcerer_state::machine_start()
 
 MACHINE_START_MEMBER(sorcerer_state,sorcererd)
 {
-	m_cassette_timer = machine().scheduler().timer_alloc(timer_expired_delegate(FUNC(sorcerer_state::sorcerer_cassette_tc),this));
+	m_cassette_timer = timer_alloc(TIMER_CASSETTE);
 #if SORCERER_USING_RS232
-	m_serial_timer = machine().scheduler().timer_alloc(timer_expired_delegate(FUNC(sorcerer_state::sorcerer_serial_tc),this));
+	m_serial_timer = timer_alloc(TIMER_SERIAL);
 #endif
 
 	UINT16 endmem = 0xbbff;
@@ -404,7 +425,7 @@ void sorcerer_state::machine_reset()
 	sorcerer_fe_w(space, 0, 0, 0xff);
 
 	membank("boot")->set_entry(1);
-	machine().scheduler().timer_set(attotime::from_usec(10), timer_expired_delegate(FUNC(sorcerer_state::sorcerer_reset),this));
+	timer_set(attotime::from_usec(10), TIMER_RESET);
 }
 
 

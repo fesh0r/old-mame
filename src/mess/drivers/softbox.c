@@ -4,6 +4,83 @@
 
     http://mikenaberezny.com/hardware/pet-cbm/sse-softbox-z80-computer/
 
+
+    Using the Corvus hard disk
+    --------------------------
+
+    The SoftBox distribution disk (softbox-distrib.d80) is configured for
+    a CBM 8050 as CP/M drives A/B and a 10MB Corvus hard disk as drives C/D.
+
+    Use the CHDMAN utility to create a 10MB hard disk image for the Corvus:
+
+    $ chdman createhd -o /path/to/corvus10mb.chd -chs 358,3,20 -ss 512
+
+    Start the SoftBox emulator with the floppy and hard disk images mounted:
+
+    $ mess softbox -flop1 /path/to/softbox-distrib.d80 \
+                   -hard1 /path/to/corvus10mb.chd
+
+    Before the Corvus can be used under CP/M, it must be prepared
+    by running DIAG.COM and FORMAT.COM.
+
+    DIAG.COM
+
+    Enter "diag" (no arguments) at the CP/M prompt to run the Corvus diagnostics
+    program.  This program will perform the Corvus low-level format.
+
+    Select option 6 (Update Controller Code) at the menu.
+    Enter "corvb184.fmt" when prompted for the filename.
+    Enter "y" at the confirmation prompts.
+    Enter "1" for the Corvus drive number (two prompts).
+    After formatting is complete, it will return to the menu.
+
+    Select option 3 (Read Controller Code Version #) at the menu.
+    Enter "1" for the Corvus drive number.
+    It should report "V18.4AP" and then return to the menu.
+
+    Select option 9 to return to CP/M.
+
+    FORMAT.COM
+
+    Enter "format" (no arguments) at the CP/M prompt to run the SoftBox disk
+    format program.  This program will perform the CP/M filesystem format.
+
+    Enter drive letter "c" at the prompt.
+    Enter "y" to confirm the format.
+    After formatting is complete, it will prompt for a drive letter again.
+
+    Enter drive letter "d" at the prompt.
+    Enter "y" to confirm the format.
+    After formatting is complete, it will prompt for a drive letter again.
+
+    Press RETURN to return to CP/M.
+
+    STAT.COM
+
+    After all steps are completed, drives C and D should be usable from
+    CP/M.  Each drive is one half of the Corvus 10MB disk.  Running the
+    command "stat c: dsk:" should show 4712 kilobyte drive capacity.
+    Drive D should show the same information.
+
+
+    Using other Corvus hard disk sizes
+    ----------------------------------
+
+    The SoftBox supports 5, 10, and 20 MB hard disks.  The distribution disk
+    is configured for 10 MB as explained above.  To use other sizes, make
+    a new image with CHDMAN.  See the top of src/mess/includes/corvushd.h
+    for the parameters for the other drives.
+
+    After the image has been created and the SoftBox emulator started with
+    it mounted, the SoftBox BIOS needs to be told what size Corvus hard
+    disk is attached.  Use the NEWSYS.COM utility to reconfigure the drive
+    size.  When NEWSYS prompts for a source drive, enter "a" (the drive letter
+    of the CP/M distribution disk).  Use option "d" (Disk drive assignment)
+    to reconfigure the Corvus size.  After the change has been made, use option
+    "s" (Save new system) to write the configuration to the floppy (drive A) and
+    option "e" (Execute new system) to restart CP/M with the configuration.
+    DIAG.COM and FORMAT.COM can then be used to format the hard disk.
+
 */
 
 #include "includes/softbox.h"
@@ -51,7 +128,7 @@ static ADDRESS_MAP_START( softbox_io, AS_IO, 8, softbox_state )
 	AM_RANGE(0x0c, 0x0c) AM_WRITE(dbrg_w)
 	AM_RANGE(0x10, 0x13) AM_DEVREADWRITE(I8255_0_TAG, i8255_device, read, write)
 	AM_RANGE(0x14, 0x17) AM_DEVREADWRITE(I8255_1_TAG, i8255_device, read, write)
-	//AM_RANGE(0x18, 0x18) AM_WRITE(corvus_data_r, corvus_data_w)
+	AM_RANGE(0x18, 0x18) AM_READWRITE_LEGACY(corvus_hdc_data_r, corvus_hdc_data_w)
 ADDRESS_MAP_END
 
 
@@ -104,22 +181,22 @@ static const i8251_interface usart_intf =
 //  I8255A_INTERFACE( ppi0_intf )
 //-------------------------------------------------
 
-READ8_MEMBER( softbox_state::pia0_pa_r )
+READ8_MEMBER( softbox_state::ppi0_pa_r )
 {
 	return m_ieee->dio_r() ^ 0xff;
 }
 
-WRITE8_MEMBER( softbox_state::pia0_pb_w )
+WRITE8_MEMBER( softbox_state::ppi0_pb_w )
 {
 	m_ieee->dio_w(data ^ 0xff);
 }
 
 static I8255A_INTERFACE( ppi0_intf )
 {
-	DEVCB_DRIVER_MEMBER(softbox_state, pia0_pa_r),
+	DEVCB_DRIVER_MEMBER(softbox_state, ppi0_pa_r),
 	DEVCB_NULL, // Port A write
 	DEVCB_NULL, // Port B read
-	DEVCB_DRIVER_MEMBER(softbox_state, pia0_pb_w),
+	DEVCB_DRIVER_MEMBER(softbox_state, ppi0_pb_w),
 	DEVCB_INPUT_PORT("SW1"), // Port C read
 	DEVCB_NULL  // Port C write
 };
@@ -129,7 +206,7 @@ static I8255A_INTERFACE( ppi0_intf )
 //  I8255A_INTERFACE( ppi1_intf )
 //-------------------------------------------------
 
-READ8_MEMBER( softbox_state::pia1_pa_r )
+READ8_MEMBER( softbox_state::ppi1_pa_r )
 {
 	/*
 
@@ -160,7 +237,7 @@ READ8_MEMBER( softbox_state::pia1_pa_r )
 	return data;
 }
 
-WRITE8_MEMBER( softbox_state::pia1_pb_w )
+WRITE8_MEMBER( softbox_state::ppi1_pb_w )
 {
 	/*
 
@@ -187,7 +264,7 @@ WRITE8_MEMBER( softbox_state::pia1_pb_w )
 	m_ieee->ifc_w(!BIT(data, 7));
 }
 
-READ8_MEMBER( softbox_state::pia1_pc_r )
+READ8_MEMBER( softbox_state::ppi1_pc_r )
 {
 	/*
 
@@ -198,16 +275,22 @@ READ8_MEMBER( softbox_state::pia1_pc_r )
 	  PC2
 	  PC3
 	  PC4     Corvus READY
-	  PC5     Corvus ACTIVE
+	  PC5     Corvus DIRC
 	  PC6
 	  PC7
 
 	*/
 
-	return 0;
+	UINT8 status = corvus_hdc_status_r(space, 0);
+	UINT8 data = 0;
+
+	data |= (status & CONTROLLER_BUSY) ? 0 : 0x10;
+	data |= (status & CONTROLLER_DIRECTION) ? 0 : 0x20;
+
+	return data;
 }
 
-WRITE8_MEMBER( softbox_state::pia1_pc_w )
+WRITE8_MEMBER( softbox_state::ppi1_pc_w )
 {
 	/*
 
@@ -224,43 +307,19 @@ WRITE8_MEMBER( softbox_state::pia1_pc_w )
 
 	*/
 
-	output_set_led_value(LED_A, BIT(data, 0));
-	output_set_led_value(LED_B, BIT(data, 1));
-	output_set_led_value(LED_READY, BIT(data, 2));
+	output_set_led_value(LED_A, !BIT(data, 0));
+	output_set_led_value(LED_B, !BIT(data, 1));
+	output_set_led_value(LED_READY, !BIT(data, 2));
 }
 
 static I8255A_INTERFACE( ppi1_intf )
 {
-	DEVCB_DRIVER_MEMBER(softbox_state, pia1_pa_r),
+	DEVCB_DRIVER_MEMBER(softbox_state, ppi1_pa_r),
 	DEVCB_NULL, // Port A write
 	DEVCB_NULL, // Port B read
-	DEVCB_DRIVER_MEMBER(softbox_state, pia1_pb_w),
-	DEVCB_DRIVER_MEMBER(softbox_state, pia1_pc_r),
-	DEVCB_DRIVER_MEMBER(softbox_state, pia1_pc_w)
-};
-
-
-//-------------------------------------------------
-//  COM8116_INTERFACE( dbrg_intf )
-//-------------------------------------------------
-
-WRITE_LINE_MEMBER( softbox_state::fr_w )
-{
-	m_usart->receive_clock();
-}
-
-WRITE_LINE_MEMBER( softbox_state::ft_w )
-{
-	m_usart->transmit_clock();
-}
-
-static COM8116_INTERFACE( dbrg_intf )
-{
-	DEVCB_NULL, // fX/4
-	DEVCB_DRIVER_LINE_MEMBER(softbox_state, fr_w),
-	DEVCB_DRIVER_LINE_MEMBER(softbox_state, ft_w),
-	COM8116_DIVISORS_16X_5_0688MHz, // receiver
-	COM8116_DIVISORS_16X_5_0688MHz // transmitter
+	DEVCB_DRIVER_MEMBER(softbox_state, ppi1_pb_w),
+	DEVCB_DRIVER_MEMBER(softbox_state, ppi1_pc_r),
+	DEVCB_DRIVER_MEMBER(softbox_state, ppi1_pc_w)
 };
 
 
@@ -285,6 +344,21 @@ static const rs232_port_interface rs232_intf =
 
 
 //**************************************************************************
+//  MACHINE INITIALIZATION
+//**************************************************************************
+
+//-------------------------------------------------
+//  MACHINE_START( softbox )
+//-------------------------------------------------
+
+void softbox_state::machine_start()
+{
+	corvus_hdc_init(machine());
+}
+
+
+
+//**************************************************************************
 //  MACHINE CONFIGURATION
 //**************************************************************************
 
@@ -302,12 +376,14 @@ static MACHINE_CONFIG_START( softbox, softbox_state )
 	MCFG_I8251_ADD(I8251_TAG, usart_intf)
 	MCFG_I8255A_ADD(I8255_0_TAG, ppi0_intf)
 	MCFG_I8255A_ADD(I8255_1_TAG, ppi1_intf)
-	MCFG_COM8116_ADD(COM8116_TAG, XTAL_5_0688MHz, dbrg_intf)
+	MCFG_COM8116_ADD(COM8116_TAG, XTAL_5_0688MHz, NULL, DEVWRITELINE(I8251_TAG, i8251_device, rxc_w), DEVWRITELINE(I8251_TAG, i8251_device, txc_w))
 	MCFG_CBM_IEEE488_ADD("c8050")
-	MCFG_RS232_PORT_ADD(RS232_TAG, rs232_intf, default_rs232_devices, "serial_terminal", terminal)
+	MCFG_HARDDISK_ADD("harddisk1")
+	MCFG_RS232_PORT_ADD(RS232_TAG, rs232_intf, default_rs232_devices, "serial_terminal")
+	MCFG_DEVICE_CARD_DEVICE_INPUT_DEFAULTS("serial_terminal", terminal)
 
 	// software lists
-	//MCFG_SOFTWARE_LIST_ADD("flop_list", "softbox_flop")
+	MCFG_SOFTWARE_LIST_ADD("flop_list", "softbox")
 MACHINE_CONFIG_END
 
 
@@ -338,4 +414,4 @@ ROM_END
 //**************************************************************************
 
 //    YEAR  NAME    PARENT  COMPAT   MACHINE    INPUT    INIT    COMPANY   FULLNAME       FLAGS
-COMP( 1981, softbox,    0,      0,      softbox,        softbox, driver_device, 0,      "Small Systems Engineering",  "SoftBox",  GAME_NOT_WORKING | GAME_NO_SOUND_HW )
+COMP( 1981, softbox,    0,      0,      softbox,        softbox, driver_device, 0,      "Small Systems Engineering",  "SoftBox",  GAME_NO_SOUND_HW )

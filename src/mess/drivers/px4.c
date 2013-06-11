@@ -819,7 +819,7 @@ WRITE8_MEMBER(px4_state::px4_ioctlr_w)
 	output_set_value("led_1", BIT(data, 5)); // num lock
 	output_set_value("led_2", BIT(data, 6)); // "led 2"
 
-	speaker_level_w(m_speaker, BIT(data, 7));
+	m_speaker->level_w(BIT(data, 7));
 }
 
 
@@ -1293,10 +1293,10 @@ static MACHINE_CONFIG_START( px4, px4_state )
 	MCFG_CASSETTE_ADD("extcas", px4_cassette_interface)
 
 	// sio port
-	MCFG_EPSON_SIO_ADD("sio")
+	MCFG_EPSON_SIO_ADD("sio", NULL)
 
 	// rs232 port
-	MCFG_RS232_PORT_ADD("rs232", rs232_intf, default_rs232_devices, NULL, NULL)
+	MCFG_RS232_PORT_ADD("rs232", rs232_intf, default_rs232_devices, NULL)
 
 	// rom capsules
 	MCFG_CARTSLOT_ADD("capsule1")

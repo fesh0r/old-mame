@@ -315,7 +315,7 @@ void abc806_state::bankswitch()
 
 					program.install_read_bank(0x7000, 0x77ff, bank_name);
 					program.unmap_write(0x7000, 0x77ff);
-					program.install_readwrite_handler(0x7800, 0x7fff, 0, 0, read8_delegate(FUNC(abc806_state::charram_r),this), write8_delegate(FUNC(abc806_state::charram_w),this));
+					program.install_readwrite_handler(0x7800, 0x7fff, 0, 0, READ8_DELEGATE(abc806_state, charram_r), WRITE8_DELEGATE(abc806_state, charram_w));
 					membank(bank_name)->set_entry(0);
 					break;
 
@@ -350,7 +350,7 @@ void abc806_state::bankswitch()
 			if (start_addr == 0x7000)
 			{
 				program.install_readwrite_bank(0x7000, 0x77ff, bank_name);
-				program.install_readwrite_handler(0x7800, 0x7fff, 0, 0, read8_delegate(FUNC(abc806_state::charram_r), this), write8_delegate(FUNC(abc806_state::charram_w), this));
+				program.install_readwrite_handler(0x7800, 0x7fff, 0, 0, READ8_DELEGATE(abc806_state, charram_r), WRITE8_DELEGATE(abc806_state, charram_w));
 			}
 			else
 			{
@@ -440,7 +440,7 @@ static ADDRESS_MAP_START( abc800c_io, AS_IO, 8, abc800_state )
 	AM_RANGE(0x06, 0x06) AM_MIRROR(0x18) AM_WRITE(hrs_w)
 	AM_RANGE(0x07, 0x07) AM_MIRROR(0x18) AM_DEVREAD(ABCBUS_TAG, abcbus_slot_device, rst_r) AM_WRITE(hrc_w)
 	AM_RANGE(0x20, 0x23) AM_MIRROR(0x0c) AM_DEVREADWRITE(Z80DART_TAG, z80dart_device, ba_cd_r, ba_cd_w)
-	AM_RANGE(0x40, 0x43) AM_MIRROR(0x1c) AM_DEVREADWRITE(Z80SIO_TAG, z80dart_device, ba_cd_r, ba_cd_w)
+	AM_RANGE(0x40, 0x43) AM_MIRROR(0x1c) AM_DEVREADWRITE(Z80SIO_TAG, z80sio2_device, ba_cd_r, ba_cd_w)
 	AM_RANGE(0x60, 0x63) AM_MIRROR(0x1c) AM_DEVREADWRITE(Z80CTC_TAG, z80ctc_device, read, write)
 ADDRESS_MAP_END
 
@@ -501,7 +501,7 @@ static ADDRESS_MAP_START( abc802_io, AS_IO, 8, abc802_state )
 	AM_RANGE(0x31, 0x31) AM_MIRROR(0x06) AM_DEVREAD(MC6845_TAG, mc6845_device, register_r)
 	AM_RANGE(0x38, 0x38) AM_MIRROR(0x06) AM_DEVWRITE(MC6845_TAG, mc6845_device, address_w)
 	AM_RANGE(0x39, 0x39) AM_MIRROR(0x06) AM_DEVWRITE(MC6845_TAG, mc6845_device, register_w)
-	AM_RANGE(0x40, 0x43) AM_MIRROR(0x1c) AM_DEVREADWRITE(Z80SIO_TAG, z80dart_device, ba_cd_r, ba_cd_w)
+	AM_RANGE(0x40, 0x43) AM_MIRROR(0x1c) AM_DEVREADWRITE(Z80SIO_TAG, z80sio2_device, ba_cd_r, ba_cd_w)
 	AM_RANGE(0x60, 0x63) AM_MIRROR(0x1c) AM_DEVREADWRITE(Z80CTC_TAG, z80ctc_device, read, write)
 ADDRESS_MAP_END
 
@@ -553,7 +553,7 @@ static ADDRESS_MAP_START( abc806_io, AS_IO, 8, abc806_state )
 	AM_RANGE(0x37, 0x37) AM_MIRROR(0xff00) AM_MASK(0xff00) AM_READWRITE(cli_r, sso_w)
 	AM_RANGE(0x38, 0x38) AM_MIRROR(0xff00) AM_DEVWRITE(MC6845_TAG, mc6845_device, address_w)
 	AM_RANGE(0x39, 0x39) AM_MIRROR(0xff00) AM_DEVWRITE(MC6845_TAG, mc6845_device, register_w)
-	AM_RANGE(0x40, 0x43) AM_MIRROR(0xff1c) AM_DEVREADWRITE(Z80SIO_TAG, z80dart_device, ba_cd_r, ba_cd_w)
+	AM_RANGE(0x40, 0x43) AM_MIRROR(0xff1c) AM_DEVREADWRITE(Z80SIO_TAG, z80sio2_device, ba_cd_r, ba_cd_w)
 	AM_RANGE(0x60, 0x63) AM_MIRROR(0xff1c) AM_DEVREADWRITE(Z80CTC_TAG, z80ctc_device, read, write)
 ADDRESS_MAP_END
 
@@ -632,7 +632,7 @@ WRITE_LINE_MEMBER( abc800_state::ctc_z0_w )
 {
 	if (BIT(m_sb, 2))
 	{
-		z80dart_txca_w(m_sio, state);
+		m_sio->txca_w(state);
 		m_ctc->trg3(state);
 	}
 
@@ -643,20 +643,20 @@ WRITE_LINE_MEMBER( abc800_state::ctc_z1_w )
 {
 	if (BIT(m_sb, 3))
 	{
-		z80dart_rxca_w(m_sio, state);
+		m_sio->rxca_w(state);
 	}
 
 	if (BIT(m_sb, 4))
 	{
-		z80dart_txca_w(m_sio, state);
+		m_sio->txca_w(state);
 		m_ctc->trg3(state);
 	}
 }
 
 WRITE_LINE_MEMBER( abc800_state::ctc_z2_w )
 {
-	z80dart_rxca_w(m_dart, state);
-	z80dart_txca_w(m_dart, state);
+	m_dart->rxca_w(state);
+	m_dart->txca_w(state);
 }
 
 static Z80CTC_INTERFACE( ctc_intf )
@@ -669,7 +669,7 @@ static Z80CTC_INTERFACE( ctc_intf )
 
 
 //-------------------------------------------------
-//  Z80DART_INTERFACE( sio_intf )
+//  Z80SIO_INTERFACE( sio_intf )
 //-------------------------------------------------
 
 void abc800_state::clock_cassette(int state)
@@ -679,7 +679,7 @@ void abc800_state::clock_cassette(int state)
 	if (m_ctc_z0 && !state)
 	{
 		m_sio_txcb = !m_sio_txcb;
-		z80dart_txcb_w(m_sio, !m_sio_txcb);
+		m_sio->txcb_w(!m_sio_txcb);
 
 		if (m_sio_txdb || m_sio_txcb)
 		{
@@ -692,7 +692,7 @@ void abc800_state::clock_cassette(int state)
 			m_tape_ctr++;
 		}
 
-		z80dart_rxcb_w(m_sio, m_tape_ctr == 15);
+		m_sio->rxcb_w(m_tape_ctr == 15);
 	}
 
 	m_ctc_z0 = state;
@@ -736,7 +736,7 @@ WRITE_LINE_MEMBER( abc800_state::sio_rtsb_w )
 	}
 }
 
-static Z80DART_INTERFACE( sio_intf )
+static Z80SIO_INTERFACE( sio_intf )
 {
 	0, 0, 0, 0,
 
@@ -773,8 +773,8 @@ static Z80DART_INTERFACE( abc800_dart_intf )
 	DEVCB_NULL,
 	DEVCB_NULL,
 
-	DEVCB_DEVICE_LINE_MEMBER(ABC800_KEYBOARD_TAG, abc800_keyboard_device, txd_r),
-	DEVCB_DEVICE_LINE_MEMBER(ABC800_KEYBOARD_TAG, abc800_keyboard_device, rxd_w),
+	DEVCB_DEVICE_LINE_MEMBER(ABC_KEYBOARD_PORT_TAG, abc_keyboard_port_device, rxd_r),
+	DEVCB_DEVICE_LINE_MEMBER(ABC_KEYBOARD_PORT_TAG, abc_keyboard_port_device, txd_w),
 	DEVCB_NULL,
 	DEVCB_NULL,
 	DEVCB_NULL,
@@ -811,8 +811,8 @@ static Z80DART_INTERFACE( abc802_dart_intf )
 	DEVCB_NULL,
 	DEVCB_NULL,
 
-	DEVCB_DEVICE_LINE_MEMBER(ABC77_TAG, abc77_device, txd_r),
-	DEVCB_DEVICE_LINE_MEMBER(ABC77_TAG, abc77_device, rxd_w),
+	DEVCB_DEVICE_LINE_MEMBER(ABC_KEYBOARD_PORT_TAG, abc_keyboard_port_device, rxd_r),
+	DEVCB_DEVICE_LINE_MEMBER(ABC_KEYBOARD_PORT_TAG, abc_keyboard_port_device, txd_w),
 	DEVCB_DRIVER_LINE_MEMBER(abc802_state, lrs_w),
 	DEVCB_DRIVER_LINE_MEMBER(abc802_state, mux80_40_w),
 	DEVCB_NULL,
@@ -844,36 +844,14 @@ static Z80DART_INTERFACE( abc806_dart_intf )
 	DEVCB_NULL,
 	DEVCB_NULL,
 
-	DEVCB_DEVICE_LINE_MEMBER(ABC77_TAG, abc77_device, txd_r),
-	DEVCB_DEVICE_LINE_MEMBER(ABC77_TAG, abc77_device, rxd_w),
+	DEVCB_DEVICE_LINE_MEMBER(ABC_KEYBOARD_PORT_TAG, abc_keyboard_port_device, rxd_r),
+	DEVCB_DEVICE_LINE_MEMBER(ABC_KEYBOARD_PORT_TAG, abc_keyboard_port_device, txd_w),
 	DEVCB_DRIVER_LINE_MEMBER(abc806_state, keydtr_w),
 	DEVCB_NULL,
 	DEVCB_NULL,
 	DEVCB_NULL,
 
 	DEVCB_CPU_INPUT_LINE(Z80_TAG, INPUT_LINE_IRQ0)
-};
-
-
-//-------------------------------------------------
-//  ABC800_KEYBOARD_INTERFACE( abc800_kb_intf )
-//-------------------------------------------------
-
-static ABC800_KEYBOARD_INTERFACE( abc800_kb_intf )
-{
-	DEVCB_DEVICE_LINE(Z80DART_TAG, z80dart_rxtxcb_w),
-	DEVCB_DEVICE_LINE(Z80DART_TAG, z80dart_dcdb_w)
-};
-
-
-//-------------------------------------------------
-//  ABC77_INTERFACE( kb_intf )
-//-------------------------------------------------
-
-static ABC77_INTERFACE( kb_intf )
-{
-	DEVCB_DEVICE_LINE(Z80DART_TAG, z80dart_rxtxcb_w),
-	DEVCB_DEVICE_LINE(Z80DART_TAG, z80dart_dcdb_w)
 };
 
 
@@ -901,19 +879,6 @@ static const cassette_interface cass_intf =
 	(cassette_state)(CASSETTE_STOPPED | CASSETTE_MOTOR_DISABLED | CASSETTE_SPEAKER_MUTED),
 	NULL,
 	NULL
-};
-
-
-//-------------------------------------------------
-//  ABCBUS_INTERFACE( abcbus_intf )
-//-------------------------------------------------
-
-static ABCBUS_INTERFACE( abcbus_intf )
-{
-	DEVCB_NULL,
-	DEVCB_NULL,
-	DEVCB_NULL,
-	DEVCB_NULL
 };
 
 
@@ -1031,10 +996,10 @@ void abc800_state::machine_reset()
 	m_fetch_charram = 0;
 	bankswitch();
 
-	m_dart->ri_w(0, 1);
+	m_dart->ria_w(1);
 
 	// 50/60 Hz
-	m_dart->cts_w(1, 0); // 0 = 50Hz, 1 = 60Hz
+	m_dart->ctsb_w(0); // 0 = 50Hz, 1 = 60Hz
 
 	m_dfd_in = 0;
 }
@@ -1083,16 +1048,16 @@ void abc802_state::machine_reset()
 	bankswitch();
 
 	// clear screen time out (S1)
-	z80dart_dcdb_w(m_sio, BIT(config, 0));
+	m_sio->dcdb_w(BIT(config, 0));
 
 	// unknown (S2)
-	z80dart_ctsb_w(m_sio, BIT(config, 1));
+	m_sio->ctsb_w(BIT(config, 1));
 
 	// 40/80 char (S3)
-	m_dart->ri_w(0, BIT(config, 2)); // 0 = 40, 1 = 80
+	m_dart->ria_w(BIT(config, 2)); // 0 = 40, 1 = 80
 
 	// 50/60 Hz
-	m_dart->cts_w(1, BIT(config, 3)); // 0 = 50Hz, 1 = 60Hz
+	m_dart->ctsb_w(BIT(config, 3)); // 0 = 50Hz, 1 = 60Hz
 
 	m_dfd_in = 0;
 }
@@ -1170,10 +1135,10 @@ void abc806_state::machine_reset()
 	m_rtc->clk_w(1);
 	m_rtc->dio_w(1);
 
-	m_dart->ri_w(0, 1);
+	m_dart->ria_w(1);
 
 	// 50/60 Hz
-	m_dart->cts_w(1, 0); // 0 = 50Hz, 1 = 60Hz
+	m_dart->ctsb_w(0); // 0 = 50Hz, 1 = 60Hz
 
 	m_dfd_in = 0;
 }
@@ -1209,12 +1174,13 @@ static MACHINE_CONFIG_START( abc800c, abc800c_state )
 	MCFG_Z80SIO2_ADD(Z80SIO_TAG, ABC800_X01/2/2, sio_intf)
 	MCFG_Z80DART_ADD(Z80DART_TAG, ABC800_X01/2/2, abc800_dart_intf)
 	MCFG_CASSETTE_ADD("cassette", cass_intf)
-	MCFG_RS232_PORT_ADD(RS232_A_TAG, rs232a_intf, default_rs232_devices, NULL, NULL)
-	MCFG_RS232_PORT_ADD(RS232_B_TAG, rs232b_intf, default_rs232_devices, NULL, NULL)
-	MCFG_ABC800_KEYBOARD_ADD(abc800_kb_intf)
+	MCFG_RS232_PORT_ADD(RS232_A_TAG, rs232a_intf, default_rs232_devices, NULL)
+	MCFG_RS232_PORT_ADD(RS232_B_TAG, rs232b_intf, default_rs232_devices, NULL)
+	MCFG_ABC_KEYBOARD_PORT_ADD("abc800", DEVWRITELINE(Z80DART_TAG, z80dart_device, rxtxcb_w), DEVWRITELINE(Z80DART_TAG, z80dart_device, dcdb_w))
 
 	// ABC bus
-	MCFG_ABCBUS_SLOT_ADD(ABCBUS_TAG, abcbus_intf, abcbus_cards, "fast", abc830_fast)
+	MCFG_ABCBUS_SLOT_ADD(ABCBUS_TAG, abcbus_cards, "fast")
+	MCFG_DEVICE_CARD_DEVICE_INPUT_DEFAULTS("fast", abc830_fast)
 
 	// internal ram
 	MCFG_RAM_ADD(RAM_TAG)
@@ -1251,12 +1217,13 @@ static MACHINE_CONFIG_START( abc800m, abc800m_state )
 	MCFG_Z80SIO2_ADD(Z80SIO_TAG, ABC800_X01/2/2, sio_intf)
 	MCFG_Z80DART_ADD(Z80DART_TAG, ABC800_X01/2/2, abc800_dart_intf)
 	MCFG_CASSETTE_ADD("cassette", cass_intf)
-	MCFG_RS232_PORT_ADD(RS232_A_TAG, rs232a_intf, default_rs232_devices, NULL, NULL)
-	MCFG_RS232_PORT_ADD(RS232_B_TAG, rs232b_intf, default_rs232_devices, NULL, NULL)
-	MCFG_ABC800_KEYBOARD_ADD(abc800_kb_intf)
+	MCFG_RS232_PORT_ADD(RS232_A_TAG, rs232a_intf, default_rs232_devices, NULL)
+	MCFG_RS232_PORT_ADD(RS232_B_TAG, rs232b_intf, default_rs232_devices, NULL)
+	MCFG_ABC_KEYBOARD_PORT_ADD("abc800", DEVWRITELINE(Z80DART_TAG, z80dart_device, rxtxcb_w), DEVWRITELINE(Z80DART_TAG, z80dart_device, dcdb_w))
 
 	// ABC bus
-	MCFG_ABCBUS_SLOT_ADD(ABCBUS_TAG, abcbus_intf, abcbus_cards, "fast", abc830_fast)
+	MCFG_ABCBUS_SLOT_ADD(ABCBUS_TAG, abcbus_cards, "fast")
+	MCFG_DEVICE_CARD_DEVICE_INPUT_DEFAULTS("fast", abc830_fast)
 
 	// internal ram
 	MCFG_RAM_ADD(RAM_TAG)
@@ -1293,12 +1260,13 @@ static MACHINE_CONFIG_START( abc802, abc802_state )
 	MCFG_Z80SIO2_ADD(Z80SIO_TAG, ABC800_X01/2/2, sio_intf)
 	MCFG_Z80DART_ADD(Z80DART_TAG, ABC800_X01/2/2, abc802_dart_intf)
 	MCFG_CASSETTE_ADD("cassette", cass_intf)
-	MCFG_RS232_PORT_ADD(RS232_A_TAG, rs232a_intf, default_rs232_devices, NULL, NULL)
-	MCFG_RS232_PORT_ADD(RS232_B_TAG, rs232b_intf, default_rs232_devices, NULL, NULL)
-	MCFG_ABC55_ADD(kb_intf)
+	MCFG_RS232_PORT_ADD(RS232_A_TAG, rs232a_intf, default_rs232_devices, NULL)
+	MCFG_RS232_PORT_ADD(RS232_B_TAG, rs232b_intf, default_rs232_devices, NULL)
+	MCFG_ABC_KEYBOARD_PORT_ADD("abc55", DEVWRITELINE(Z80DART_TAG, z80dart_device, rxtxcb_w), DEVWRITELINE(Z80DART_TAG, z80dart_device, dcdb_w))
 
 	// ABC bus
-	MCFG_ABCBUS_SLOT_ADD(ABCBUS_TAG, abcbus_intf, abcbus_cards, "fast", abc834_fast)
+	MCFG_ABCBUS_SLOT_ADD(ABCBUS_TAG, abcbus_cards, "fast")
+	MCFG_DEVICE_CARD_DEVICE_INPUT_DEFAULTS("fast", abc834_fast)
 
 	// internal ram
 	MCFG_RAM_ADD(RAM_TAG)
@@ -1325,17 +1293,18 @@ static MACHINE_CONFIG_START( abc806, abc806_state )
 	MCFG_Z80CTC_ADD(Z80CTC_TAG, ABC800_X01/2/2, ctc_intf)
 	MCFG_Z80SIO2_ADD(Z80SIO_TAG, ABC800_X01/2/2, sio_intf)
 	MCFG_Z80DART_ADD(Z80DART_TAG, ABC800_X01/2/2, abc806_dart_intf)
-	MCFG_RS232_PORT_ADD(RS232_A_TAG, rs232a_intf, default_rs232_devices, NULL, NULL)
-	MCFG_RS232_PORT_ADD(RS232_B_TAG, rs232b_intf, default_rs232_devices, NULL, NULL)
-	MCFG_ABC77_ADD(kb_intf)
+	MCFG_RS232_PORT_ADD(RS232_A_TAG, rs232a_intf, default_rs232_devices, NULL)
+	MCFG_RS232_PORT_ADD(RS232_B_TAG, rs232b_intf, default_rs232_devices, NULL)
+	MCFG_ABC_KEYBOARD_PORT_ADD("abc77", DEVWRITELINE(Z80DART_TAG, z80dart_device, rxtxcb_w), DEVWRITELINE(Z80DART_TAG, z80dart_device, dcdb_w))
 
 	// ABC bus
-	MCFG_ABCBUS_SLOT_ADD(ABCBUS_TAG, abcbus_intf, abcbus_cards, "fast", abc832_fast)
+	MCFG_ABCBUS_SLOT_ADD(ABCBUS_TAG, abcbus_cards, "fast")
+	MCFG_DEVICE_CARD_DEVICE_INPUT_DEFAULTS("fast", abc832_fast)
 
 	// internal ram
 	MCFG_RAM_ADD(RAM_TAG)
-	MCFG_RAM_DEFAULT_SIZE("160K") // 32KB + 128KB
-	MCFG_RAM_EXTRA_OPTIONS("544K") // 32KB + 512KB
+	MCFG_RAM_DEFAULT_SIZE("128K")
+	MCFG_RAM_EXTRA_OPTIONS("512K")
 
 	// software list
 	MCFG_SOFTWARE_LIST_ADD("flop_list", "abc806")
