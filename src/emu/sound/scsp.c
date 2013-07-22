@@ -30,6 +30,7 @@
 #include "emu.h"
 #include "scsp.h"
 #include "scspdsp.h"
+#include "devlegcy.h"
 
 
 #define ICLIP16(x) (x<-32768)?-32768:((x>32767)?32767:x)
@@ -1492,7 +1493,7 @@ READ16_DEVICE_HANDLER( scsp_midi_out_r )
 const device_type SCSP = &device_creator<scsp_device>;
 
 scsp_device::scsp_device(const machine_config &mconfig, const char *tag, device_t *owner, UINT32 clock)
-	: device_t(mconfig, SCSP, "SCSP", tag, owner, clock),
+	: device_t(mconfig, SCSP, "SCSP", tag, owner, clock, "scsp", __FILE__),
 		device_sound_interface(mconfig, *this)
 {
 	m_token = global_alloc_clear(scsp_state);

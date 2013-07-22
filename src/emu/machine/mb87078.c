@@ -70,6 +70,7 @@
 
 #include "emu.h"
 #include "machine/mb87078.h"
+#include "devlegcy.h"
 
 struct mb87078_state
 {
@@ -268,7 +269,7 @@ static DEVICE_RESET( mb87078 )
 const device_type MB87078 = &device_creator<mb87078_device>;
 
 mb87078_device::mb87078_device(const machine_config &mconfig, const char *tag, device_t *owner, UINT32 clock)
-	: device_t(mconfig, MB87078, "Fujitsu MB87078", tag, owner, clock)
+	: device_t(mconfig, MB87078, "Fujitsu MB87078", tag, owner, clock, "mb87078", __FILE__)
 {
 	m_token = global_alloc_clear(mb87078_state);
 }

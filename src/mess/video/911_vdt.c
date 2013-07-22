@@ -15,6 +15,7 @@ TODO:
 #include "911_chr.h"
 #include "911_key.h"
 #include "sound/beep.h"
+#include "devlegcy.h"
 
 
 
@@ -271,7 +272,7 @@ static DEVICE_START( vdt911 )
 const device_type VDT911 = &device_creator<vdt911_device>;
 
 vdt911_device::vdt911_device(const machine_config &mconfig, const char *tag, device_t *owner, UINT32 clock)
-	: device_t(mconfig, VDT911, "911 VDT", tag, owner, clock)
+	: device_t(mconfig, VDT911, "911 VDT", tag, owner, clock, "vdt911", __FILE__)
 {
 	m_token = global_alloc_clear(vdt_t);
 }

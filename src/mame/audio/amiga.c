@@ -11,6 +11,7 @@
 #include "emu.h"
 #include "includes/amiga.h"
 #include "cpu/m68000/m68000.h"
+#include "devlegcy.h"
 
 
 /*************************************
@@ -280,7 +281,7 @@ static DEVICE_START( amiga_sound )
 const device_type AMIGA = &device_creator<amiga_sound_device>;
 
 amiga_sound_device::amiga_sound_device(const machine_config &mconfig, const char *tag, device_t *owner, UINT32 clock)
-	: device_t(mconfig, AMIGA, "Amiga Paula", tag, owner, clock),
+	: device_t(mconfig, AMIGA, "Amiga Paula", tag, owner, clock, "amiga_paula", __FILE__),
 		device_sound_interface(mconfig, *this)
 {
 	m_token = global_alloc_clear(amiga_audio);

@@ -8,6 +8,7 @@
 #include "cpu/m6502/m6502.h"
 #include "cpu/mcs48/mcs48.h"
 #include "machine/decocass_tape.h"
+#include "devlegcy.h"
 
 #define LOG_CASSETTE_STATE      0
 
@@ -431,7 +432,7 @@ static DEVICE_RESET( decocass_tape )
 const device_type DECOCASS_TAPE = &device_creator<decocass_tape_device>;
 
 decocass_tape_device::decocass_tape_device(const machine_config &mconfig, const char *tag, device_t *owner, UINT32 clock)
-	: device_t(mconfig, DECOCASS_TAPE, "DECO Cassette Tape", tag, owner, clock)
+	: device_t(mconfig, DECOCASS_TAPE, "DECO Cassette Tape", tag, owner, clock, "decocass_tape", __FILE__)
 {
 	m_token = global_alloc_clear(tape_state);
 }

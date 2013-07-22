@@ -5,9 +5,14 @@
 
 *************************************************************************/
 
-#include "machine/taitoio.h"
 #include "audio/taitosnd.h"
 #include "machine/eeprom.h"
+#include "machine/taitoio.h"
+#include "video/tc0100scn.h"
+#include "video/tc0110pcr.h"
+#include "video/tc0150rod.h"
+#include "video/tc0480scp.h"
+
 
 class taitoz_state : public driver_device
 {
@@ -28,6 +33,7 @@ public:
 		m_tc0480scp(*this, "tc0480scp"),
 		m_tc0150rod(*this, "tc0150rod"),
 		m_tc0100scn(*this, "tc0100scn"),
+		m_tc0110pcr(*this, "tc0110pcr"),
 		m_tc0220ioc(*this, "tc0220ioc"),
 		m_tc0510nio(*this, "tc0510nio"),
 		m_tc0140syt(*this, "tc0140syt") { }
@@ -54,6 +60,7 @@ public:
 	optional_device<tc0480scp_device> m_tc0480scp;
 	optional_device<tc0150rod_device> m_tc0150rod;
 	optional_device<tc0100scn_device> m_tc0100scn;
+	optional_device<tc0110pcr_device> m_tc0110pcr;
 	optional_device<tc0220ioc_device> m_tc0220ioc;
 	optional_device<tc0510nio_device> m_tc0510nio;
 	required_device<tc0140syt_device> m_tc0140syt;

@@ -231,7 +231,9 @@ Hang Pilot (uses an unknown but similar video board)                12W         
 #include "sound/k056800.h"
 #include "video/voodoo.h"
 #include "video/gticlub.h"
-#include "video/konicdev.h"
+#include "video/k001604.h"
+#include "drivlgcy.h"
+#include "scrlegcy.h"
 
 #include "rendlay.h"
 
@@ -248,6 +250,7 @@ public:
 		m_work_ram(*this, "work_ram"),
 		m_maincpu(*this, "maincpu"),
 		m_audiocpu(*this, "audiocpu"),
+		m_k056800(*this, "k056800"),
 		m_dsp(*this, "dsp"),
 		m_dsp2(*this, "dsp2"),
 		m_adc1038(*this, "adc1038"),
@@ -256,6 +259,7 @@ public:
 	required_shared_ptr<UINT32> m_work_ram;
 	required_device<cpu_device> m_maincpu;
 	required_device<cpu_device> m_audiocpu;
+	required_device<k056800_device> m_k056800;
 	required_device<cpu_device> m_dsp;
 	optional_device<cpu_device> m_dsp2;
 	required_device<adc1038_device> m_adc1038;
@@ -310,39 +314,39 @@ WRITE_LINE_MEMBER(gticlub_state::voodoo_vblank_1)
 
 READ32_MEMBER(gticlub_state::gticlub_k001604_tile_r)
 {
-	device_t *k001604 = machine().device(get_cgboard_id() ? "k001604_2" : "k001604_1");
-	return k001604_tile_r(k001604, space, offset, mem_mask);
+	k001604_device *k001604 = machine().device<k001604_device>(get_cgboard_id() ? "k001604_2" : "k001604_1");
+	return k001604->tile_r(space, offset, mem_mask);
 }
 
 WRITE32_MEMBER(gticlub_state::gticlub_k001604_tile_w)
 {
-	device_t *k001604 = machine().device(get_cgboard_id() ? "k001604_2" : "k001604_1");
-	k001604_tile_w(k001604, space, offset, data, mem_mask);
+	k001604_device *k001604 = machine().device<k001604_device>(get_cgboard_id() ? "k001604_2" : "k001604_1");
+	k001604->tile_w(space, offset, data, mem_mask);
 }
 
 
 READ32_MEMBER(gticlub_state::gticlub_k001604_char_r)
 {
-	device_t *k001604 = machine().device(get_cgboard_id() ? "k001604_2" : "k001604_1");
-	return k001604_char_r(k001604, space, offset, mem_mask);
+	k001604_device *k001604 = machine().device<k001604_device>(get_cgboard_id() ? "k001604_2" : "k001604_1");
+	return k001604->char_r(space, offset, mem_mask);
 }
 
 WRITE32_MEMBER(gticlub_state::gticlub_k001604_char_w)
 {
-	device_t *k001604 = machine().device(get_cgboard_id() ? "k001604_2" : "k001604_1");
-	k001604_char_w(k001604, space, offset, data, mem_mask);
+	k001604_device *k001604 = machine().device<k001604_device>(get_cgboard_id() ? "k001604_2" : "k001604_1");
+	k001604->char_w(space, offset, data, mem_mask);
 }
 
 READ32_MEMBER(gticlub_state::gticlub_k001604_reg_r)
 {
-	device_t *k001604 = machine().device(get_cgboard_id() ? "k001604_2" : "k001604_1");
-	return k001604_reg_r(k001604, space, offset, mem_mask);
+	k001604_device *k001604 = machine().device<k001604_device>(get_cgboard_id() ? "k001604_2" : "k001604_1");
+	return k001604->reg_r(space, offset, mem_mask);
 }
 
 WRITE32_MEMBER(gticlub_state::gticlub_k001604_reg_w)
 {
-	device_t *k001604 = machine().device(get_cgboard_id() ? "k001604_2" : "k001604_1");
-	k001604_reg_w(k001604, space, offset, data, mem_mask);
+	k001604_device *k001604 = machine().device<k001604_device>(get_cgboard_id() ? "k001604_2" : "k001604_1");
+	k001604->reg_w(space, offset, data, mem_mask);
 }
 
 
@@ -449,9 +453,9 @@ static ADDRESS_MAP_START( gticlub_map, AS_PROGRAM, 32, gticlub_state )
 	AM_RANGE(0x7e000000, 0x7e003fff) AM_READWRITE8(sysreg_r, sysreg_w, 0xffffffff)
 	AM_RANGE(0x7e008000, 0x7e009fff) AM_DEVREADWRITE8("k056230", k056230_device, k056230_r, k056230_w, 0xffffffff)
 	AM_RANGE(0x7e00a000, 0x7e00bfff) AM_DEVREADWRITE("k056230", k056230_device, lanc_ram_r, lanc_ram_w)
-	AM_RANGE(0x7e00c000, 0x7e00c007) AM_DEVWRITE_LEGACY("k056800", k056800_host_w)
-	AM_RANGE(0x7e00c000, 0x7e00c007) AM_DEVREAD_LEGACY("k056800", k056800_host_r)       // Hang Pilot
-	AM_RANGE(0x7e00c008, 0x7e00c00f) AM_DEVREAD_LEGACY("k056800", k056800_host_r)
+	AM_RANGE(0x7e00c000, 0x7e00c007) AM_DEVWRITE("k056800", k056800_device, host_w)
+	AM_RANGE(0x7e00c000, 0x7e00c007) AM_DEVREAD("k056800", k056800_device, host_r)       // Hang Pilot
+	AM_RANGE(0x7e00c008, 0x7e00c00f) AM_DEVREAD("k056800", k056800_device, host_r)
 	AM_RANGE(0x7f000000, 0x7f3fffff) AM_ROM AM_REGION("user2", 0)   /* Data ROM */
 	AM_RANGE(0x7f800000, 0x7f9fffff) AM_ROM AM_SHARE("share2")
 	AM_RANGE(0x7fe00000, 0x7fffffff) AM_ROM AM_REGION("user1", 0) AM_SHARE("share2")    /* Program ROM */
@@ -462,7 +466,7 @@ ADDRESS_MAP_END
 static ADDRESS_MAP_START( sound_memmap, AS_PROGRAM, 16, gticlub_state )
 	AM_RANGE(0x000000, 0x07ffff) AM_ROM
 	AM_RANGE(0x200000, 0x20ffff) AM_RAM
-	AM_RANGE(0x300000, 0x30000f) AM_DEVREADWRITE_LEGACY("k056800", k056800_sound_r, k056800_sound_w)
+	AM_RANGE(0x300000, 0x30000f) AM_DEVREADWRITE("k056800", k056800_device, sound_r, sound_w)
 	AM_RANGE(0x400000, 0x400fff) AM_DEVREADWRITE("rfsnd", rf5c400_device, rf5c400_r, rf5c400_w)      /* Ricoh RF5C400 */
 	AM_RANGE(0x580000, 0x580001) AM_WRITENOP
 	AM_RANGE(0x600000, 0x600001) AM_WRITENOP

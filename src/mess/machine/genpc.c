@@ -296,29 +296,15 @@ const struct pit8253_interface pc_pit8253_config =
  **********************************************************/
 WRITE_LINE_MEMBER( ibm5160_mb_device::keyboard_clock_w )
 {
-	if ( m_ppi_clock_signal != state )
+	if (!m_ppi_keyboard_clear && !state && !m_ppi_shift_enable)
 	{
-		if ( m_ppi_keyb_clock && m_ppi_shift_enable )
-		{
-			m_ppi_clock_signal = state;
-			if ( ! m_ppi_keyboard_clear )
-			{
-				/* Data is clocked in on a high->low transition */
-				if ( ! state )
-				{
-					UINT8   trigger_irq = m_ppi_shift_register & 0x01;
+		m_ppi_shift_enable = m_ppi_shift_register & 0x01;
 
-					m_ppi_shift_register = ( m_ppi_shift_register >> 1 ) | ( m_ppi_data_signal << 7 );
-					if ( trigger_irq )
-					{
-						m_pic8259->ir1_w(1);
-						m_ppi_shift_enable = 0;
-						m_ppi_clock_signal = 0;
-						m_pc_kbdc->clock_write_from_mb(m_ppi_clock_signal);
-					}
-				}
-			}
-		}
+		m_ppi_shift_register >>= 1;
+		m_ppi_shift_register |= m_ppi_data_signal << 7;
+
+		m_pic8259->ir1_w(m_ppi_shift_enable);
+		m_pc_kbdc->data_write_from_mb(!BIT(m_ppi_portb, 2) && !m_ppi_shift_enable);
 	}
 }
 
@@ -395,16 +381,17 @@ WRITE8_MEMBER( ibm5160_mb_device::pc_ppi_portb_w )
 	m_pit8253->gate2_w(BIT(data, 0));
 	pc_speaker_set_spkrdata( data & 0x02 );
 
-	m_ppi_clock_signal = ( m_ppi_keyb_clock ) ? 1 : 0;
-	m_pc_kbdc->clock_write_from_mb(m_ppi_clock_signal);
-
 	/* If PB7 is set clear the shift register and reset the IRQ line */
 	if ( m_ppi_keyboard_clear )
 	{
-		m_pic8259->ir1_w(0);
 		m_ppi_shift_register = 0;
-		m_ppi_shift_enable = 1;
+		m_ppi_shift_enable = 0;
+		m_pic8259->ir1_w(m_ppi_shift_enable);
 	}
+
+	m_pc_kbdc->data_write_from_mb(!BIT(m_ppi_portb, 2) && !m_ppi_shift_enable);
+	m_ppi_clock_signal = ( m_ppi_keyb_clock ) ? 1 : 0;
+	m_pc_kbdc->clock_write_from_mb(m_ppi_clock_signal);
 }
 
 
@@ -544,7 +531,7 @@ void ibm5160_mb_device::static_set_cputag(device_t &device, const char *tag)
 //-------------------------------------------------
 
 ibm5160_mb_device::ibm5160_mb_device(const machine_config &mconfig, const char *tag, device_t *owner, UINT32 clock)
-		: device_t(mconfig, IBM5160_MOTHERBOARD, "IBM5160_MOTHERBOARD", tag, owner, clock),
+		: device_t(mconfig, IBM5160_MOTHERBOARD, "IBM5160_MOTHERBOARD", tag, owner, clock, "ibm5160_mb", __FILE__),
 		m_maincpu(*owner, "maincpu"),
 		m_pic8259(*this, "pic8259"),
 		m_dma8237(*this, "dma8237"),

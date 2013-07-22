@@ -151,6 +151,7 @@
 #include "cpu/z80/z80.h"
 #include "sound/2610intf.h"
 #include "imagedev/cartslot.h"
+#include "mcfglgcy.h"
 #include "neogeo.lh"
 
 
@@ -1403,4 +1404,4 @@ DRIVER_INIT_MEMBER(neogeo_state,neogeo)
 }
 
 
-#include "neodrvr.c"
+#include "neogeo.inc"

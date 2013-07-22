@@ -2942,42 +2942,13 @@ Regarding release data, not much information is available online.
 ROM dump came from a collection of old 5 1/4 disks (Apple II) that used to be in the
  possession of an arcade operator in the early 80s.
 
-TODO sound to be verified.
+TODO:
+- correct sound (currently same as invaders)
+  * sound mutes when a few aliens are left?
+  * port 7 write is used too, looks like it's for music similar to indianbt
+  Note that bass background hum and sound effects are already basically correct.
 
 ***************************************************************************************/
-
-static ADDRESS_MAP_START( galactic_io_map, AS_IO, 8, _8080bw_state )
-	AM_RANGE(0x00, 0x00) AM_READ_PORT("IN0")
-	AM_RANGE(0x01, 0x01) AM_READ_PORT("IN1")
-	AM_RANGE(0x02, 0x02) AM_READ_PORT("IN2") AM_DEVWRITE("mb14241", mb14241_device, shift_count_w)
-	AM_RANGE(0x03, 0x03) AM_DEVREAD("mb14241", mb14241_device, shift_result_r) AM_WRITE(galactic_sh_port_1_w)
-	AM_RANGE(0x04, 0x04) AM_DEVWRITE("mb14241", mb14241_device, shift_data_w)
-	AM_RANGE(0x05, 0x05) AM_WRITE(galactic_sh_port_2_w)
-	AM_RANGE(0x06, 0x06) AM_WRITE(watchdog_reset_w)
-	AM_RANGE(0x07, 0x07) AM_WRITE(galactic_07_w)
-ADDRESS_MAP_END
-
-
-static MACHINE_CONFIG_DERIVED_CLASS( galactic, mw8080bw_root, _8080bw_state )
-
-	/* basic machine hardware */
-	MCFG_CPU_MODIFY("maincpu")
-	MCFG_CPU_IO_MAP(galactic_io_map)
-	MCFG_MACHINE_START_OVERRIDE(_8080bw_state,extra_8080bw)
-
-	/* add shifter */
-	MCFG_MB14241_ADD("mb14241")
-
-	/* sound hardware */
-	MCFG_FRAGMENT_ADD(invaders_samples_audio)
-	MCFG_DISCRETE_ADD("discrete", 0, galactic)
-	MCFG_SOUND_ROUTE(ALL_OUTPUTS, "mono", 1.0)
-
-	/* video hardware */
-	MCFG_SCREEN_MODIFY("screen")
-	MCFG_SCREEN_UPDATE_DRIVER(_8080bw_state, screen_update_invaders)
-MACHINE_CONFIG_END
-
 
 static INPUT_PORTS_START( galactic )
 	PORT_START("IN0")
@@ -3024,19 +2995,26 @@ INPUT_PORTS_END
   Not much information is available for this game.
   It may have had an amber monitor?
 
-  XTAL 20MHz
+  20MHz XTAL, 2MHz CPU
+  video: 15625Hz
 
   TODO: sound
+  PORT 02 : 10 while your missile is on-screen
+  PORT 04 : 01 while game is playing. Sound enable.
+  PORT 05 : Watchdog?
+  PORT 06 : 01=Helicopter; 02=Tank; 03=Motorcycle
+            08=Explosion; 10=Walking
+
 
 *****************************************************/
 
 static ADDRESS_MAP_START( attackfc_io_map, AS_IO, 8, _8080bw_state )
 	AM_RANGE(0x00, 0x00) AM_READ_PORT("IN0")
-	AM_RANGE(0x02, 0x02) AM_WRITENOP
+	AM_RANGE(0x02, 0x02) AM_WRITENOP // lamp?
 	AM_RANGE(0x03, 0x03) AM_DEVREADWRITE("mb14241", mb14241_device, shift_result_r, shift_data_w)
-	AM_RANGE(0x04, 0x04) AM_WRITENOP
-	AM_RANGE(0x05, 0x05) AM_WRITENOP
-	AM_RANGE(0x06, 0x06) AM_WRITENOP
+	AM_RANGE(0x04, 0x04) AM_WRITENOP // sound enable?
+	AM_RANGE(0x05, 0x05) AM_WRITENOP // watchdog?
+	AM_RANGE(0x06, 0x06) AM_WRITENOP // sound?
 	AM_RANGE(0x07, 0x07) AM_DEVWRITE("mb14241", mb14241_device, shift_count_w)
 ADDRESS_MAP_END
 
@@ -3257,10 +3235,7 @@ ROM_END
 
 ROM_START( invadrmr )
 	ROM_REGION( 0x10000, "maincpu", 0 )
-	/* yes, this rom is really on the PCB twice?! */
-	ROM_LOAD( "11.1s",       0x0000, 0x0400, CRC(389d44b6) SHA1(5d2581b8bc0da918ce57cf319e06b5b31989c681) )
 	ROM_LOAD( "11.1t",       0x0000, 0x0400, CRC(389d44b6) SHA1(5d2581b8bc0da918ce57cf319e06b5b31989c681) )
-
 	ROM_LOAD( "sv02.1p",     0x0400, 0x0400, CRC(0e159534) SHA1(94b2015a9d38ca738705b8d024a79fd2f9855b98) )
 	ROM_LOAD( "20.1n",       0x0800, 0x0400, CRC(805b04f0) SHA1(209f42dfde1593699ccf3755e9267d425416d910) )
 	ROM_LOAD( "sv04.1j",     0x1400, 0x0400, CRC(1293b826) SHA1(165cd5d08a19eadbe954145b12807f10df9e691a) )
@@ -4632,8 +4607,8 @@ GAME( 1980, ballbomb,   0,        ballbomb,  ballbomb,  driver_device, 0, ROT270
 GAME( 1980, indianbt,   0,        indianbt,  indianbt,  driver_device, 0, ROT270, "Taito", "Indian Battle", GAME_SUPPORTS_SAVE | GAME_IMPERFECT_SOUND )
 GAME( 1983, indianbtbr, indianbt, indianbtbr,indianbtbr,driver_device, 0, ROT270, "Taito do Brasil", "Indian Battle (Brazil)", GAME_SUPPORTS_SAVE | GAME_IMPERFECT_SOUND )
 GAME( 1980, steelwkr,   0,        steelwkr,  steelwkr,  driver_device, 0, ROT0  , "Taito", "Steel Worker", GAME_SUPPORTS_SAVE | GAME_IMPERFECT_SOUND )
-GAMEL(1980?,galactic,   0,        galactic,  galactic,  driver_device, 0, ROT270, "Taito do Brasil", "Galactica - Batalha Espacial", GAME_SUPPORTS_SAVE | GAME_IMPERFECT_SOUND, layout_galactic )
-GAMEL(1980?,spacmiss,   galactic, galactic,  galactic,  driver_device, 0, ROT270, "bootleg?", "Space Missile - Space Fighting Game", GAME_SUPPORTS_SAVE | GAME_IMPERFECT_SOUND, layout_galactic )
+GAMEL(1980?,galactic,   0,        invaders,  galactic,  driver_device, 0, ROT270, "Taito do Brasil", "Galactica - Batalha Espacial", GAME_SUPPORTS_SAVE | GAME_IMPERFECT_SOUND, layout_galactic )
+GAMEL(1980?,spacmiss,   galactic, invaders,  galactic,  driver_device, 0, ROT270, "bootleg?", "Space Missile - Space Fighting Game", GAME_SUPPORTS_SAVE | GAME_IMPERFECT_SOUND, layout_galactic )
 
 // Misc. manufacturers
 GAME( 1979, galxwars,   0,        invadpt2,  galxwars,  driver_device, 0, ROT270, "Universal", "Galaxy Wars (Universal set 1)", GAME_WRONG_COLORS | GAME_SUPPORTS_SAVE )

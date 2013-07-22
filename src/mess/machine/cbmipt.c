@@ -18,7 +18,6 @@
 
 #include "emu.h"
 #include "machine/cbmipt.h"
-#include "machine/c64_neoram.h"
 
 
 /***************************** Commodore 64 ****************************************
@@ -1092,6 +1091,7 @@ SLOT_INTERFACE_START( cbm_ieee488_devices )
 	SLOT_INTERFACE("d9060", D9060)
 	SLOT_INTERFACE("d9090", D9090)
 	SLOT_INTERFACE("softbox", SOFTBOX)
+	SLOT_INTERFACE("shark", SHARK)
 SLOT_INTERFACE_END
 
 SLOT_INTERFACE_START( cbm8296d_ieee488_devices )

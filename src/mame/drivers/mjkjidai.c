@@ -26,6 +26,8 @@ TODO:
 #include "sound/sn76496.h"
 #include "sound/okiadpcm.h"
 #include "includes/mjkjidai.h"
+#include "devlegcy.h"
+#include "mcfglgcy.h"
 
 class mjkjidai_adpcm_device : public device_t,
 									public device_sound_interface
@@ -103,7 +105,7 @@ static DEVICE_START( mjkjidai_adpcm )
 const device_type MJKJIDAI = &device_creator<mjkjidai_adpcm_device>;
 
 mjkjidai_adpcm_device::mjkjidai_adpcm_device(const machine_config &mconfig, const char *tag, device_t *owner, UINT32 clock)
-	: device_t(mconfig, MJKJIDAI, "Custom ADPCM", tag, owner, clock),
+	: device_t(mconfig, MJKJIDAI, "Custom ADPCM", tag, owner, clock, "mjkjidai_adpcm", __FILE__),
 		device_sound_interface(mconfig, *this)
 {
 	m_token = global_alloc_clear(mjkjidai_adpcm_state);
@@ -458,7 +460,7 @@ static MACHINE_CONFIG_START( mjkjidai, mjkjidai_state )
 	MCFG_GFXDECODE(mjkjidai)
 	MCFG_PALETTE_LENGTH(0x100)
 
-	MCFG_PALETTE_INIT(RRRR_GGGG_BBBB)
+	MCFG_PALETTE_INIT_OVERRIDE(driver_device, RRRR_GGGG_BBBB)
 
 	/* sound hardware */
 	MCFG_SPEAKER_STANDARD_MONO("mono")

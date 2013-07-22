@@ -13,6 +13,7 @@
 #include "machine/mb87078.h"
 #include "sound/es5506.h"
 #include "taito_en.h"
+#include "drivlgcy.h"
 
 
 /*************************************
@@ -315,6 +316,7 @@ static const es5505_interface es5505_taito_en_config =
 {
 	"ensoniq.0",    /* Bank 0: Unused by F3 games? */
 	"ensoniq.0",    /* Bank 1: All games seem to use this */
+	1,              /* channels */
 	DEVCB_NULL            /* IRQ */
 };
 
@@ -337,6 +339,6 @@ MACHINE_CONFIG_FRAGMENT( taito_en_sound )
 	MCFG_SPEAKER_STANDARD_STEREO("lspeaker", "rspeaker")
 	MCFG_SOUND_ADD("ensoniq", ES5505, XTAL_30_4761MHz / 2)
 	MCFG_SOUND_CONFIG(es5505_taito_en_config)
-	MCFG_SOUND_ROUTE(0, "lspeaker", 1.0)
-	MCFG_SOUND_ROUTE(1, "rspeaker", 1.0)
+	MCFG_SOUND_ROUTE(0, "lspeaker", 0.08)
+	MCFG_SOUND_ROUTE(1, "rspeaker", 0.08)
 MACHINE_CONFIG_END

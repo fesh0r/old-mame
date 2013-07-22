@@ -6,7 +6,6 @@
 #include "cpu/mips/mips3com.h"
 #include "includes/n64.h"
 #include "video/n64.h"
-#include "profiler.h"
 
 UINT32 *n64_sram;
 UINT32 *rdram;
@@ -21,7 +20,7 @@ const device_type N64PERIPH = &device_creator<n64_periphs>;
 
 
 n64_periphs::n64_periphs(const machine_config &mconfig, const char *tag, device_t *owner, UINT32 clock)
-	: device_t(mconfig, N64PERIPH, "N64 Periphal Chips", tag, owner, clock)
+	: device_t(mconfig, N64PERIPH, "N64 Periphal Chips", tag, owner, clock, "n64_periphs", __FILE__)
 	, m_nvram_image(NULL)
 {
 }

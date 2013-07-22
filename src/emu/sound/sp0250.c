@@ -18,6 +18,7 @@
 
 #include "emu.h"
 #include "sp0250.h"
+#include "devlegcy.h"
 
 /*
 standard external clock is 3.12MHz
@@ -240,7 +241,7 @@ UINT8 sp0250_drq_r(device_t *device)
 const device_type SP0250 = &device_creator<sp0250_device>;
 
 sp0250_device::sp0250_device(const machine_config &mconfig, const char *tag, device_t *owner, UINT32 clock)
-	: device_t(mconfig, SP0250, "SP0250", tag, owner, clock),
+	: device_t(mconfig, SP0250, "SP0250", tag, owner, clock, "sp0250", __FILE__),
 		device_sound_interface(mconfig, *this)
 {
 	m_token = global_alloc_clear(sp0250_state);

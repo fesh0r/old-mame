@@ -367,7 +367,7 @@ NAME = $(TARGET)$(SUBTARGET)
 endif
 
 # fullname is prefix+name+suffix+suffix64+suffixdebug
-FULLNAME = $(PREFIX)$(PREFIXSDL)$(NAME)$(SUFFIX)$(SUFFIX64)$(SUFFIXDEBUG)$(SUFFIXPROFILE)
+FULLNAME ?= $(PREFIX)$(PREFIXSDL)$(NAME)$(SUFFIX)$(SUFFIX64)$(SUFFIXDEBUG)$(SUFFIXPROFILE)
 
 # add an EXE suffix to get the final emulator name
 EMULATOR = $(FULLNAME)$(EXE)
@@ -536,6 +536,11 @@ CCOMFLAGS += -fsanitize=$(SANITIZE)
 ifneq (,$(findstring thread,$(SANITIZE)))
 CCOMFLAGS += -fPIE
 endif
+ifneq (,$(findstring memory,$(SANITIZE)))
+ifneq (,$(findstring clang,$(CC)))
+CCOMFLAGS += -fsanitize-memory-track-origins -fPIE
+endif
+endif
 endif
 
 #-------------------------------------------------
@@ -608,6 +613,9 @@ LDFLAGS += -fsanitize=$(SANITIZE)
 ifneq (,$(findstring thread,$(SANITIZE)))
 LDFLAGS += -pie
 endif
+ifneq (,$(findstring memory,$(SANITIZE)))
+LDFLAGS += -pie
+endif
 endif
 
 
@@ -625,11 +633,8 @@ OBJDIRS = $(OBJ) $(OBJ)/$(TARGET)/$(SUBTARGET)
 #-------------------------------------------------
 
 LIBEMU = $(OBJ)/libemu.a
-LIBCPU = $(OBJ)/$(TARGET)/$(SUBTARGET)/libcpu.a
+LIBOPTIONAL = $(OBJ)/$(TARGET)/$(SUBTARGET)/liboptional.a
 LIBDASM = $(OBJ)/$(TARGET)/$(SUBTARGET)/libdasm.a
-LIBSOUND = $(OBJ)/$(TARGET)/$(SUBTARGET)/libsound.a
-LIBVIDEO = $(OBJ)/$(TARGET)/$(SUBTARGET)/libvideo.a
-LIBMACHINE = $(OBJ)/$(TARGET)/$(SUBTARGET)/libmachine.a
 LIBUTIL = $(OBJ)/libutil.a
 LIBOCORE = $(OBJ)/libocore.a
 LIBOSD = $(OBJ)/libosd.a
@@ -717,8 +722,6 @@ default: maketree buildtools emulator
 
 all: default tools
 
-tests: maketree jedutil$(EXE) chdman$(EXE)
-
 7Z_LIB = $(OBJ)/lib7z.a
 
 #-------------------------------------------------
@@ -776,6 +779,7 @@ clean: $(OSDCLEAN)
 	@echo Deleting $(TOOLS)...
 	$(RM) $(TOOLS)
 	@echo Deleting dependencies...
+	$(RM) depend_emu.mak
 	$(RM) depend_mame.mak
 	$(RM) depend_mess.mak
 	$(RM) depend_ume.mak
@@ -796,6 +800,10 @@ checkautodetect:
 
 tests: $(REGTESTS)
 
+mak: maketree $(MAKEMAK_TARGET)
+	@echo Rebuilding $(SUBTARGET).mak...
+	$(MAKEMAK) $(SRC)/targets/$(SUBTARGET).lst -I$(SRC)/emu -I$(SRC)/mame -I$(SRC)/mame/layout -I$(SRC)/mess -I$(SRC)/mess/layout $(SRC) > $(SUBTARGET).mak
+	$(MAKEMAK) $(SRC)/targets/$(SUBTARGET).lst > $(SUBTARGET).lst
 
 #-------------------------------------------------
 # directory targets
@@ -812,7 +820,7 @@ $(sort $(OBJDIRS)):
 
 ifndef EXECUTABLE_DEFINED
 
-$(EMULATOR): $(EMUINFOOBJ) $(DRIVLISTOBJ) $(DRVLIBS) $(LIBOSD) $(LIBCPU) $(LIBMACHINE) $(LIBEMU) $(LIBDASM) $(LIBSOUND) $(LIBVIDEO) $(LIBUTIL) $(EXPAT) $(SOFTFLOAT) $(JPEG_LIB) $(FLAC_LIB) $(7Z_LIB) $(FORMATS_LIB) $(LUA_LIB) $(ZLIB) $(LIBOCORE) $(MIDI_LIB) $(RESFILE)
+$(EMULATOR): $(EMUINFOOBJ) $(DRIVLISTOBJ) $(DRVLIBS) $(LIBOSD) $(LIBOPTIONAL) $(LIBEMU) $(LIBDASM) $(LIBUTIL) $(EXPAT) $(SOFTFLOAT) $(JPEG_LIB) $(FLAC_LIB) $(7Z_LIB) $(FORMATS_LIB) $(LUA_LIB) $(ZLIB) $(LIBOCORE) $(MIDI_LIB) $(RESFILE)
 	$(CC) $(CDEFS) $(CFLAGS) -c $(SRC)/version.c -o $(VERSIONOBJ)
 	@echo Linking $@...
 	$(LD) $(LDFLAGS) $(LDFLAGSEMULATOR) $(VERSIONOBJ) $^ $(LIBS) -o $@
@@ -897,4 +905,5 @@ endif
 # optional dependencies file
 #-------------------------------------------------
 
+-include depend_emu.mak
 -include depend_$(TARGET).mak

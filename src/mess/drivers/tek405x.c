@@ -24,6 +24,7 @@
 
 
 #include "includes/tek405x.h"
+#include "scrlegcy.h"
 
 
 
@@ -1192,7 +1193,7 @@ static MACHINE_CONFIG_START( tek4051, tek4051_state )
 	MCFG_SCREEN_VISIBLE_AREA(0, 1024-1, 0, 780-1)
 	MCFG_SCREEN_UPDATE_STATIC(vector)
 
-	MCFG_PALETTE_INIT(monochrome_green)
+	MCFG_PALETTE_INIT_OVERRIDE(driver_device, monochrome_green)
 	MCFG_PALETTE_LENGTH(2)
 
 	// sound hardware
@@ -1244,7 +1245,7 @@ static MACHINE_CONFIG_START( tek4052, tek4052_state )
 	MCFG_SCREEN_VISIBLE_AREA(0, 1024-1, 0, 780-1)
 	MCFG_SCREEN_UPDATE_STATIC(vector)
 
-	MCFG_PALETTE_INIT(monochrome_green)
+	MCFG_PALETTE_INIT_OVERRIDE(driver_device, monochrome_green)
 	MCFG_PALETTE_LENGTH(2)
 
 	// sound hardware

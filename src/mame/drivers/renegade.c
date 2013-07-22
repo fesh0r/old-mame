@@ -107,6 +107,7 @@ $8000 - $ffff   ROM
 #include "sound/3526intf.h"
 #include "sound/okiadpcm.h"
 #include "includes/renegade.h"
+#include "devlegcy.h"
 
 
 /********************************************************************************************/
@@ -193,7 +194,7 @@ static DEVICE_START( renegade_adpcm )
 const device_type RENEGADE_ADPCM = &device_creator<renegade_adpcm_device>;
 
 renegade_adpcm_device::renegade_adpcm_device(const machine_config &mconfig, const char *tag, device_t *owner, UINT32 clock)
-	: device_t(mconfig, RENEGADE_ADPCM, "Renegade Custom ADPCM", tag, owner, clock),
+	: device_t(mconfig, RENEGADE_ADPCM, "Renegade Custom ADPCM", tag, owner, clock, "renegade_adpcm", __FILE__),
 		device_sound_interface(mconfig, *this)
 {
 	m_token = global_alloc_clear(renegade_adpcm_state);

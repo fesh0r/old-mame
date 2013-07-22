@@ -11,6 +11,7 @@
 #include "emu.h"
 #include "aica.h"
 #include "aicadsp.h"
+#include "devlegcy.h"
 
 #define ICLIP16(x) (x<-32768)?-32768:((x>32767)?32767:x)
 
@@ -1355,7 +1356,7 @@ READ16_DEVICE_HANDLER( aica_midi_out_r )
 const device_type AICA = &device_creator<aica_device>;
 
 aica_device::aica_device(const machine_config &mconfig, const char *tag, device_t *owner, UINT32 clock)
-	: device_t(mconfig, AICA, "AICA", tag, owner, clock),
+	: device_t(mconfig, AICA, "AICA", tag, owner, clock, "aica", __FILE__),
 		device_sound_interface(mconfig, *this)
 {
 	m_token = global_alloc_clear(aica_state);

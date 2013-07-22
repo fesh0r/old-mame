@@ -98,7 +98,7 @@
 
 TILE_GET_INFO_MEMBER(system1_state::tile_get_info)
 {
-	const UINT8 *rambase = (const UINT8 *)param;
+	const UINT8 *rambase = (const UINT8 *)tilemap.user_data();
 	UINT32 tiledata = rambase[tile_index*2+0] | (rambase[tile_index*2+1] << 8);
 	UINT32 code = ((tiledata >> 4) & 0x800) | (tiledata & 0x7ff);
 	UINT32 color = (tiledata >> 5) & 0xff;
@@ -135,7 +135,7 @@ void system1_state::video_start_common(int pagecount)
 	}
 
 	/* allocate a temporary bitmap for sprite rendering */
-	m_sprite_bitmap = auto_bitmap_ind16_alloc(machine(), 512, 256);
+	m_sprite_bitmap = auto_bitmap_ind16_alloc(machine(), 640, 260);
 
 	/* register for save stats */
 	save_item(NAME(m_video_mode));
@@ -514,7 +514,7 @@ void system1_state::video_update_common(screen_device &screen, bitmap_ind16 &bit
 		for (x = cliprect.min_x; x <= cliprect.max_x; x++)
 		{
 			int bgx = ((x - bgxscroll) / 2) & 0x1ff;
-			UINT16 fgpix = fgbase[x / 2];
+			UINT16 fgpix = fgbase[(x / 2) & 0xff];
 			UINT16 bgpix = bgbase[bgx >> 8][bgx & 0xff];
 			UINT16 sprpix = sprbase[x];
 			UINT8 lookup_index;

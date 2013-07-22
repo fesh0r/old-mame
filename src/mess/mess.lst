@@ -503,7 +503,7 @@ maclc3  // 1993 Apple Macintosh LC III
 maciivx // 1993 Apple Macintosh IIvx
 maciivi // 1993 Apple Macintosh IIvi
 maclc520    // 1993 Apple Macintosh LC 520
-pmac6100  // 1994 Apple Power Macintosh 6100
+pmac6100    // 1993 Apple Power Macintosh 6100
 
 // Atari
 a400      // 1979 Atari 400
@@ -734,10 +734,14 @@ pc200    // 1988 Sinclair PC200
 pc20      // 1988 Amstrad PC20
 ppc512  // 1987 Amstrad PPC512
 ppc640  // 1987 Amstrad PPC640
-pc1512  // 1986 Amstrad PC1512 v1 (CGA compatible)
-pc1512v2  // 1986 Amstrad PC1512 v2 (CGA compatible)
-pc1512v3  // 1986 Amstrad PC1512 v3.2 (CGA compatible)
-pc1640  // 1987 Amstrad PC1640 (EGA compatible)
+pc1512
+pc1512dd
+pc1512hd10
+pc1512hd20
+pc1640
+pc1640dd
+pc1640hd20
+pc1640hd30
 pc2086
 pc3086
 pc2386
@@ -963,6 +967,8 @@ ti99_4e   // 1980 TI-99/4 with 50Hz video
 ti99_4a   // 1981 TI-99/4A
 ti99_4ae  // 1981 TI-99/4A with 50Hz video
 ti99_4ev   // 1994 TI-99/4A with EVPC video card
+ti99_4qe   // 1983 TI-99/4QI with 50Hz video
+ti99_4qi   // 1983 TI-99/4QI
 ti99_8  // 1983 TI-99/8
 ti99_8e   // 1983 TI-99/8 with 50Hz video
 
@@ -996,6 +1002,7 @@ ti92      // 1995 TI-92
 ti92p    // 1999 TI-92 Plus
 v200      // 2002 Voyage 200 PLT
 ti89t    // 2004 TI-89 Titanium
+evmbug
 
 // NEC
 pc6001
@@ -1029,6 +1036,7 @@ pc9801rs  // 1989
 pc9801rx  // 1988
 pc9801ux  // 1987
 pc9801vm  // 1985
+pc9801bx2 // 1993
 
 pc9821
 pc9821as
@@ -1860,6 +1868,10 @@ risc // Saitek 2500 14MHZ (skeleton)
 // JAKKS Pacific, Inc. / HotGen, Ltd.
 batmantv    // The Batman, 2004
 
+// Quadtel
+//paintbox // 1981
+harriet // 1990
+
 //********** Misc **********************************************************
 
 ex800 // Epson EX-800 printer
@@ -2053,8 +2065,8 @@ codata
 rvoicepc
 vcc
 uvc
-abc
-vbc
+bridgec3
+vbrc
 vsc
 victor9k
 phc25
@@ -2088,6 +2100,8 @@ multi16
 rx78
 bmjr
 bml3
+bml3mk2
+bml3mk5
 b16
 psioncm
 psionla
@@ -2218,3 +2232,4 @@ besta88
 ravens
 ravens2
 softbox
+dps1

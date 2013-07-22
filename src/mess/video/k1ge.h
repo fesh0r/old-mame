@@ -2,8 +2,6 @@
 #ifndef __K2GE_H_
 #define __K2GE_H_
 
-#include "devcb.h"
-
 
 #define MCFG_K1GE_ADD(_tag, _clock, _screen, _vblank, _hblank ) \
 	MCFG_DEVICE_ADD( _tag, K1GE, _clock ) \
@@ -22,7 +20,7 @@ class k1ge_device : public device_t
 {
 public:
 	k1ge_device(const machine_config &mconfig, const char *tag, device_t *owner, UINT32 clock);
-	k1ge_device(const machine_config &mconfig, device_type type, const char *name, const char *tag, device_t *owner, UINT32 clock);
+	k1ge_device(const machine_config &mconfig, device_type type, const char *name, const char *tag, device_t *owner, UINT32 clock, const char *shortname, const char *source);
 
 	DECLARE_READ8_MEMBER( reg_read );
 	DECLARE_WRITE8_MEMBER( reg_write );

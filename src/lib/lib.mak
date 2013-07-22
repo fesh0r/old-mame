@@ -109,7 +109,6 @@ FORMATSOBJS = \
 	$(LIBOBJ)/formats/atari_dsk.o   \
 	$(LIBOBJ)/formats/atarist_dsk.o \
 	$(LIBOBJ)/formats/atom_tap.o    \
-	$(LIBOBJ)/formats/bml3_dsk.o    \
 	$(LIBOBJ)/formats/bw2_dsk.o     \
 	$(LIBOBJ)/formats/bw12_dsk.o    \
 	$(LIBOBJ)/formats/cbm_tap.o     \
@@ -148,6 +147,7 @@ FORMATSOBJS = \
 	$(LIBOBJ)/formats/lviv_lvt.o    \
 	$(LIBOBJ)/formats/m20_dsk.o     \
 	$(LIBOBJ)/formats/m5_dsk.o      \
+	$(LIBOBJ)/formats/mbee_dsk.o    \
 	$(LIBOBJ)/formats/mm_dsk.o      \
 	$(LIBOBJ)/formats/msx_dsk.o     \
 	$(LIBOBJ)/formats/mfi_dsk.o     \

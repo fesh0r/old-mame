@@ -58,6 +58,7 @@ const UINT32 SUSPEND_REASON_SPIN        = 0x0004;   // currently spinning
 const UINT32 SUSPEND_REASON_TRIGGER     = 0x0008;   // waiting for a trigger
 const UINT32 SUSPEND_REASON_DISABLE     = 0x0010;   // disabled (due to disable flag)
 const UINT32 SUSPEND_REASON_TIMESLICE   = 0x0020;   // waiting for the next timeslice
+const UINT32 SUSPEND_REASON_CLOCK       = 0x0040;   // currently not clocked
 const UINT32 SUSPEND_ANY_REASON         = ~0;       // all of the above
 
 
@@ -118,13 +119,13 @@ enum
 #define MCFG_DEVICE_VBLANK_INT(_tag, _func) \
 	device_execute_interface::static_set_vblank_int(*device, _func, _tag);
 #define MCFG_DEVICE_VBLANK_INT_DRIVER(_tag, _class, _func) \
-	device_execute_interface::static_set_vblank_int(*device, device_interrupt_delegate(&_class::_func, #_class "::" #_func, DEVICE_SELF_OWNER, (_class *)0), _tag);
+	device_execute_interface::static_set_vblank_int(*device, device_interrupt_delegate(&_class::_func, #_class "::" #_func, DEVICE_SELF, (_class *)0), _tag);
 #define MCFG_DEVICE_VBLANK_INT_DEVICE(_devtag, _tag, _class, _func) \
 	device_execute_interface::static_set_vblank_int(*device, device_interrupt_delegate(&_class::_func, #_class "::" #_func, _devtag, (_class *)0), _tag);
 #define MCFG_DEVICE_PERIODIC_INT(_func, _rate)  \
 	device_execute_interface::static_set_periodic_int(*device, _func, attotime::from_hz(_rate));
 #define MCFG_DEVICE_PERIODIC_INT_DRIVER(_class, _func, _rate) \
-	device_execute_interface::static_set_periodic_int(*device, device_interrupt_delegate(&_class::_func, #_class "::" #_func, DEVICE_SELF_OWNER, (_class *)0), attotime::from_hz(_rate));
+	device_execute_interface::static_set_periodic_int(*device, device_interrupt_delegate(&_class::_func, #_class "::" #_func, DEVICE_SELF, (_class *)0), attotime::from_hz(_rate));
 #define MCFG_DEVICE_PERIODIC_INT_DEVICE(_devtag, _class, _func, _rate) \
 	device_execute_interface::static_set_periodic_int(*device, device_interrupt_delegate(&_class::_func, #_class "::" #_func, _devtag, (_class *)0), attotime::from_hz(_rate));
 
@@ -139,11 +140,11 @@ class screen_device;
 
 // interrupt callback for VBLANK and timed interrupts
 typedef device_delegate<void (device_t &)> device_interrupt_delegate;
-typedef void (*device_interrupt_func)(device_t *device);
+typedef void (*device_interrupt_func)(device_t *device); // legacy
 
 // IRQ callback to be called by executing devices when an IRQ is actually taken
 typedef device_delegate<int (device_t &, int)> device_irq_acknowledge_delegate;
-typedef int (*device_irq_acknowledge_callback)(device_t *device, int irqnum);
+typedef int (*device_irq_acknowledge_callback)(device_t *device, int irqnum); // legacy
 
 
 
@@ -173,9 +174,9 @@ public:
 
 	// static inline configuration helpers
 	static void static_set_disable(device_t &device);
-	static void static_set_vblank_int(device_t &device, device_interrupt_func function, const char *tag, int rate = 0);
+	static void static_set_vblank_int(device_t &device, device_interrupt_func function, const char *tag, int rate = 0); // legacy
 	static void static_set_vblank_int(device_t &device, device_interrupt_delegate function, const char *tag, int rate = 0);
-	static void static_set_periodic_int(device_t &device, device_interrupt_func function, attotime rate);
+	static void static_set_periodic_int(device_t &device, device_interrupt_func function, attotime rate); // legacy
 	static void static_set_periodic_int(device_t &device, device_interrupt_delegate function, attotime rate);
 
 	// execution management
@@ -190,7 +191,7 @@ public:
 	void set_input_line_vector(int linenum, int vector) { m_input[linenum].set_vector(vector); }
 	void set_input_line_and_vector(int linenum, int state, int vector) { m_input[linenum].set_state_synced(state, vector); }
 	int input_state(int linenum) { return m_input[linenum].m_curstate; }
-	void set_irq_acknowledge_callback(device_irq_acknowledge_callback callback);
+	void set_irq_acknowledge_callback(device_irq_acknowledge_callback callback); // legacy
 	void set_irq_acknowledge_callback(device_irq_acknowledge_delegate callback);
 
 	// suspend/resume

@@ -373,7 +373,10 @@ void info_xml_creator::output_one_device(device_t &device, const char *devtag)
 	fprintf(m_output, "\t\t<description>%s</description>\n", xml_normalize_string(device.name()));
 
 	output_rom(device);
-	output_sample(device);
+
+	samples_device *samples = dynamic_cast<samples_device*>(&device);
+	if (samples==NULL) output_sample(device); // ignore samples_device itself
+
 	output_chips(device, devtag);
 	output_display(device, devtag);
 	if (has_speaker)
@@ -408,7 +411,7 @@ void info_xml_creator::output_devices()
 		device_iterator deviter(m_drivlist.config().root_device());
 		for (device_t *device = deviter.first(); device != NULL; device = deviter.next())
 		{
-			if (device->owner() != NULL && device->rom_region() != NULL && device->shortname()!= NULL)
+			if (device->owner() != NULL && device->shortname()!= NULL && strlen(device->shortname())!=0)
 			{
 				if (shortnames.add(device->shortname(), 0, FALSE) != TMERR_DUPLICATE)
 					output_one_device(*device, device->tag());
@@ -452,7 +455,7 @@ void info_xml_creator::output_device_roms()
 {
 	device_iterator deviter(m_drivlist.config().root_device());
 	for (device_t *device = deviter.first(); device != NULL; device = deviter.next())
-		if (device->owner() != NULL && device->rom_region() != NULL && device->shortname()!= NULL)
+		if (device->owner() != NULL && device->shortname()!= NULL && strlen(device->shortname())!=0)
 			fprintf(m_output, "\t\t<device_ref name=\"%s\"/>\n", xml_normalize_string(device->shortname()));
 }
 

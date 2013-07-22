@@ -274,13 +274,11 @@ From JP manual
 #include "cpu/z80/z80.h"
 #include "includes/taitoipt.h"
 #include "cpu/m68000/m68000.h"
-#include "video/taitoic.h"
 #include "machine/taitoio.h"
 #include "audio/taitosnd.h"
 #include "sound/2151intf.h"
 #include "sound/msm5205.h"
 #include "includes/topspeed.h"
-
 #include "topspeed.lh"
 
 
@@ -503,14 +501,14 @@ static ADDRESS_MAP_START( topspeed_map, AS_PROGRAM, 16, topspeed_state )
 	AM_RANGE(0x7e0002, 0x7e0003) AM_DEVREADWRITE8("tc0140syt", tc0140syt_device, tc0140syt_comm_r, tc0140syt_comm_w, 0x00ff)
 	AM_RANGE(0x800000, 0x8003ff) AM_RAM AM_SHARE("raster_ctrl")
 	AM_RANGE(0x800400, 0x80ffff) AM_RAM
-	AM_RANGE(0xa00000, 0xa0ffff) AM_DEVREADWRITE_LEGACY("pc080sn_1", pc080sn_word_r, pc080sn_word_w)
-	AM_RANGE(0xa20000, 0xa20003) AM_DEVWRITE_LEGACY("pc080sn_1", pc080sn_yscroll_word_w)
-	AM_RANGE(0xa40000, 0xa40003) AM_DEVWRITE_LEGACY("pc080sn_1", pc080sn_xscroll_word_w)
-	AM_RANGE(0xa50000, 0xa50003) AM_DEVWRITE_LEGACY("pc080sn_1", pc080sn_ctrl_word_w)
-	AM_RANGE(0xb00000, 0xb0ffff) AM_DEVREADWRITE_LEGACY("pc080sn_2", pc080sn_word_r, pc080sn_word_w)
-	AM_RANGE(0xb20000, 0xb20003) AM_DEVWRITE_LEGACY("pc080sn_2", pc080sn_yscroll_word_w)
-	AM_RANGE(0xb40000, 0xb40003) AM_DEVWRITE_LEGACY("pc080sn_2", pc080sn_xscroll_word_w)
-	AM_RANGE(0xb50000, 0xb50003) AM_DEVWRITE_LEGACY("pc080sn_2", pc080sn_ctrl_word_w)
+	AM_RANGE(0xa00000, 0xa0ffff) AM_DEVREADWRITE("pc080sn_1", pc080sn_device, word_r, word_w)
+	AM_RANGE(0xa20000, 0xa20003) AM_DEVWRITE("pc080sn_1", pc080sn_device, yscroll_word_w)
+	AM_RANGE(0xa40000, 0xa40003) AM_DEVWRITE("pc080sn_1", pc080sn_device, xscroll_word_w)
+	AM_RANGE(0xa50000, 0xa50003) AM_DEVWRITE("pc080sn_1", pc080sn_device, ctrl_word_w)
+	AM_RANGE(0xb00000, 0xb0ffff) AM_DEVREADWRITE("pc080sn_2", pc080sn_device, word_r, word_w)
+	AM_RANGE(0xb20000, 0xb20003) AM_DEVWRITE("pc080sn_2", pc080sn_device, yscroll_word_w)
+	AM_RANGE(0xb40000, 0xb40003) AM_DEVWRITE("pc080sn_2", pc080sn_device, xscroll_word_w)
+	AM_RANGE(0xb50000, 0xb50003) AM_DEVWRITE("pc080sn_2", pc080sn_device, ctrl_word_w)
 	AM_RANGE(0xd00000, 0xd00fff) AM_RAM AM_SHARE("spriteram")
 	AM_RANGE(0xe00000, 0xe0ffff) AM_RAM AM_SHARE("spritemap")
 ADDRESS_MAP_END

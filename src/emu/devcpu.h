@@ -46,9 +46,6 @@
 #ifndef __DEVCPU_H__
 #define __DEVCPU_H__
 
-#include "devlegcy.h"
-
-
 //**************************************************************************
 //  CONSTANTS
 //**************************************************************************
@@ -378,7 +375,7 @@ class cpu_device :  public device_t,
 
 protected:
 	// construction/destruction
-	cpu_device(const machine_config &mconfig, device_type type, const char *name, const char *tag, device_t *owner, UINT32 clock, const char *shortname = "", const char *source = __FILE__);
+	cpu_device(const machine_config &mconfig, device_type type, const char *name, const char *tag, device_t *owner, UINT32 clock, const char *shortname, const char *source);
 	virtual ~cpu_device();
 };
 

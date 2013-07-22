@@ -6,6 +6,7 @@
 
 #include "emu.h"
 #include "sound/s2636.h"
+#include "devlegcy.h"
 
 
 struct s2636_sound
@@ -84,7 +85,7 @@ static DEVICE_START(s2636_sound)
 const device_type S2636_SOUND = &device_creator<s2636_sound_device>;
 
 s2636_sound_device::s2636_sound_device(const machine_config &mconfig, const char *tag, device_t *owner, UINT32 clock)
-	: device_t(mconfig, S2636_SOUND, "S2636", tag, owner, clock),
+	: device_t(mconfig, S2636_SOUND, "S2636", tag, owner, clock, "s2636", __FILE__),
 		device_sound_interface(mconfig, *this)
 {
 	m_token = global_alloc_clear(s2636_sound);
