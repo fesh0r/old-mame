@@ -138,8 +138,14 @@ public:
 	UINT16 m_dma_high_byte;
 	UINT8 m_at_speaker;
 	UINT8 m_at_offset1;
+	UINT16 m_ps1_reg[2];
+	DECLARE_READ16_MEMBER(ps1_unk_r);
+	DECLARE_WRITE16_MEMBER(ps1_unk_w);
+	DECLARE_READ8_MEMBER(ps1_kbdc_r);
+
 	void at_speaker_set_spkrdata(UINT8 data);
 	void at_speaker_set_input(UINT8 data);
+	DECLARE_WRITE_LINE_MEMBER(at_shutdown);
 
 	UINT8 m_channel_check;
 	UINT8 m_nmi_enabled;
@@ -150,12 +156,22 @@ public:
 
 	DECLARE_DRIVER_INIT(atcga);
 	DECLARE_DRIVER_INIT(atvga);
+	DECLARE_DRIVER_INIT(at586);
 	DECLARE_MACHINE_START(at);
 	DECLARE_MACHINE_RESET(at);
 	void pc_set_dma_channel(int channel, int state);
 	IRQ_CALLBACK_MEMBER(at_irq_callback);
 	void init_at_common();
-	static UINT32 at_286_a20(bool state);
+	UINT32 at_286_a20(bool state);
+
+	enum {
+		TYPE_286,
+		TYPE_386,
+		TYPE_486,
+		TYPE_586
+	};
+
+	int m_type;
 };
 
 

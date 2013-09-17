@@ -71,6 +71,7 @@ EMUOBJS = \
 	$(EMUOBJ)/dislot.o \
 	$(EMUOBJ)/disound.o \
 	$(EMUOBJ)/distate.o \
+	$(EMUOBJ)/divideo.o \
 	$(EMUOBJ)/drawgfx.o \
 	$(EMUOBJ)/driver.o \
 	$(EMUOBJ)/drivenum.o \
@@ -88,6 +89,7 @@ EMUOBJS = \
 	$(EMUOBJ)/mame.o \
 	$(EMUOBJ)/machine.o \
 	$(EMUOBJ)/mconfig.o \
+	$(EMUOBJ)/memarray.o \
 	$(EMUOBJ)/memory.o \
 	$(EMUOBJ)/network.o \
 	$(EMUOBJ)/output.o \
@@ -122,12 +124,14 @@ EMUOBJS = \
 	$(EMUOBJ)/debug/dvdisasm.o \
 	$(EMUOBJ)/debug/dvmemory.o \
 	$(EMUOBJ)/debug/dvbpoints.o \
+	$(EMUOBJ)/debug/dvwpoints.o \
 	$(EMUOBJ)/debug/dvstate.o \
 	$(EMUOBJ)/debug/dvtext.o \
 	$(EMUOBJ)/debug/express.o \
 	$(EMUOBJ)/debug/textbuf.o \
 	$(EMUOBJ)/debugint/debugint.o \
 	$(EMUOBJ)/profiler.o \
+	$(EMUOBJ)/webengine.o \
 	$(OSDOBJ)/osdepend.o \
 	$(OSDOBJ)/osdnet.o
 

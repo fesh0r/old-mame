@@ -23,6 +23,13 @@ static ADDRESS_MAP_START( at16_map, AS_PROGRAM, 16, at_state )
 	AM_RANGE(0xff0000, 0xffffff) AM_ROM AM_REGION("maincpu", 0x0f0000)
 ADDRESS_MAP_END
 
+static ADDRESS_MAP_START( ps1_286_map, AS_PROGRAM, 16, at_state )
+	AM_RANGE(0x000000, 0x09ffff) AM_RAMBANK("bank10")
+	AM_RANGE(0x0a0000, 0x0bffff) AM_DEVREADWRITE8("vga", vga_device, mem_r, mem_w, 0xffff)
+	AM_RANGE(0x0c0000, 0x0fffff) AM_ROM
+	AM_RANGE(0xff0000, 0xffffff) AM_ROM AM_REGION("maincpu", 0x0f0000)
+ADDRESS_MAP_END
+
 static ADDRESS_MAP_START( at386_map, AS_PROGRAM, 32, at_state )
 	AM_RANGE(0x00000000, 0x0009ffff) AM_RAMBANK("bank10")
 	AM_RANGE(0x000a0000, 0x000bffff) AM_NOP
@@ -97,6 +104,37 @@ static ADDRESS_MAP_START( at16_io, AS_IO, 16, at_state )
 	AM_RANGE(0x0080, 0x009f) AM_READWRITE8(at_page8_r, at_page8_w, 0xffff)
 	AM_RANGE(0x00a0, 0x00bf) AM_DEVREADWRITE8("pic8259_slave", pic8259_device, read, write, 0xffff)
 	AM_RANGE(0x00c0, 0x00df) AM_READWRITE8(at_dma8237_2_r, at_dma8237_2_w, 0xffff)
+ADDRESS_MAP_END
+
+READ16_MEMBER( at_state::ps1_unk_r )
+{
+	return m_ps1_reg[offset];
+}
+
+WRITE16_MEMBER( at_state::ps1_unk_w )
+{
+	if((offset == 0) && (data == 0x60))
+		data = 0x68;
+
+	m_ps1_reg[offset] = (m_ps1_reg[offset] & ~mem_mask) | (data & mem_mask);
+}
+
+READ8_MEMBER( at_state::ps1_kbdc_r )
+{
+	int old_delay = m_poll_delay;
+	UINT8 ret = at_keybc_r(space, offset, mem_mask);
+	if(old_delay == 0)
+		m_poll_delay = 8;
+	return ret;
+}
+
+static ADDRESS_MAP_START(ps1_286_io, AS_IO, 16, at_state )
+	AM_RANGE(0x03b0, 0x03bf) AM_DEVREADWRITE8("vga", vga_device, port_03b0_r, port_03b0_w, 0xffff)
+	AM_RANGE(0x03c0, 0x03cf) AM_DEVREADWRITE8("vga", vga_device, port_03c0_r, port_03c0_w, 0xffff)
+	AM_RANGE(0x03d0, 0x03df) AM_DEVREADWRITE8("vga", vga_device, port_03d0_r, port_03d0_w, 0xffff)
+	AM_RANGE(0x0060, 0x0063) AM_READWRITE8(ps1_kbdc_r, at_keybc_w, 0xffff)
+	AM_RANGE(0x0102, 0x0105) AM_READWRITE(ps1_unk_r, ps1_unk_w)
+	AM_IMPORT_FROM( at16_io )
 ADDRESS_MAP_END
 
 READ16_MEMBER( at_state::neat_chipset_r )
@@ -253,10 +291,11 @@ UINT32 at_state::at_286_a20(bool state)
 	return (state ? 0xffffff : 0xefffff);
 }
 
-static const i80286_interface at_286 =
+WRITE_LINE_MEMBER( at_state::at_shutdown )
 {
-	at_state::at_286_a20
-};
+	if(state)
+		m_maincpu->reset();
+}
 
 static const isa16bus_interface isabus_intf =
 {
@@ -299,7 +338,6 @@ static MACHINE_CONFIG_FRAGMENT( at_motherboard )
 
 	MCFG_AT_KEYBOARD_CONTROLLER_ADD("keybc", XTAL_12MHz, keyboard_controller_intf)
 	MCFG_PC_KBDC_ADD("pc_kbdc", pc_kbdc_intf)
-	MCFG_PC_KBDC_SLOT_ADD("pc_kbdc", "kbd", pc_at_keyboards, STR_KBD_IBM_PC_AT_84)
 
 	MCFG_MC146818_IRQ_ADD( "rtc", MC146818_STANDARD, WRITELINE(at_state, at_mc146818_irq))
 
@@ -317,7 +355,8 @@ static MACHINE_CONFIG_START( ibm5170, at_state )
 	MCFG_CPU_ADD("maincpu", I80286, XTAL_12MHz/2 /*6000000*/)
 	MCFG_CPU_PROGRAM_MAP(at16_map)
 	MCFG_CPU_IO_MAP(at16_io)
-	MCFG_CPU_CONFIG(at_286)
+	MCFG_80286_A20(at_state, at_286_a20)
+	MCFG_80286_SHUTDOWN(WRITELINE(at_state, at_shutdown))
 
 	MCFG_QUANTUM_TIME(attotime::from_hz(60))
 
@@ -327,6 +366,7 @@ static MACHINE_CONFIG_START( ibm5170, at_state )
 	MCFG_ISA16_SLOT_ADD("isabus","isa2", pc_isa16_cards, "fdc", false)
 	MCFG_ISA16_SLOT_ADD("isabus","isa3", pc_isa16_cards, "comat", false)
 	MCFG_ISA16_SLOT_ADD("isabus","isa4", pc_isa16_cards, "ide", false)
+	MCFG_PC_KBDC_SLOT_ADD("pc_kbdc", "kbd", pc_at_keyboards, STR_KBD_IBM_PC_AT_84)
 
 	/* software lists */
 	MCFG_SOFTWARE_LIST_ADD("disk_list","ibm5170")
@@ -348,12 +388,36 @@ static MACHINE_CONFIG_DERIVED( ec1849, ibm5170 )
 	MCFG_CPU_CLOCK(12000000)
 MACHINE_CONFIG_END
 
+static MACHINE_CONFIG_START( ibmps1, at_state )
+	MCFG_CPU_ADD("maincpu", I80286, XTAL_10MHz)
+	MCFG_CPU_PROGRAM_MAP(ps1_286_map)
+	MCFG_CPU_IO_MAP(ps1_286_io)
+	MCFG_80286_A20(at_state, at_286_a20)
+	MCFG_80286_SHUTDOWN(WRITELINE(at_state, at_shutdown))
+
+	MCFG_QUANTUM_TIME(attotime::from_hz(60))
+	MCFG_FRAGMENT_ADD( pcvideo_vga )
+
+	MCFG_FRAGMENT_ADD( at_motherboard )
+	MCFG_ISA16_BUS_ADD("isabus", ":maincpu", isabus_intf)
+	MCFG_ISA16_SLOT_ADD("isabus","isa1", pc_isa16_cards, "fdc", false)
+	MCFG_ISA16_SLOT_ADD("isabus","isa2", pc_isa16_cards, "comat", false)
+	MCFG_ISA16_SLOT_ADD("isabus","isa3", pc_isa16_cards, "ide", false)
+	MCFG_PC_KBDC_SLOT_ADD("pc_kbdc", "kbd", pc_at_keyboards, STR_KBD_MICROSOFT_NATURAL)
+
+	/* internal ram */
+	MCFG_RAM_ADD(RAM_TAG)
+	MCFG_RAM_DEFAULT_SIZE("1664K")
+	MCFG_RAM_EXTRA_OPTIONS("2M,4M,8M,15M")
+MACHINE_CONFIG_END
+
 static MACHINE_CONFIG_START( ibm5162, at_state )
 	/* basic machine hardware */
 	MCFG_CPU_ADD("maincpu", I80286, 6000000 /*6000000*/)
 	MCFG_CPU_PROGRAM_MAP(at16_map)
 	MCFG_CPU_IO_MAP(at16_io)
-	MCFG_CPU_CONFIG(at_286)
+	MCFG_80286_A20(at_state, at_286_a20)
+	MCFG_80286_SHUTDOWN(WRITELINE(at_state, at_shutdown))
 
 	MCFG_QUANTUM_TIME(attotime::from_hz(60))
 
@@ -364,6 +428,7 @@ static MACHINE_CONFIG_START( ibm5162, at_state )
 	MCFG_ISA16_SLOT_ADD("isabus","isa2", pc_isa16_cards, "ide", false)
 	MCFG_ISA16_SLOT_ADD("isabus","isa3", pc_isa16_cards, "comat", false)
 	MCFG_ISA16_SLOT_ADD("isabus","isa4", pc_isa16_cards, "cga", false)
+	MCFG_PC_KBDC_SLOT_ADD("pc_kbdc", "kbd", pc_at_keyboards, STR_KBD_IBM_PC_AT_84)
 
 	/* internal ram */
 	MCFG_RAM_ADD(RAM_TAG)
@@ -377,7 +442,8 @@ static MACHINE_CONFIG_START( ps2m30286, at_state )
 	MCFG_CPU_ADD("maincpu", I80286, 12000000)
 	MCFG_CPU_PROGRAM_MAP(at16_map)
 	MCFG_CPU_IO_MAP(at16_io)
-	MCFG_CPU_CONFIG(at_286)
+	MCFG_80286_A20(at_state, at_286_a20)
+	MCFG_80286_SHUTDOWN(WRITELINE(at_state, at_shutdown))
 
 	MCFG_FRAGMENT_ADD( at_motherboard )
 
@@ -386,6 +452,7 @@ static MACHINE_CONFIG_START( ps2m30286, at_state )
 	MCFG_ISA16_SLOT_ADD("isabus","isa2", pc_isa16_cards, "ide", false)
 	MCFG_ISA16_SLOT_ADD("isabus","isa3", pc_isa16_cards, "comat", false)
 	MCFG_ISA16_SLOT_ADD("isabus","isa4", pc_isa16_cards, "svga_et4k", false)
+	MCFG_PC_KBDC_SLOT_ADD("pc_kbdc", "kbd", pc_at_keyboards, STR_KBD_IBM_PC_AT_84)
 
 	/* internal ram */
 	MCFG_RAM_ADD(RAM_TAG)
@@ -399,7 +466,8 @@ static MACHINE_CONFIG_START( neat, at_state )
 	MCFG_CPU_ADD("maincpu", I80286, 12000000)
 	MCFG_CPU_PROGRAM_MAP(at16_map)
 	MCFG_CPU_IO_MAP(neat_io)
-	MCFG_CPU_CONFIG(at_286)
+	MCFG_80286_A20(at_state, at_286_a20)
+	MCFG_80286_SHUTDOWN(WRITELINE(at_state, at_shutdown))
 
 	MCFG_FRAGMENT_ADD( at_motherboard )
 
@@ -408,6 +476,7 @@ static MACHINE_CONFIG_START( neat, at_state )
 	MCFG_ISA16_SLOT_ADD("isabus", "isa2", pc_isa16_cards, "ide", false)
 	MCFG_ISA16_SLOT_ADD("isabus", "isa3", pc_isa16_cards, "comat", false)
 	MCFG_ISA16_SLOT_ADD("isabus","isa4", pc_isa16_cards, "svga_et4k", false)
+	MCFG_PC_KBDC_SLOT_ADD("pc_kbdc", "kbd", pc_at_keyboards, STR_KBD_MICROSOFT_NATURAL)
 
 	MCFG_CS8221_ADD("cs8221", "maincpu", "isa", "bios")
 
@@ -422,7 +491,8 @@ static MACHINE_CONFIG_START( atvga, at_state )
 	MCFG_CPU_ADD("maincpu", I80286, 12000000)
 	MCFG_CPU_PROGRAM_MAP(at16_map)
 	MCFG_CPU_IO_MAP(at16_io)
-	MCFG_CPU_CONFIG(at_286)
+	MCFG_80286_A20(at_state, at_286_a20)
+	MCFG_80286_SHUTDOWN(WRITELINE(at_state, at_shutdown))
 
 	MCFG_FRAGMENT_ADD( at_motherboard )
 
@@ -432,6 +502,7 @@ static MACHINE_CONFIG_START( atvga, at_state )
 	MCFG_ISA16_SLOT_ADD("isabus","isa3", pc_isa16_cards, "comat", false)
 	MCFG_ISA16_SLOT_ADD("isabus","isa4", pc_isa16_cards, "ne2000", false)
 	MCFG_ISA16_SLOT_ADD("isabus","isa5", pc_isa16_cards, "svga_et4k", false)
+	MCFG_PC_KBDC_SLOT_ADD("pc_kbdc", "kbd", pc_at_keyboards, STR_KBD_MICROSOFT_NATURAL)
 
 	/* internal ram */
 	MCFG_RAM_ADD(RAM_TAG)
@@ -444,7 +515,8 @@ static MACHINE_CONFIG_START( xb42639, at_state )
 	MCFG_CPU_ADD("maincpu", I80286, 12500000)
 	MCFG_CPU_PROGRAM_MAP(at16_map)
 	MCFG_CPU_IO_MAP(at16_io)
-	MCFG_CPU_CONFIG(at_286)
+	MCFG_80286_A20(at_state, at_286_a20)
+	MCFG_80286_SHUTDOWN(WRITELINE(at_state, at_shutdown))
 
 	MCFG_FRAGMENT_ADD( at_motherboard )
 
@@ -453,6 +525,7 @@ static MACHINE_CONFIG_START( xb42639, at_state )
 	MCFG_ISA16_SLOT_ADD("isabus","isa2", pc_isa16_cards, "ide", false)
 	MCFG_ISA16_SLOT_ADD("isabus","isa3", pc_isa16_cards, "comat", false)
 	MCFG_ISA16_SLOT_ADD("isabus","isa4", pc_isa16_cards, "svga_et4k", false)
+	MCFG_PC_KBDC_SLOT_ADD("pc_kbdc", "kbd", pc_at_keyboards, STR_KBD_MICROSOFT_NATURAL)
 
 	/* internal ram */
 	MCFG_RAM_ADD(RAM_TAG)
@@ -460,13 +533,6 @@ static MACHINE_CONFIG_START( xb42639, at_state )
 	MCFG_RAM_EXTRA_OPTIONS("2M,4M,8M,15M")
 MACHINE_CONFIG_END
 
-//-------------------------------------------------
-//  DEVICE_INPUT_DEFAULTS( ide_2nd)
-//-------------------------------------------------
-
-static DEVICE_INPUT_DEFAULTS_START( ide_2nd )
-	DEVICE_INPUT_DEFAULTS("DSW", 0x01, 0x01)
-DEVICE_INPUT_DEFAULTS_END
 
 static MACHINE_CONFIG_START( at386, at_state )
 	MCFG_CPU_ADD("maincpu", I386, 12000000)
@@ -487,8 +553,8 @@ static MACHINE_CONFIG_START( at386, at_state )
 	MCFG_ISA16_SLOT_ADD("isabus","isa2", pc_isa16_cards, NULL, false)
 	MCFG_ISA16_SLOT_ADD("isabus","isa3", pc_isa16_cards, NULL, false)
 	MCFG_ISA16_SLOT_ADD("isabus","isa4", pc_isa16_cards, NULL, false)
-	MCFG_ISA16_SLOT_ADD("isabus","isa5", pc_isa16_cards, "ide_cd", false) //2nd-ary IDE
-	MCFG_DEVICE_CARD_DEVICE_INPUT_DEFAULTS("ide_cd", ide_2nd)
+	MCFG_ISA16_SLOT_ADD("isabus","isa5", pc_isa16_cards, NULL, false)
+	MCFG_PC_KBDC_SLOT_ADD("pc_kbdc", "kbd", pc_at_keyboards, STR_KBD_MICROSOFT_NATURAL)
 
 	/* internal ram */
 	MCFG_RAM_ADD(RAM_TAG)
@@ -510,7 +576,8 @@ static MACHINE_CONFIG_START( k286i, at_state )
 	MCFG_CPU_ADD("maincpu", I80286, XTAL_12MHz/2 /*6000000*/)
 	MCFG_CPU_PROGRAM_MAP(at16_map)
 	MCFG_CPU_IO_MAP(at16_io)
-	MCFG_CPU_CONFIG(at_286)
+	MCFG_80286_A20(at_state, at_286_a20)
+	MCFG_80286_SHUTDOWN(WRITELINE(at_state, at_shutdown))
 
 	MCFG_QUANTUM_TIME(attotime::from_hz(60))
 
@@ -524,6 +591,7 @@ static MACHINE_CONFIG_START( k286i, at_state )
 	MCFG_ISA16_SLOT_ADD("isabus","isa6", pc_isa16_cards, NULL, false)
 	MCFG_ISA16_SLOT_ADD("isabus","isa7", pc_isa16_cards, NULL, false)
 	MCFG_ISA16_SLOT_ADD("isabus","isa8", pc_isa16_cards, NULL, false)
+	MCFG_PC_KBDC_SLOT_ADD("pc_kbdc", "kbd", pc_at_keyboards, STR_KBD_MICROSOFT_NATURAL)
 
 	/* internal ram */
 	MCFG_RAM_ADD(RAM_TAG)
@@ -564,8 +632,8 @@ static MACHINE_CONFIG_START( at586, at586_state )
 	MCFG_ISA16_SLOT_ADD(":pcibus:1:i82371ab:isabus","isa2", pc_isa16_cards, NULL, false)
 	MCFG_ISA16_SLOT_ADD(":pcibus:1:i82371ab:isabus","isa3", pc_isa16_cards, NULL, false)
 	MCFG_ISA16_SLOT_ADD(":pcibus:1:i82371ab:isabus","isa4", pc_isa16_cards, NULL, false)
-	MCFG_ISA16_SLOT_ADD(":pcibus:1:i82371ab:isabus","isa5", pc_isa16_cards, "ide_cd", false) //2nd-ary IDE
-	MCFG_DEVICE_CARD_DEVICE_INPUT_DEFAULTS("ide_cd", ide_2nd)
+	MCFG_ISA16_SLOT_ADD(":pcibus:1:i82371ab:isabus","isa5", pc_isa16_cards, NULL, false)
+	MCFG_PC_KBDC_SLOT_ADD("pc_kbdc", "kbd", pc_at_keyboards, STR_KBD_MICROSOFT_NATURAL)
 MACHINE_CONFIG_END
 
 static MACHINE_CONFIG_START( at586x3, at586_state )
@@ -587,8 +655,8 @@ static MACHINE_CONFIG_START( at586x3, at586_state )
 	MCFG_ISA16_SLOT_ADD(":pcibus:1:i82371sb:isabus","isa2", pc_isa16_cards, NULL, false)
 	MCFG_ISA16_SLOT_ADD(":pcibus:1:i82371sb:isabus","isa3", pc_isa16_cards, NULL, false)
 	MCFG_ISA16_SLOT_ADD(":pcibus:1:i82371sb:isabus","isa4", pc_isa16_cards, NULL, false)
-	MCFG_ISA16_SLOT_ADD(":pcibus:1:i82371sb:isabus","isa5", pc_isa16_cards, "ide_cd", false) //2nd-ary IDE
-	MCFG_DEVICE_CARD_DEVICE_INPUT_DEFAULTS("ide_cd", ide_2nd)
+	MCFG_ISA16_SLOT_ADD(":pcibus:1:i82371sb:isabus","isa5", pc_isa16_cards, NULL, false)
+	MCFG_PC_KBDC_SLOT_ADD("pc_kbdc", "kbd", pc_at_keyboards, STR_KBD_MICROSOFT_NATURAL)
 MACHINE_CONFIG_END
 
 static MACHINE_CONFIG_DERIVED( at386sx, atvga )
@@ -864,6 +932,12 @@ ROM_START( i8580111 )
 	ROM_REGION(0x1000000,"maincpu", 0)
 	ROM_LOAD16_BYTE( "15f6637.bin", 0xe0000, 0x10000, CRC(76c36d1a) SHA1(c68d52a2e5fbd303225ebb006f91869b29ef700a))
 	ROM_LOAD16_BYTE( "15f6639.bin", 0xe0001, 0x10000, CRC(82cf0f7d) SHA1(13bb39225757b89749af70e881af0228673dbe0c))
+ROM_END
+
+ROM_START( ibmps1es )
+	ROM_REGION(0x1000000, "maincpu", 0)
+	ROM_LOAD16_BYTE( "ibm_1057757_24-05-90.bin", 0xc0000, 0x20000, CRC(c8f81ea4) SHA1(925ed0e98f9f2997cb86554ef384bcfaf2a4ecbe))
+	ROM_LOAD16_BYTE( "ibm_1057757_29-15-90.bin", 0xc0001, 0x20000, CRC(c2dd6b5c) SHA1(f6b5785002dd628b6b1fb3bb101e076299eba3b6))
 ROM_END
 
 ROM_START( at )
@@ -1322,13 +1396,14 @@ COMP ( 198?, i8550061, ibm5170, 0,       at386,     atvga, at_state,      atvga,
 COMP ( 1989, i8555081, ibm5170, 0,       at386,     atvga, at_state,      atvga,  "International Business Machines",  "IBM PS/2 8550-081 (Model 55SX)", GAME_NOT_WORKING )
 COMP ( 198?, i8580071, ibm5170, 0,       at386,     atvga, at_state,      atvga,  "International Business Machines",  "IBM PS/2 8580-071 (Model 80)", GAME_NOT_WORKING )
 COMP ( 198?, i8580111, ibm5170, 0,       at386,     atvga, at_state,      atvga,  "International Business Machines",  "IBM PS/2 8580-111 (Model 80)", GAME_NOT_WORKING )
+COMP ( 1989, ibmps1es, ibm5170, 0,       ibmps1,    atvga, at_state,      atvga,  "International Business Machines",  "IBM PS/1 (Spanish)", GAME_NOT_WORKING )
 COMP ( 1987, at,       ibm5170, 0,       ibm5162,   atcga, at_state,      atcga,  "<generic>",  "PC/AT (CGA, MF2 Keyboard)", GAME_NOT_WORKING )
 COMP ( 1987, atvga,    ibm5170, 0,       atvga,     atvga, at_state,      atvga,  "<generic>",  "PC/AT (VGA, MF2 Keyboard)" , GAME_NOT_WORKING )
 COMP ( 1988, at386,    ibm5170, 0,       at386,     atvga, at_state,      atvga,  "<generic>",  "PC/AT 386 (VGA, MF2 Keyboard)", GAME_NOT_WORKING )
 COMP ( 1988, ct386sx,  ibm5170, 0,       ct386sx,   atvga, at_state,      atvga,  "<generic>",  "NEAT 386SX (VGA, MF2 Keyboard)", GAME_NOT_WORKING )
 COMP ( 1990, at486,    ibm5170, 0,       at486,     atvga, at_state,      atvga,  "<generic>",  "PC/AT 486 (VGA, MF2 Keyboard)", GAME_NOT_WORKING )
-COMP ( 1990, at586,    ibm5170, 0,       at586,     atvga, driver_device,      0,   "<generic>",  "PC/AT 586 (PIIX4)", GAME_NOT_WORKING )
-COMP ( 1990, at586x3,  ibm5170, 0,       at586x3,   atvga, driver_device,      0,       "<generic>",  "PC/AT 586 (PIIX3)", GAME_NOT_WORKING )
+COMP ( 1990, at586,    ibm5170, 0,       at586,     atvga, at_state,      at586,  "<generic>",  "PC/AT 586 (PIIX4)", GAME_NOT_WORKING )
+COMP ( 1990, at586x3,  ibm5170, 0,       at586x3,   atvga, at_state,      at586,  "<generic>",  "PC/AT 586 (PIIX3)", GAME_NOT_WORKING )
 COMP ( 1989, neat,     ibm5170, 0,       neat,      atvga, at_state,      atvga,  "<generic>",  "NEAT (VGA, MF2 Keyboard)", GAME_NOT_WORKING )
 COMP ( 1993, ec1849,   ibm5170, 0,       ec1849,    atcga, at_state,      atcga,  "<unknown>",  "EC-1849", GAME_NOT_WORKING )
 COMP ( 1993, megapc,   ibm5170, 0,       megapc,    atvga, at_state,      atvga,  "Amstrad plc", "MegaPC", GAME_NOT_WORKING )

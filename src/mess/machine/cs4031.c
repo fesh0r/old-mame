@@ -17,9 +17,6 @@
         - MC14818 RTC
 
     TODO:
-        - The chipset has the ability to intercept the GATEA20 and
-          RESET commands sent to the 8042 keyboard controller,
-          this is not emulated yet
         - No emulation of memory parity checks
         - Move IPC core to its own file so it can be shared with
           other chipsets
@@ -38,6 +35,7 @@
 #define LOG_REGISTER    1
 #define LOG_MEMORY      1
 #define LOG_IO          1
+#define LOG_KEYBOARD    0
 
 
 //**************************************************************************
@@ -214,6 +212,9 @@ cs4031_device::cs4031_device(const machine_config &mconfig, const char *tag, dev
 	m_kbrst(1),
 	m_ext_gatea20(0),
 	m_fast_gatea20(0),
+	m_emu_gatea20(0),
+	m_keybc_d1_written(false),
+	m_keybc_data_blocked(false),
 	m_address(0),
 	m_address_valid(false)
 {
@@ -316,7 +317,7 @@ void cs4031_device::device_start()
 	m_space_io->install_write_handler(0x0070, 0x0073, write8_delegate(FUNC(cs4031_device::rtc_w), this), 0x000000ff);
 	m_space_io->install_readwrite_handler(0x0070, 0x0073, read8_delegate(FUNC(mc146818_device::data_r), &(*m_rtc)), write8_delegate(FUNC(mc146818_device::data_w), &(*m_rtc)), 0x0000ff00);
 	m_space_io->install_readwrite_handler(0x0080, 0x008f, read8_delegate(FUNC(cs4031_device::dma_page_r), this), write8_delegate(FUNC(cs4031_device::dma_page_w), this), 0xffffffff);
-	m_space_io->install_write_handler(0x0090, 0x0093, write8_delegate(FUNC(cs4031_device::sysctrl_w), this), 0x00ff0000);
+	m_space_io->install_readwrite_handler(0x0090, 0x0093, read8_delegate(FUNC(cs4031_device::sysctrl_r), this), write8_delegate(FUNC(cs4031_device::sysctrl_w), this), 0x00ff0000);
 	m_space_io->install_readwrite_handler(0x00a0, 0x00a3, read8_delegate(FUNC(pic8259_device::read), &(*m_intc2)), write8_delegate(FUNC(pic8259_device::write), &(*m_intc2)), 0x0000ffff);
 	m_space_io->install_readwrite_handler(0x00c0, 0x00df, read8_delegate(FUNC(cs4031_device::dma2_r),this), write8_delegate(FUNC(cs4031_device::dma2_w),this), 0xffffffff);
 }
@@ -600,6 +601,7 @@ WRITE8_MEMBER( cs4031_device::config_data_w )
 			break;
 
 		case SOFT_RESET_AND_GATEA20:
+			a20m();
 			break;
 		}
 	}
@@ -712,25 +714,134 @@ void cs4031_device::update_write_regions()
 
 void cs4031_device::a20m()
 {
-	m_write_a20m(m_fast_gatea20 | m_ext_gatea20);
+	// external signal is ignored when emulation is on
+	if (BIT(m_registers[SOFT_RESET_AND_GATEA20], 5))
+		m_write_a20m(m_fast_gatea20 | m_emu_gatea20);
+	else
+		m_write_a20m(m_fast_gatea20 | m_ext_gatea20);
+}
+
+void cs4031_device::emulated_kbreset(int state)
+{
+	if (BIT(m_registers[SOFT_RESET_AND_GATEA20], 4))
+	{
+		// kbreset (input) is active low
+		// cpureset (output) is active high
+		m_write_cpureset(!state);
+	}
+}
+
+void cs4031_device::emulated_gatea20(int state)
+{
+	if (BIT(m_registers[SOFT_RESET_AND_GATEA20], 5))
+	{
+		m_emu_gatea20 = state;
+		a20m();
+	}
+}
+
+void cs4031_device::fast_gatea20(int state)
+{
+	m_fast_gatea20 = state;
+	a20m();
+}
+
+void cs4031_device::keyboard_gatea20(int state)
+{
+	m_ext_gatea20 = state;
+	a20m();
 }
 
 READ8_MEMBER( cs4031_device::keyb_status_r )
 {
+	if (LOG_KEYBOARD)
+		logerror("cs4031_device::keyb_status_r\n");
+
 	return m_keybc->status_r(space, 0);
+}
+
+WRITE8_MEMBER( cs4031_device::keyb_command_blocked_w )
+{
+	// command is optionally blocked
+	if (!BIT(m_registers[SOFT_RESET_AND_GATEA20], 7))
+		m_keybc->command_w(space, 0, data);
 }
 
 WRITE8_MEMBER( cs4031_device::keyb_command_w )
 {
-	if (0)
+	if (LOG_KEYBOARD)
 		logerror("cs4031_device::keyb_command_w: %02x\n", data);
 
-	m_keybc->command_w(space, 0, data);
+	m_keybc_d1_written = false;
+
+	switch (data)
+	{
+	// self-test
+	case 0xaa:
+		emulated_kbreset(1);
+		emulated_gatea20(1);
+
+		// self-test is never blocked
+		m_keybc->command_w(space, 0, data);
+		break;
+
+	case 0xd1:
+		m_keybc_d1_written = true;
+		keyb_command_blocked_w(space, 0, data);
+		break;
+
+	case 0xf0:
+	case 0xf1:
+	case 0xf2:
+	case 0xf4:
+	case 0xf5:
+	case 0xf6:
+	case 0xf8:
+	case 0xf9:
+	case 0xfa:
+	case 0xfc:
+	case 0xfd:
+	case 0xfe:
+		// toggle keyboard reset?
+		if (!BIT(data, 0))
+		{
+			emulated_kbreset(0);
+			emulated_kbreset(1);
+		}
+
+		// toggle gatea20?
+		if (!BIT(data, 1))
+		{
+			emulated_gatea20(0);
+			emulated_gatea20(1);
+		}
+
+		keyb_command_blocked_w(space, 0, data);
+
+		break;
+
+	case 0xff:
+		// last data write was blocked?
+		if (m_keybc_data_blocked)
+		{
+			m_keybc_data_blocked = false;
+			keyb_command_blocked_w(space, 0, data);
+		}
+		else
+			m_keybc->command_w(space, 0, data);
+
+		break;
+
+	// everything else goes directly to the keyboard controller
+	default:
+		m_keybc->command_w(space, 0, data);
+		break;
+	}
 }
 
 READ8_MEMBER( cs4031_device::keyb_data_r )
 {
-	if (0)
+	if (LOG_KEYBOARD)
 		logerror("cs4031_device::keyb_data_r\n");
 
 	return m_keybc->data_r(space, 0);
@@ -738,36 +849,48 @@ READ8_MEMBER( cs4031_device::keyb_data_r )
 
 WRITE8_MEMBER( cs4031_device::keyb_data_w )
 {
-	if (0)
+	if (LOG_KEYBOARD)
 		logerror("cs4031_device::keyb_data_w: %02x\n", data);
 
-	m_keybc->data_w(space, 0, data);
+	// data is blocked only for d1 command
+	if (BIT(m_registers[SOFT_RESET_AND_GATEA20], 7) && m_keybc_d1_written)
+	{
+		m_keybc_data_blocked = true;
+		emulated_kbreset(BIT(data, 0));
+		emulated_gatea20(BIT(data, 1));
+	}
+	else
+	{
+		m_keybc_data_blocked = false;
+		m_keybc->data_w(space, 0, data);
+	}
 }
 
 WRITE_LINE_MEMBER( cs4031_device::gatea20_w )
 {
-	if (LOG_IO)
+	if (LOG_KEYBOARD)
 		logerror("cs4031_device::gatea20_w: %u\n", state);
 
-	if (m_ext_gatea20 != state)
-	{
-		m_ext_gatea20 = state;
-		a20m();
-	}
+	keyboard_gatea20(state);
 }
 
 WRITE_LINE_MEMBER( cs4031_device::kbrst_w )
 {
-	if (LOG_IO)
+	if (LOG_KEYBOARD)
 		logerror("cs4031_device::kbrst_w: %u\n", state);
 
-	// active low signal
+	// convert to active low signal (gets inverted in at_keybc.c)
 	state = (state == ASSERT_LINE ? 0 : 1);
 
-	if (m_kbrst == 1 && state == 0)
+	// external kbreset is ignored when emulation enabled
+	if (!BIT(m_registers[SOFT_RESET_AND_GATEA20], 4))
 	{
-		m_write_cpureset(1);
-		m_write_cpureset(0);
+		// detect transition
+		if (m_kbrst == 1 && state == 0)
+		{
+			m_write_cpureset(1);
+			m_write_cpureset(0);
+		}
 	}
 
 	m_kbrst = state;
@@ -785,8 +908,7 @@ WRITE8_MEMBER( cs4031_device::sysctrl_w )
 	if (LOG_IO)
 		logerror("cs4031_device::sysctrl_w: %u\n", data);
 
-	m_fast_gatea20 = BIT(data, 1);
-	a20m();
+	fast_gatea20(BIT(data, 1));
 
 	if (m_cpureset == 0 && BIT(data, 0))
 	{
@@ -796,6 +918,19 @@ WRITE8_MEMBER( cs4031_device::sysctrl_w )
 	}
 
 	m_cpureset = BIT(data, 0);
+}
+
+READ8_MEMBER( cs4031_device::sysctrl_r )
+{
+	UINT8 result = 0; // reserved bits read as 0?
+
+	result |= m_cpureset << 0;
+	result |= m_fast_gatea20 << 1;
+
+	if (LOG_IO)
+		logerror("cs4031_device::sysctrl_r: %u\n", result);
+
+	return result;
 }
 
 

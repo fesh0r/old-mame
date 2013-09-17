@@ -184,6 +184,9 @@ endif
 # uncomment next line to build a debug version
 # DEBUG = 1
 
+# uncomment next line to disable some debug-related hotspots/slowdowns (e.g. for profiling)
+# FASTDEBUG = 1
+
 # uncomment next line to include the internal profiler
 # PROFILER = 1
 
@@ -247,8 +250,17 @@ BUILD_MIDILIB = 1
 # uncomment next line to generate verbose build information
 # VERBOSE = 1
 
+# uncomment next line to generate deprecation warnings during compilation
+# DEPRECATED = 1
+
 # specify the sanitizer to use or leave empty to use none
 # SANITIZE = 
+
+# uncomment next line to enable LTO (link-time optimizations)
+# LTO = 1
+
+# uncomment next line to enable networking
+# USE_NETWORK = 1
 
 # specify optimization level or leave commented to use the default
 # (default is OPTIMIZE = 3 normally, or OPTIMIZE = 0 with symbols)
@@ -440,6 +452,9 @@ ifneq ($(BUILD_JPEGLIB),1)
 DEFS += -DUSE_SYSTEM_JPEGLIB
 endif
 
+ifdef FASTDEBUG
+DEFS += -DMAME_DEBUG_FAST
+endif
 
 
 #-------------------------------------------------
@@ -479,6 +494,12 @@ ifdef VERBOSE
 CCOMFLAGS += -v
 endif
 
+# only show deprecation warnings when enabled
+ifndef DEPRECATED
+CCOMFLAGS += \
+	-Wno-deprecated-declarations
+endif
+
 # add profiling information for the compiler
 ifdef PROFILE
 CCOMFLAGS += -pg
@@ -495,6 +516,9 @@ endif
 # if we are optimizing, include optimization options
 ifneq ($(OPTIMIZE),0)
 CCOMFLAGS += -fno-strict-aliasing $(ARCHOPTS)
+ifdef LTO
+CCOMFLAGS += -flto
+endif
 endif
 
 # add a basic set of warnings
@@ -603,6 +627,12 @@ LDFLAGS += -s
 endif
 endif
 
+ifneq ($(OPTIMIZE),0)
+ifdef LTO
+LDFLAGS += -flto
+endif
+endif
+
 # output a map file (emulator only)
 ifdef MAP
 LDFLAGSEMULATOR += -Wl,-Map,$(FULLNAME).map
@@ -699,6 +729,9 @@ FORMATS_LIB = $(OBJ)/libformats.a
 
 # add LUA library
 LUA_LIB = $(OBJ)/liblua.a
+
+# add web library
+WEB_LIB = $(OBJ)/libweb.a
 
 # add PortMidi MIDI library
 ifeq ($(BUILD_MIDILIB),1)
@@ -820,7 +853,7 @@ $(sort $(OBJDIRS)):
 
 ifndef EXECUTABLE_DEFINED
 
-$(EMULATOR): $(EMUINFOOBJ) $(DRIVLISTOBJ) $(DRVLIBS) $(LIBOSD) $(LIBOPTIONAL) $(LIBEMU) $(LIBDASM) $(LIBUTIL) $(EXPAT) $(SOFTFLOAT) $(JPEG_LIB) $(FLAC_LIB) $(7Z_LIB) $(FORMATS_LIB) $(LUA_LIB) $(ZLIB) $(LIBOCORE) $(MIDI_LIB) $(RESFILE)
+$(EMULATOR): $(EMUINFOOBJ) $(DRIVLISTOBJ) $(DRVLIBS) $(LIBOSD) $(LIBOPTIONAL) $(LIBEMU) $(LIBDASM) $(LIBUTIL) $(EXPAT) $(SOFTFLOAT) $(JPEG_LIB) $(FLAC_LIB) $(7Z_LIB) $(FORMATS_LIB) $(LUA_LIB) $(WEB_LIB) $(ZLIB) $(LIBOCORE) $(MIDI_LIB) $(RESFILE)
 	$(CC) $(CDEFS) $(CFLAGS) -c $(SRC)/version.c -o $(VERSIONOBJ)
 	@echo Linking $@...
 	$(LD) $(LDFLAGS) $(LDFLAGSEMULATOR) $(VERSIONOBJ) $^ $(LIBS) -o $@

@@ -42,6 +42,7 @@
 #include "machine/c64/midi_siel.h"
 #include "machine/c64/mikro_assembler.h"
 #include "machine/c64/multiscreen.h"
+#include "machine/c64/music64.h"
 #include "machine/c64/neoram.h"
 #include "machine/c64/ocean.h"
 #include "machine/c64/pagefox.h"
@@ -73,6 +74,7 @@
 #include "machine/c64/xl80.h"
 #include "machine/c64/zaxxon.h"
 #include "machine/c128_comal80.h"
+#include "machine/c64_nl10.h"
 #include "machine/cbm2_std.h"
 #include "machine/cbm2_24k.h"
 #include "machine/cbm2_graphic.h"
@@ -89,6 +91,7 @@
 #include "machine/diag264_lb_tape.h"
 #include "machine/diag264_lb_user.h"
 #include "machine/fd2000.h"
+#include "machine/hardbox.h"
 #include "machine/interpod.h"
 #include "machine/pet_64k.h"
 #include "machine/plus4_sid.h"
@@ -118,10 +121,15 @@
 
 
 #define MCFG_CBM_IEEE488_ADD(_default_drive) \
+	MCFG_IEEE488_SLOT_ADD("ieee4", 4, cbm_ieee488_devices, NULL) \
 	MCFG_IEEE488_SLOT_ADD("ieee8", 8, cbm_ieee488_devices, _default_drive) \
 	MCFG_IEEE488_SLOT_ADD("ieee9", 9, cbm_ieee488_devices, NULL) \
 	MCFG_IEEE488_SLOT_ADD("ieee10", 10, cbm_ieee488_devices, NULL) \
 	MCFG_IEEE488_SLOT_ADD("ieee11", 11, cbm_ieee488_devices, NULL) \
+	MCFG_IEEE488_SLOT_ADD("ieee12", 12, cbm_ieee488_devices, NULL) \
+	MCFG_IEEE488_SLOT_ADD("ieee13", 13, cbm_ieee488_devices, NULL) \
+	MCFG_IEEE488_SLOT_ADD("ieee14", 14, cbm_ieee488_devices, NULL) \
+	MCFG_IEEE488_SLOT_ADD("ieee15", 15, cbm_ieee488_devices, NULL) \
 	MCFG_IEEE488_BUS_ADD()
 
 

@@ -27,6 +27,7 @@ include $(SRC)/mess/messcore.mak
 CPUS += Z80
 CPUS += Z180
 CPUS += I8085
+CPUS += I8089
 CPUS += M6502
 CPUS += H6280
 CPUS += I86
@@ -124,6 +125,7 @@ CPUS += PPS4
 CPUS += UPD7725
 CPUS += HD61700
 CPUS += LC8670
+CPUS += SCORE
 CPUS += ES5510
 CPUS += SCUDSP
 CPUS += IE15
@@ -182,6 +184,7 @@ SOUNDS += OKIM6258
 SOUNDS += OKIM6295
 #SOUNDS += OKIM6376
 #SOUNDS += OKIM9810
+SOUNDS += UPD7752
 SOUNDS += UPD7759
 SOUNDS += HC55516
 #SOUNDS += TC8830F
@@ -248,6 +251,7 @@ SOUNDS += AWACS
 #SOUNDS += YMZ770
 SOUNDS += T6721A
 SOUNDS += MOS7360
+SOUNDS += ESQPUMP
 
 #-------------------------------------------------
 # specify available video cores
@@ -307,6 +311,7 @@ VIDEOS += V9938
 # specify available machine cores
 #-------------------------------------------------
 
+MACHINES += CMOS40105
 MACHINES += NCR53C7XX
 MACHINES += LSI53C810
 MACHINES += 6522VIA
@@ -331,6 +336,7 @@ MACHINES += ADC0808
 MACHINES += ADC083X
 MACHINES += ADC1038
 MACHINES += ADC1213X
+MACHINES += AICARTC
 MACHINES += AM53CF96
 MACHINES += AM9517A
 MACHINES += AMIGAFDC
@@ -356,6 +362,7 @@ MACHINES += ER2055
 MACHINES += ER59256
 MACHINES += F3853
 MACHINES += I2CMEM
+MACHINES += I8089
 MACHINES += I8155
 MACHINES += I8212
 MACHINES += I8214
@@ -749,6 +756,7 @@ $(MESSOBJ)/shared.a: \
 	$(MESS_MACHINE)/midiinport.o    \
 	$(MESS_MACHINE)/midioutport.o   \
 	$(MESS_MACHINE)/mpc105.o    \
+	$(MESS_MACHINE)/mpu401.o \
 	$(MESS_MACHINE)/msm6222b.o  \
 	$(MESS_MACHINE)/ncr5380.o   \
 	$(MESS_MACHINE)/ncr5380n.o  \
@@ -789,14 +797,14 @@ $(MESSOBJ)/isa.a: \
 	$(MESS_MACHINE)/isa_gus.o   \
 	$(MESS_MACHINE)/isa_hdc.o   \
 	$(MESS_MACHINE)/isa_ibm_mfc.o   \
-	$(MESS_MACHINE)/isa_mpu401.o\
+	$(MESS_MACHINE)/isa_mpu401.o \
 	$(MESS_MACHINE)/isa_sblaster.o  \
 	$(MESS_MACHINE)/isa_stereo_fx.o \
 	$(MESS_MACHINE)/isa_ssi2001.o   \
 	$(MESS_MACHINE)/isa_ide.o   \
-	$(MESS_MACHINE)/isa_ide8.o   \
-	$(MESS_MACHINE)/isa_ide_cd.o\
+	$(MESS_MACHINE)/isa_xtide.o   \
 	$(MESS_MACHINE)/isa_aha1542.o   \
+	$(MESS_MACHINE)/isa_wd1002a_wx1.o\
 	$(MESS_VIDEO)/isa_cga.o     \
 	$(MESS_VIDEO)/isa_svga_cirrus.o \
 	$(MESS_VIDEO)/isa_ega.o     \
@@ -924,6 +932,7 @@ $(MESSOBJ)/apple.a:             \
 	$(MESS_MACHINE)/a2midi.o    \
 	$(MESS_MACHINE)/a2vulcan.o  \
 	$(MESS_MACHINE)/a2zipdrive.o\
+	$(MESS_MACHINE)/a2applicard.o \
 	$(MESS_MACHINE)/a2estd80col.o \
 	$(MESS_MACHINE)/a2eext80col.o \
 	$(MESS_MACHINE)/a2eramworks3.o \
@@ -1108,6 +1117,7 @@ $(MESSOBJ)/cbm.a:               \
 	$(MESS_MACHINE)/c64/midi_siel.o   \
 	$(MESS_MACHINE)/c64/mikro_assembler.o   \
 	$(MESS_MACHINE)/c64/multiscreen.o   \
+	$(MESS_MACHINE)/c64/music64.o   \
 	$(MESS_MACHINE)/c64/neoram.o\
 	$(MESS_MACHINE)/c64/ocean.o \
 	$(MESS_MACHINE)/c64/pagefox.o   \
@@ -1183,7 +1193,9 @@ $(MESSOBJ)/cbm.a:               \
 	$(MESS_MACHINE)/d9060.o     \
 	$(MESS_MACHINE)/d9060hd.o   \
 	$(MESS_MACHINE)/serialbox.o \
+	$(MESS_MACHINE)/c64_nl10.o \
 	$(MESS_MACHINE)/softbox.o   \
+	$(MESS_MACHINE)/hardbox.o   \
 	$(MESS_MACHINE)/cmdhd.o     \
 	$(MESS_MACHINE)/fd2000.o    \
 	$(MESS_DRIVERS)/clcd.o      \
@@ -1226,7 +1238,7 @@ $(MESSOBJ)/cce.a:               \
 	$(MESS_DRIVERS)/mc1000.o    \
 
 $(MESSOBJ)/ccs.a:               \
-	$(MESS_DRIVERS)/ccs2422.o   \
+	$(MESS_DRIVERS)/ccs300.o    \
 	$(MESS_DRIVERS)/ccs2810.o   \
 
 $(MESSOBJ)/chromatics.a:        \
@@ -1558,6 +1570,7 @@ $(MESSOBJ)/luxor.a:             \
 	$(MESS_MACHINE)/abc890.o    \
 	$(MESS_DRIVERS)/abc1600.o   \
 	$(MESS_MACHINE)/abc1600_bus.o   \
+	$(MESS_MACHINE)/abc1600mac.o   \
 	$(MESS_MACHINE)/lux4105.o   \
 	$(MESS_VIDEO)/abc1600.o     \
 	$(MESS_MACHINE)/s1410.o     \
@@ -1570,6 +1583,7 @@ $(MESSOBJ)/mattel.a:            \
 	$(MESS_VIDEO)/aquarius.o    \
 	$(MESS_DRIVERS)/juicebox.o  \
 	$(MESS_MACHINE)/s3c44b0.o   \
+	$(MESS_DRIVERS)/hyperscan.o \
 
 $(MESSOBJ)/matsushi.a:          \
 	$(MESS_DRIVERS)/jr100.o     \
@@ -1931,6 +1945,7 @@ $(MESSOBJ)/sega.a:              \
 	$(MESS_MACHINE)/md_stm95.o  \
 	$(MESS_MACHINE)/md_svp.o    \
 	$(MESS_DRIVERS)/megadriv.o  \
+	$(MESS_DRIVERS)/segapico.o  \
 	$(MESS_DRIVERS)/dccons.o    \
 	$(MAME_MACHINE)/gdrom.o     \
 	$(MESS_MACHINE)/dccons.o    \
@@ -1948,6 +1963,8 @@ $(MESSOBJ)/sega.a:              \
 	$(MESS_MACHINE)/sms_rfu.o     \
 	$(MESS_MACHINE)/sega8_slot.o  \
 	$(MESS_MACHINE)/sega8_rom.o \
+	$(MESS_MACHINE)/smsexp.o    \
+	$(MESS_MACHINE)/sms_gender.o  \
 	$(MESS_DRIVERS)/sms.o       \
 	$(MESS_DRIVERS)/svmu.o      \
 
@@ -1994,6 +2011,7 @@ $(MESSOBJ)/sharp.a:             \
 	$(MESS_DRIVERS)/pce220.o    \
 	$(MESS_MACHINE)/pce220_ser.o\
 	$(MESS_DRIVERS)/mz6500.o    \
+	$(MESS_DRIVERS)/zaurus.o    \
 
 $(MESSOBJ)/sinclair.a:          \
 	$(MESS_VIDEO)/spectrum.o    \
@@ -2199,12 +2217,13 @@ $(MESSOBJ)/trainer.a: \
 	$(MESS_DRIVERS)/babbage.o   \
 	$(MESS_DRIVERS)/bob85.o     \
 	$(MESS_DRIVERS)/cvicny.o    \
-	$(MESS_DRIVERS)/instruct.o  \
 	$(MESS_DRIVERS)/dolphunk.o  \
+	$(MESS_DRIVERS)/instruct.o  \
 	$(MESS_DRIVERS)/mk14.o      \
 	$(MESS_DRIVERS)/pro80.o     \
 	$(MESS_DRIVERS)/savia84.o   \
 	$(MESS_DRIVERS)/selz80.o    \
+	$(MESS_DRIVERS)/tk80.o      \
 
 $(MESSOBJ)/trs.a:               \
 	$(MESS_MACHINE)/6883sam.o   \
@@ -2339,6 +2358,7 @@ $(MESSOBJ)/skeleton.a:          \
 	$(MESS_DRIVERS)/altos5.o    \
 	$(MESS_DRIVERS)/alphasma.o  \
 	$(MESS_DRIVERS)/alphatro.o  \
+	$(MESS_DRIVERS)/ampro.o     \
 	$(MESS_DRIVERS)/applix.o    \
 	$(MESS_DRIVERS)/attache.o   \
 	$(MESS_DRIVERS)/ax20.o      \
@@ -2351,6 +2371,7 @@ $(MESSOBJ)/skeleton.a:          \
 	$(MESS_DRIVERS)/chaos.o     \
 	$(MESS_DRIVERS)/chesstrv.o  \
 	$(MESS_DRIVERS)/cd2650.o    \
+	$(MESS_DRIVERS)/cdc721.o    \
 	$(MESS_DRIVERS)/codata.o    \
 	$(MESS_DRIVERS)/cortex.o    \
 	$(MESS_DRIVERS)/cosmicos.o  \
@@ -2365,24 +2386,33 @@ $(MESSOBJ)/skeleton.a:          \
 	$(MESS_DRIVERS)/dm7000.o    \
 	$(MESS_DRIVERS)/dmv.o       \
 	$(MESS_DRIVERS)/dps1.o      \
+	$(MESS_DRIVERS)/dsb46.o     \
 	$(MESS_DRIVERS)/dual68.o    \
 	$(MESS_DRIVERS)/eacc.o      \
 	$(MESS_DRIVERS)/elwro800.o  \
 	$(MESS_DRIVERS)/eti660.o    \
 	$(MESS_DRIVERS)/fk1.o       \
 	$(MESS_DRIVERS)/fidelz80.o  \
+	$(MESS_DRIVERS)/grfd2301.o  \
 	$(MESS_DRIVERS)/harriet.o   \
 	$(MESS_DRIVERS)/hpz80unk.o  \
 	$(MESS_DRIVERS)/ht68k.o     \
+	$(MESS_DRIVERS)/ibm6580.o   \
 	$(MESS_DRIVERS)/ie15.o      \
 	$(MESS_DRIVERS)/if800.o     \
+	$(MESS_DRIVERS)/imsai.o     \
 	$(MESS_DRIVERS)/indiana.o   \
 	$(MESS_DRIVERS)/itt3030.o   \
+	$(MESS_DRIVERS)/jade.o      \
+	$(MESS_DRIVERS)/jonos.o     \
 	$(MESS_DRIVERS)/konin.o     \
+	$(MESS_DRIVERS)/lft.o       \
+	$(MESS_DRIVERS)/lola8a.o    \
 	$(MESS_DRIVERS)/m79152pc.o  \
 	$(MESS_DRIVERS)/mbc200.o    \
 	$(MESS_DRIVERS)/mccpm.o     \
 	$(MESS_DRIVERS)/mes.o       \
+	$(MESS_DRIVERS)/mice.o      \
 	$(MESS_DRIVERS)/microdec.o  \
 	$(MESS_DRIVERS)/micronic.o  \
 	$(MESS_DRIVERS)/mini2440.o  \
@@ -2390,8 +2420,11 @@ $(MESSOBJ)/skeleton.a:          \
 	$(MESS_DRIVERS)/mod8.o      \
 	$(MESS_DRIVERS)/modellot.o  \
 	$(MESS_DRIVERS)/ms0515.o    \
+	$(MESS_DRIVERS)/ms9540.o    \
 	$(MESS_DRIVERS)/mstation.o  \
 	$(MESS_DRIVERS)/mycom.o     \
+	$(MESS_DRIVERS)/octopus.o   \
+	$(MESS_DRIVERS)/onyx.o      \
 	$(MESS_DRIVERS)/okean240.o  \
 	$(MESS_DRIVERS)/p8k.o       \
 	$(MESS_DRIVERS)/pegasus.o   \
@@ -2399,6 +2432,7 @@ $(MESSOBJ)/skeleton.a:          \
 	$(MESS_DRIVERS)/pes.o       \
 	$(MESS_DRIVERS)/pipbug.o    \
 	$(MESS_DRIVERS)/plan80.o    \
+	$(MESS_DRIVERS)/pm68k.o     \
 	$(MESS_DRIVERS)/poly.o      \
 	$(MESS_DRIVERS)/pt68k4.o    \
 	$(MESS_DRIVERS)/ptcsol.o    \
@@ -2407,6 +2441,8 @@ $(MESSOBJ)/skeleton.a:          \
 	$(MESS_DRIVERS)/rvoice.o    \
 	$(MESS_DRIVERS)/sacstate.o  \
 	$(MESS_DRIVERS)/sage2.o     \
+	$(MESS_DRIVERS)/sbrain.o    \
+	$(MESS_DRIVERS)/seattle.o   \
 	$(MESS_DRIVERS)/softbox.o   \
 	$(MESS_DRIVERS)/swtpc.o     \
 	$(MESS_DRIVERS)/sys2900.o   \
@@ -2417,6 +2453,8 @@ $(MESSOBJ)/skeleton.a:          \
 	$(MESS_DRIVERS)/tricep.o    \
 	$(MESS_DRIVERS)/ts802.o     \
 	$(MESS_DRIVERS)/ts803.o     \
+	$(MESS_DRIVERS)/ts816.o     \
+	$(MESS_DRIVERS)/tv950.o     \
 	$(MESS_DRIVERS)/tsispch.o   \
 	$(MESS_DRIVERS)/unior.o     \
 	$(MESS_DRIVERS)/unistar.o   \
@@ -2424,8 +2462,10 @@ $(MESSOBJ)/skeleton.a:          \
 	$(MESS_DRIVERS)/vector4.o   \
 	$(MESS_DRIVERS)/vii.o       \
 	$(MESS_DRIVERS)/vta2000.o   \
+	$(MESS_DRIVERS)/wicat.o     \
 	$(MESS_DRIVERS)/xor100.o    \
 	$(MESS_DRIVERS)/z100.o      \
+	$(MESS_DRIVERS)/zorba.o     \
 
 
 
@@ -2514,7 +2554,6 @@ $(MESS_DRIVERS)/cvicny.o:   $(MESS_LAYOUT)/cvicny.lh
 $(MESS_DRIVERS)/coco3.o:    $(MESS_LAYOUT)/coco3.lh
 $(MESS_DRIVERS)/cosmicos.o: $(MESS_LAYOUT)/cosmicos.lh
 $(MESS_DRIVERS)/c80.o:      $(MESS_LAYOUT)/c80.lh
-$(MESS_DRIVERS)/dectalk.o:  $(MESS_LAYOUT)/dectalk.lh
 $(MESS_DRIVERS)/digel804.o: $(MESS_LAYOUT)/digel804.lh
 $(MESS_DRIVERS)/dmv.o:      $(MESS_LAYOUT)/dmv.lh
 $(MESS_DRIVERS)/dolphunk.o: $(MESS_LAYOUT)/dolphunk.lh
@@ -2565,6 +2604,7 @@ $(MESS_DRIVERS)/pro80.o:    $(MESS_LAYOUT)/pro80.lh
 $(MESS_DRIVERS)/px4.o:      $(MESS_LAYOUT)/px4.lh
 $(MESS_DRIVERS)/px8.o:      $(MESS_LAYOUT)/px8.lh
 $(MESS_DRIVERS)/ravens.o:   $(MESS_LAYOUT)/ravens.lh
+$(MESS_DRIVERS)/rainbow.o:   $(MESS_LAYOUT)/rainbow.lh
 $(MESS_DRIVERS)/savia84.o:  $(MESS_LAYOUT)/savia84.lh
 $(MESS_DRIVERS)/sc1.o:      $(MESS_LAYOUT)/sc1.lh
 $(MESS_DRIVERS)/sc2.o:      $(MESS_LAYOUT)/sc2.lh
@@ -2581,7 +2621,7 @@ $(MESS_DRIVERS)/svision.o:  $(MESS_LAYOUT)/svision.lh
 $(MESS_DRIVERS)/svmu.o:     $(MESS_LAYOUT)/svmu.lh
 $(MESS_DRIVERS)/sym1.o:     $(MESS_LAYOUT)/sym1.lh
 $(MESS_DRIVERS)/tec1.o:     $(MESS_LAYOUT)/tec1.lh
-$(MESS_DRIVERS)/tk80bs.o:   $(MESS_LAYOUT)/tk80.lh
+$(MESS_DRIVERS)/tk80.o:     $(MESS_LAYOUT)/tk80.lh
 $(MESS_DRIVERS)/tm990189.o: $(MESS_LAYOUT)/tm990189.lh $(MESS_LAYOUT)/tm990189v.lh
 $(MESS_DRIVERS)/unixpc.o:   $(MESS_LAYOUT)/unixpc.lh
 $(MESS_DRIVERS)/ut88.o:     $(MESS_LAYOUT)/ut88mini.lh

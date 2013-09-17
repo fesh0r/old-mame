@@ -2,10 +2,11 @@
 
     esq5505.c - Ensoniq ES5505 + ES5510 based synthesizers and samplers
 
-    Ensoniq VFX, VFX-SD, EPS, EPS-16 Plus, SD-1, SD-1 32, and SQ-1 (SQ-1 Plus,
+    Ensoniq VFX, VFX-SD, EPS, EPS-16 Plus, SD-1, SD-1 32, SQ-1 and SQ-R (SQ-1 Plus,
     SQ-2, and KS-32 are known to also be this architecture).
 
-    The Taito sound system in taito_en.c is directly derived from the SQ-1.
+    The Taito sound system in taito_en.c is directly derived from the 32-voice version
+    of the SD-1.
 
     Driver by R. Belmont with thanks to Parduz, Christian Brunschen, and Phil Bennett
 
@@ -107,6 +108,20 @@
     6 = Battery
     7 = Voltage Reference
 
+    SQ-1:
+    4 = second digit of patch # becomes 2
+    5 = first digit of patch # becomes 2
+    6 = second digit of patch # becomes 4
+    7 = first digit of patch # becomes 4
+    8 = trk07 4volume=99
+    12 = patch -1
+    13 = patch +1
+    14 = second digit of patch # becomes 5
+    15 = first digit of patch # becomes 5
+    20 = select sound?
+    22 = second digit of patch # becomes 6
+    23 = first digit of patch # becomes 6
+
 ***************************************************************************/
 
 #include <cstdio>
@@ -114,6 +129,7 @@
 #include "emu.h"
 #include "cpu/m68000/m68000.h"
 #include "sound/es5506.h"
+#include "sound/esqpump.h"
 #include "machine/n68681.h"
 #include "cpu/es5510/es5510.h"
 #include "machine/wd_fdc.h"
@@ -142,213 +158,6 @@ void print_to_stderr(const char *format, ...)
 	vfprintf(stderr, format, arg);
 	va_end(arg);
 }
-
-#define PUMP_DETECT_SILENCE 1
-#define PUMP_TRACK_SAMPLES 0
-#define PUMP_FAKE_ESP_PROCESSING 1
-class esq_5505_5510_pump : public device_t,
-	public device_sound_interface
-{
-public:
-	esq_5505_5510_pump(const machine_config &mconfig, const char *tag, device_t *owner, UINT32 clock);
-
-	void set_otis(es5505_device *otis) { m_otis = otis; }
-	void set_esp(es5510_device *esp) { m_esp = esp; }
-	void set_esp_halted(bool esp_halted) {
-		m_esp_halted = esp_halted;
-		logerror("ESP-halted -> %d\n", m_esp_halted);
-		if (!esp_halted) {
-			m_esp->list_program(print_to_stderr);
-		}
-	}
-	bool get_esp_halted() {
-		return m_esp_halted;
-	}
-
-protected:
-	// device-level overrides
-	virtual void device_start();
-	virtual void device_stop();
-	virtual void device_reset();
-
-	// sound stream update overrides
-	virtual void sound_stream_update(sound_stream &stream, stream_sample_t **inputs, stream_sample_t **outputs, int samples);
-
-	// timer callback overridea
-	virtual void device_timer(emu_timer &timer, device_timer_id id, int param, void *ptr);
-
-private:
-	// internal state:
-	// sound stream
-	sound_stream *m_stream;
-
-	// per-sample timer
-	emu_timer *m_timer;
-
-	// OTIS sound generator
-	es5505_device *m_otis;
-
-	// ESP signal processor
-	es5510_device *m_esp;
-
-	// Is the ESP halted by the CPU?
-	bool m_esp_halted;
-
-#if !PUMP_FAKE_ESP_PROCESSING
-	osd_ticks_t ticks_spent_processing;
-	int samples_processed;
-#endif
-
-#if PUMP_DETECT_SILENCE
-	int silent_for;
-	bool was_silence;
-#endif
-
-#if PUMP_TRACK_SAMPLES
-	int last_samples;
-	osd_ticks_t last_ticks;
-	osd_ticks_t next_report_ticks;
-#endif
-};
-
-const device_type ESQ_5505_5510_PUMP = &device_creator<esq_5505_5510_pump>;
-
-esq_5505_5510_pump::esq_5505_5510_pump(const machine_config &mconfig, const char *tag, device_t *owner, UINT32 clock)
-	: device_t(mconfig, ESQ_5505_5510_PUMP, "ESQ_5505_5510_PUMP", tag, owner, clock, "esq_5505_5510_pump", __FILE__),
-		device_sound_interface(mconfig, *this),
-		m_esp_halted(true)
-{
-}
-
-void esq_5505_5510_pump::device_start()
-{
-	INT64 nsec_per_sample = 100 * 16 * 21;
-	attotime sample_time(0, 1000000000 * nsec_per_sample);
-	attotime initial_delay(0, 0);
-	logerror("Clock = %d\n", clock());
-	m_stream = machine().sound().stream_alloc(*this, 8, 2, clock(), this);
-	m_timer = timer_alloc(0);
-	m_timer->adjust(initial_delay, 0, sample_time);
-	m_timer->enable(true);
-
-#if PUMP_DETECT_SILENCE
-	silent_for = 500;
-	was_silence = 1;
-#endif
-#if !PUMP_FAKE_ESP_PROCESSING
-	ticks_spent_processing = 0;
-	samples_processed = 0;
-#endif
-#if PUMP_TRACK_SAMPLES
-	last_samples = 0;
-	last_ticks = osd_ticks();
-	next_report_ticks = last_ticks + osd_ticks_per_second();
-#endif
-}
-
-void esq_5505_5510_pump::device_stop()
-{
-	m_timer->enable(false);
-}
-
-void esq_5505_5510_pump::device_reset()
-{
-}
-
-void esq_5505_5510_pump::sound_stream_update(sound_stream &stream, stream_sample_t **inputs, stream_sample_t **outputs, int samples)
-{
-	if (samples != 1) {
-		logerror("Pump: request for %d samples\n", samples);
-	}
-
-	stream_sample_t *left = outputs[0], *right = outputs[1];
-	for (int i = 0; i < samples; i++)
-	{
-		// anything for the 'aux' output?
-		INT32 l = inputs[0][i] >> 4;
-		INT32 r = inputs[1][i] >> 4;
-
-		// push the samples into the ESP
-		m_esp->ser_w(0, inputs[2][i] >> 4);
-		m_esp->ser_w(1, inputs[3][i] >> 4);
-		m_esp->ser_w(2, inputs[4][i] >> 4);
-		m_esp->ser_w(3, inputs[5][i] >> 4);
-		m_esp->ser_w(4, inputs[6][i] >> 4);
-		m_esp->ser_w(5, inputs[7][i] >> 4);
-
-		m_esp->ser_w(6, 0);
-		m_esp->ser_w(7, 0);
-
-#if PUMP_FAKE_ESP_PROCESSING
-		m_esp->ser_w(6, m_esp->ser_r(0) + m_esp->ser_r(2) + m_esp->ser_r(4));
-		m_esp->ser_w(7, m_esp->ser_r(1) + m_esp->ser_r(3) + m_esp->ser_r(5));
-#else
-		if (!m_esp_halted) {
-			logerror("passing one sample through ESP\n");
-			osd_ticks_t a = osd_ticks();
-			m_esp->run_once();
-			osd_ticks_t b = osd_ticks();
-			ticks_spent_processing += (b - a);
-			samples_processed++;
-		}
-#endif
-
-		// read the processed result from the ESP and add to the saved AUX data
-		l += m_esp->ser_r(6);
-		r += m_esp->ser_r(7);
-
-		// write the combined data to the output
-		*left++  = l;
-		*right++ = r;
-	}
-
-#if PUMP_DETECT_SILENCE
-	for (int i = 0; i < samples; i++) {
-		if (outputs[0][i] == 0 && outputs[1][i] == 0) {
-			silent_for++;
-		} else {
-			silent_for = 0;
-		}
-	}
-	bool silence = silent_for >= 500;
-	if (was_silence != silence) {
-		if (!silence) {
-			fprintf(stderr, ".-*\n");
-		} else {
-			fprintf(stderr, "*-.\n");
-		}
-		was_silence = silence;
-	}
-#endif
-
-#if PUMP_TRACK_SAMPLES
-	last_samples += samples;
-	osd_ticks_t now = osd_ticks();
-	if (now >= next_report_ticks)
-	{
-		osd_ticks_t elapsed = now - last_ticks;
-		osd_ticks_t tps = osd_ticks_per_second();
-		fprintf(stderr, "Pump: %d samples in %" I64FMT "d ticks for %f Hz\n", last_samples, elapsed, last_samples * (double)tps / (double)elapsed);
-		last_ticks = now;
-		while (next_report_ticks <= now) {
-			next_report_ticks += tps;
-		}
-		last_samples = 0;
-
-#if !PUMP_FAKE_ESP_PROCESSING
-		fprintf(stderr, "  ESP spent %" I64FMT "d ticks on %d samples, %f ticks per sample\n", ticks_spent_processing, samples_processed, (double)ticks_spent_processing / (double)samples_processed);
-		ticks_spent_processing = 0;
-		samples_processed = 0;
-#endif
-	}
-#endif
-}
-
-void esq_5505_5510_pump::device_timer(emu_timer &timer, device_timer_id id, int param, void *ptr) {
-	// ecery time there's a new sample period, update the stream!
-	m_stream->update();
-}
-
 
 class esq5505_state : public driver_device
 {
@@ -577,7 +386,6 @@ static ADDRESS_MAP_START( sq1_map, AS_PROGRAM, 16, esq5505_state )
 	AM_RANGE(0x200000, 0x20001f) AM_DEVREADWRITE_LEGACY("otis", es5505_r, es5505_w)
 	AM_RANGE(0x260000, 0x2601ff) AM_DEVREADWRITE8("esp", es5510_device, host_r, host_w, 0x0ff)
 	AM_RANGE(0x280000, 0x28001f) AM_DEVREADWRITE8("duart", duartn68681_device, read, write, 0x00ff)
-	AM_RANGE(0x2c0000, 0x2c0007) AM_DEVREADWRITE8("wd1772", wd1772_t, read, write, 0x00ff)
 	AM_RANGE(0x330000, 0x3bffff) AM_RAM // sequencer memory?
 	AM_RANGE(0xc00000, 0xc3ffff) AM_ROM AM_REGION("osrom", 0)
 	AM_RANGE(0xff0000, 0xffffff) AM_RAM AM_SHARE("osram")
@@ -876,8 +684,8 @@ static MACHINE_CONFIG_START( vfx, esq5505_state )
 	MCFG_SPEAKER_STANDARD_STEREO("lspeaker", "rspeaker")
 
 	MCFG_SOUND_ADD("pump", ESQ_5505_5510_PUMP, XTAL_10MHz / (16 * 21))
-	MCFG_SOUND_ROUTE(0, "lspeaker", 2.0)
-	MCFG_SOUND_ROUTE(1, "rspeaker", 2.0)
+	MCFG_SOUND_ROUTE(0, "lspeaker", 1.0)
+	MCFG_SOUND_ROUTE(1, "rspeaker", 1.0)
 
 	MCFG_SOUND_ADD("otis", ES5505, XTAL_10MHz)
 	MCFG_SOUND_CONFIG(es5505_config)
@@ -930,8 +738,8 @@ static MACHINE_CONFIG_START(vfx32, esq5505_state)
 	MCFG_SPEAKER_STANDARD_STEREO("lspeaker", "rspeaker")
 
 	MCFG_SOUND_ADD("pump", ESQ_5505_5510_PUMP, XTAL_30_4761MHz / (2 * 16 * 32))
-	MCFG_SOUND_ROUTE(0, "lspeaker", 2.0)
-	MCFG_SOUND_ROUTE(1, "rspeaker", 2.0)
+	MCFG_SOUND_ROUTE(0, "lspeaker", 1.0)
+	MCFG_SOUND_ROUTE(1, "rspeaker", 1.0)
 
 	MCFG_SOUND_ADD("otis", ES5505, XTAL_30_4761MHz / 2)
 	MCFG_SOUND_CONFIG(es5505_config)
@@ -948,7 +756,7 @@ static MACHINE_CONFIG_START(vfx32, esq5505_state)
 	MCFG_FLOPPY_DRIVE_ADD("wd1772:0", ensoniq_floppies, "35dd", esq5505_state::floppy_formats)
 MACHINE_CONFIG_END
 
-static MACHINE_CONFIG_DERIVED(sq1, vfx32)
+static MACHINE_CONFIG_DERIVED(sq1, vfx)
 	MCFG_CPU_MODIFY( "maincpu" )
 	MCFG_CPU_PROGRAM_MAP(sq1_map)
 
@@ -1002,6 +810,9 @@ static INPUT_PORTS_START( vfx )
 #endif
 INPUT_PORTS_END
 
+#define ROM_LOAD16_BYTE_BIOS(bios,name,offset,length,hash) \
+		ROMX_LOAD(name, offset, length, hash, ROM_SKIP(1) | ROM_BIOS(bios+1)) /* Note '+1' */
+
 ROM_START( vfx )
 	ROM_REGION(0x40000, "osrom", 0)
 	ROM_LOAD16_BYTE( "vfx210b-low.bin",  0x000000, 0x010000, CRC(c51b19cd) SHA1(2a125b92ffa02ae9d7fb88118d525491d785e87e) )
@@ -1032,8 +843,8 @@ ROM_END
 
 ROM_START( sd1 )
 	ROM_REGION(0x40000, "osrom", 0)
-	ROM_LOAD16_BYTE( "sd1_410_lo.bin", 0x000000, 0x020000, CRC(faa613a6) SHA1(60066765cddfa9d3b5d09057d8f83fb120f4e65e) )
-	ROM_LOAD16_BYTE( "sd1_410_hi.bin", 0x000001, 0x010000, CRC(618c0aa8) SHA1(74acf458aa1d04a0a7a0cd5855c49e6855dbd301) )
+	ROM_LOAD16_BYTE( "sd1_21_300b_lower.bin", 0x000000, 0x020000, CRC(a1358a0c) SHA1(64ac5358aa46da37ca4195002cf358554e00878a) )
+	ROM_LOAD16_BYTE( "sd1_21_300b_upper.bin", 0x000001, 0x010000, CRC(465ba463) SHA1(899b0e83d0788c8d49c7b09ccf0b4a92b528c6e9) )
 
 	ROM_REGION(0x200000, "waverom", ROMREGION_ERASE00)  // BS=0 region (12-bit)
 	ROM_LOAD16_BYTE( "u34.bin", 0x000001, 0x080000, CRC(85592299) SHA1(1aa7cf612f91972baeba15991d9686ccde01599c) )
@@ -1047,10 +858,15 @@ ROM_START( sd1 )
 	ROM_LOAD( "u36.bin", 0x000000, 0x080000, CRC(c3ddaf95) SHA1(44a7bd89cd7e82952cc5100479e110c385246559) )
 ROM_END
 
+// note: all known 4.xx BIOSes are for the 32-voice SD-1 and play out of tune on 21-voice h/w
 ROM_START( sd132 )
 	ROM_REGION(0x40000, "osrom", 0)
-	ROM_LOAD16_BYTE( "sd1_410_lo.bin", 0x000000, 0x020000, CRC(faa613a6) SHA1(60066765cddfa9d3b5d09057d8f83fb120f4e65e) )
-	ROM_LOAD16_BYTE( "sd1_410_hi.bin", 0x000001, 0x010000, CRC(618c0aa8) SHA1(74acf458aa1d04a0a7a0cd5855c49e6855dbd301) )
+	ROM_SYSTEM_BIOS(0, "410", "SD-1 v4.10")
+	ROM_LOAD16_BYTE_BIOS(0, "sd1_410_lo.bin", 0x000000, 0x020000, CRC(faa613a6) SHA1(60066765cddfa9d3b5d09057d8f83fb120f4e65e) )
+	ROM_LOAD16_BYTE_BIOS(0, "sd1_410_hi.bin", 0x000001, 0x010000, CRC(618c0aa8) SHA1(74acf458aa1d04a0a7a0cd5855c49e6855dbd301) )
+	ROM_SYSTEM_BIOS(1, "402", "SD-1 v4.02")
+	ROM_LOAD16_BYTE_BIOS(1, "sd1_32_402_lo.bin", 0x000000, 0x020000, CRC(5da2572b) SHA1(cb6ddd637ed13bfeb40a99df56000479e63fc8ec) )
+	ROM_LOAD16_BYTE_BIOS(1, "sd1_32_402_hi.bin", 0x000001, 0x010000, CRC(fc45c210) SHA1(23b81ebd9176112e6eae0c7c75b39fcb1656c953) )
 
 	ROM_REGION(0x200000, "waverom", ROMREGION_ERASE00)  // BS=0 region (12-bit)
 	ROM_LOAD16_BYTE( "u34.bin", 0x000001, 0x080000, CRC(85592299) SHA1(1aa7cf612f91972baeba15991d9686ccde01599c) )
@@ -1148,7 +964,7 @@ DRIVER_INIT_MEMBER(esq5505_state,denib)
 CONS( 1988, eps,   0, 0,   eps,   vfx, esq5505_state, eps,    "Ensoniq", "EPS", GAME_NOT_WORKING )   // custom VFD: one alphanumeric 22-char row, one graphics-capable row (alpha row can also do bar graphs)
 CONS( 1989, vfx,   0, 0,   vfx,   vfx, esq5505_state, denib,  "Ensoniq", "VFX", GAME_NOT_WORKING )       // 2x40 VFD
 CONS( 1989, vfxsd, 0, 0,   vfxsd, vfx, esq5505_state, denib,  "Ensoniq", "VFX-SD", GAME_NOT_WORKING )    // 2x40 VFD
-CONS( 1990, sd1,   0, 0,   vfxsd, vfx, esq5505_state, denib,  "Ensoniq", "SD-1", GAME_NOT_WORKING )      // 2x40 VFD
-CONS( 1990, sd132, sd1, 0, vfx32, vfx, esq5505_state, denib,  "Ensoniq", "SD-1 32", GAME_NOT_WORKING )   // 2x40 VFD
+CONS( 1990, sd1,   0, 0,   vfxsd, vfx, esq5505_state, denib,  "Ensoniq", "SD-1 (21 voice)", GAME_NOT_WORKING )  // 2x40 VFD
+CONS( 1990, sd132, sd1,0,  vfx32, vfx, esq5505_state, denib,  "Ensoniq", "SD-1 (32 voice)", GAME_NOT_WORKING )  // 2x40 VFD
 CONS( 1990, sq1,   0, 0,   sq1,   vfx, esq5505_state, sq1,    "Ensoniq", "SQ-1", GAME_NOT_WORKING )      // 2x16 LCD
 CONS( 1990, sqrack,sq1, 0, sq1,   vfx, esq5505_state, sq1,    "Ensoniq", "SQ-Rack", GAME_NOT_WORKING )   // 2x16 LCD
