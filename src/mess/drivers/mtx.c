@@ -1,8 +1,9 @@
 /*************************************************************************
 
-    driver/mtx.c
-
     Memotech MTX 500, MTX 512 and RS 128
+
+    license: MAME
+    copyright-holders: (Original Author?), Dirk Best, Curt Coder
 
 **************************************************************************/
 
@@ -28,7 +29,7 @@
 #include "imagedev/cassette.h"
 #include "machine/ram.h"
 #include "imagedev/snapquik.h"
-#include "machine/ctronics.h"
+#include "bus/centronics/ctronics.h"
 #include "machine/z80ctc.h"
 #include "machine/z80dart.h"
 #include "video/tms9928a.h"

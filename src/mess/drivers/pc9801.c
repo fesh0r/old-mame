@@ -1,3 +1,5 @@
+// license:MAME
+// copyright-holders:Angelo Salese
 /***************************************************************************************************
 
     PC-9801 (c) 1981 NEC
@@ -2316,7 +2318,7 @@ READ16_MEMBER(pc9801_state::pc9801rs_ide_io_1_r)
 
 WRITE16_MEMBER(pc9801_state::pc9801rs_ide_io_1_w)
 {
-	m_ide->write_cs0(space, offset, mem_mask);
+	m_ide->write_cs0(space, offset, data, mem_mask);
 }
 
 READ16_MEMBER(pc9801_state::pc9801rs_ide_io_2_r)
@@ -2326,7 +2328,7 @@ READ16_MEMBER(pc9801_state::pc9801rs_ide_io_2_r)
 
 WRITE16_MEMBER(pc9801_state::pc9801rs_ide_io_2_w)
 {
-	m_ide->write_cs1(space, offset + 6, mem_mask);
+	m_ide->write_cs1(space, offset + 6, data, mem_mask);
 }
 
 static ADDRESS_MAP_START( pc9801rs_map, AS_PROGRAM, 32, pc9801_state )

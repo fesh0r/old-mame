@@ -98,7 +98,7 @@ Some bugs left :
 #include "sound/ay8910.h"
 #include "sound/wave.h"
 #include "machine/mc146818.h"  /* Aleste RTC */
-#include "machine/ctronics.h"
+#include "bus/centronics/ctronics.h"
 
 /* Devices */
 #include "imagedev/snapquik.h"
@@ -650,7 +650,7 @@ static INPUT_PORTS_START( gx4000 )
 	PORT_BIT(0x08, IP_ACTIVE_LOW, IPT_JOYSTICK_RIGHT) PORT_PLAYER(2) PORT_8WAY
 	PORT_BIT(0x10, IP_ACTIVE_LOW, IPT_BUTTON1)        PORT_PLAYER(2)
 	PORT_BIT(0x20, IP_ACTIVE_LOW, IPT_BUTTON2)        PORT_PLAYER(2)
-	PORT_BIT(0x40, IP_ACTIVE_LOW, IPT_UNUSED)
+	PORT_BIT(0xc0, IP_ACTIVE_LOW, IPT_UNUSED)
 
 	PORT_START("keyboard_row_7")
 	PORT_BIT(0xff, IP_ACTIVE_LOW, IPT_UNUSED)
@@ -665,7 +665,7 @@ static INPUT_PORTS_START( gx4000 )
 	PORT_BIT(0x08, IP_ACTIVE_LOW, IPT_JOYSTICK_RIGHT) PORT_PLAYER(1) PORT_8WAY
 	PORT_BIT(0x10, IP_ACTIVE_LOW, IPT_BUTTON1)        PORT_PLAYER(1)
 	PORT_BIT(0x20, IP_ACTIVE_LOW, IPT_BUTTON2)        PORT_PLAYER(1)
-	PORT_BIT(0x40, IP_ACTIVE_LOW, IPT_UNUSED)
+	PORT_BIT(0xc0, IP_ACTIVE_LOW, IPT_UNUSED)
 
 	PORT_INCLUDE(crtc_links)  // included to keep the driver happy
 
@@ -1016,7 +1016,7 @@ static MACHINE_CONFIG_DERIVED( aleste, amstrad )
 	MCFG_SOUND_ROUTE(ALL_OUTPUTS, "mono", 0.25)
 	MCFG_PALETTE_LENGTH(32+64)
 	MCFG_PALETTE_INIT_OVERRIDE(amstrad_state,aleste)
-	MCFG_MC146818_ADD( "rtc", MC146818_IGNORE_CENTURY )
+	MCFG_MC146818_ADD( "rtc", XTAL_4_194304Mhz )
 
 	MCFG_DEVICE_REMOVE("upd765")
 	MCFG_I8272A_ADD("upd765", true)

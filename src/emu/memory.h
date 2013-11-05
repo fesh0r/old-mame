@@ -1,39 +1,10 @@
+// license:BSD-3-Clause
+// copyright-holders:Aaron Giles,Olivier Galibert
 /***************************************************************************
 
     memory.h
 
     Functions which handle device memory accesses.
-
-****************************************************************************
-
-    Copyright Aaron Giles
-    All rights reserved.
-
-    Redistribution and use in source and binary forms, with or without
-    modification, are permitted provided that the following conditions are
-    met:
-
-        * Redistributions of source code must retain the above copyright
-          notice, this list of conditions and the following disclaimer.
-        * Redistributions in binary form must reproduce the above copyright
-          notice, this list of conditions and the following disclaimer in
-          the documentation and/or other materials provided with the
-          distribution.
-        * Neither the name 'MAME' nor the names of its contributors may be
-          used to endorse or promote products derived from this software
-          without specific prior written permission.
-
-    THIS SOFTWARE IS PROVIDED BY AARON GILES ''AS IS'' AND ANY EXPRESS OR
-    IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED
-    WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE
-    DISCLAIMED. IN NO EVENT SHALL AARON GILES BE LIABLE FOR ANY DIRECT,
-    INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES
-    (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR
-    SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION)
-    HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT,
-    STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING
-    IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
-    POSSIBILITY OF SUCH DAMAGE.
 
 ***************************************************************************/
 
@@ -101,6 +72,7 @@ class address_space;
 class address_table;
 class address_table_read;
 class address_table_write;
+class address_table_setoffset;
 
 
 // offsets and addresses are 32-bit (for now...)
@@ -177,6 +149,10 @@ typedef device_delegate<void (address_space &, offs_t, UINT8, UINT8)> write8_del
 typedef device_delegate<void (address_space &, offs_t, UINT16, UINT16)> write16_delegate;
 typedef device_delegate<void (address_space &, offs_t, UINT32, UINT32)> write32_delegate;
 typedef device_delegate<void (address_space &, offs_t, UINT64, UINT64)> write64_delegate;
+
+// ======================> setoffset_delegate
+
+typedef device_delegate<void (address_space &, offs_t)> setoffset_delegate;
 
 
 // ======================> direct_read_data
@@ -304,6 +280,7 @@ class address_space
 	friend class address_table;
 	friend class address_table_read;
 	friend class address_table_write;
+	friend class address_table_setoffset;
 	friend class direct_read_data;
 	friend class simple_list<address_space>;
 	friend resource_pool_object<address_space>::~resource_pool_object();
@@ -387,6 +364,9 @@ public:
 	virtual void write_qword_unaligned(offs_t byteaddress, UINT64 data) = 0;
 	virtual void write_qword_unaligned(offs_t byteaddress, UINT64 data, UINT64 mask) = 0;
 
+	// Set address. This will invoke setoffset handlers for the respective entries.
+	virtual void set_address(offs_t byteaddress) = 0;
+
 	// address-to-byte conversion helpers
 	offs_t address_to_byte(offs_t address) const { return m_config.addr2byte(address); }
 	offs_t address_to_byte_end(offs_t address) const { return m_config.addr2byte_end(address); }
@@ -445,6 +425,10 @@ public:
 	}
 
 	void install_device_delegate(offs_t addrstart, offs_t addrend, device_t &device, address_map_delegate &map, int bits = 0, UINT64 unitmask = 0);
+
+	// install setoffset handler
+	void install_setoffset_handler(offs_t addrstart, offs_t addrend, setoffset_delegate sohandler, UINT64 unitmask = 0) { return install_setoffset_handler(addrstart, addrend, 0, 0, sohandler, unitmask); }
+	void install_setoffset_handler(offs_t addrstart, offs_t addrend, offs_t addrmask, offs_t addrmirror, setoffset_delegate sohandler, UINT64 unitmask = 0);
 
 	// install new-style delegate handlers (short form)
 	UINT8 *install_read_handler(offs_t addrstart, offs_t addrend, read8_delegate rhandler, UINT64 unitmask = 0) { return install_read_handler(addrstart, addrend, 0, 0, rhandler, unitmask); }
@@ -540,7 +524,10 @@ private:
 	// internal helpers
 	virtual address_table_read &read() = 0;
 	virtual address_table_write &write() = 0;
+	virtual address_table_setoffset &setoffset() = 0;
+
 	void populate_map_entry(const address_map_entry &entry, read_or_write readorwrite);
+	void populate_map_entry_setoffset(const address_map_entry &entry);
 	void unmap_generic(offs_t addrstart, offs_t addrend, offs_t addrmask, offs_t addrmirror, read_or_write readorwrite, bool quiet);
 	void *install_ram_generic(offs_t addrstart, offs_t addrend, offs_t addrmask, offs_t addrmirror, read_or_write readorwrite, void *baseptr);
 	void install_bank_generic(offs_t addrstart, offs_t addrend, offs_t addrmask, offs_t addrmirror, const char *rtag, const char *wtag);
@@ -940,6 +927,8 @@ private:
 #define DECLARE_READ64_MEMBER(name)     UINT64 name(ATTR_UNUSED address_space &space, ATTR_UNUSED offs_t offset, ATTR_UNUSED UINT64 mem_mask = U64(0xffffffffffffffff))
 #define DECLARE_WRITE64_MEMBER(name)    void   name(ATTR_UNUSED address_space &space, ATTR_UNUSED offs_t offset, ATTR_UNUSED UINT64 data, ATTR_UNUSED UINT64 mem_mask = U64(0xffffffffffffffff))
 
+#define SETOFFSET_MEMBER(name)          void  name(ATTR_UNUSED address_space &space, ATTR_UNUSED offs_t offset)
+#define DECLARE_SETOFFSET_MEMBER(name)      void  name(ATTR_UNUSED address_space &space, ATTR_UNUSED offs_t offset)
 
 // device delegate macros
 #define READ8_DELEGATE(_class, _member)                     read8_delegate(FUNC(_class::_member), this)

@@ -14,14 +14,13 @@
 #include "machine/ram.h"
 #include "formats/pc_dsk.h"
 #include "includes/rmnimbus.h"
-#include "machine/er59256.h"
 #include "machine/scsibus.h"
 #include "machine/scsicb.h"
 #include "machine/scsihd.h"
 #include "machine/s1410.h"
 #include "machine/acb4070.h"
 #include "machine/6522via.h"
-#include "machine/ctronics.h"
+#include "bus/centronics/ctronics.h"
 #include "sound/ay8910.h"
 #include "sound/msm5205.h"
 
@@ -283,7 +282,7 @@ void rmnimbus_state::palette_init()
 
 static MACHINE_CONFIG_START( nimbus, rmnimbus_state )
 	/* basic machine hardware */
-	MCFG_CPU_ADD(MAINCPU_TAG, I80186, 10000000)
+	MCFG_CPU_ADD(MAINCPU_TAG, I80186, 20000000)
 	MCFG_CPU_PROGRAM_MAP(nimbus_mem)
 	MCFG_CPU_IO_MAP(nimbus_io)
 	MCFG_80186_IRQ_SLAVE_ACK(DEVREAD8(DEVICE_SELF, rmnimbus_state, cascade_callback))
@@ -294,17 +293,18 @@ static MACHINE_CONFIG_START( nimbus, rmnimbus_state )
 
 	/* video hardware */
 	MCFG_SCREEN_ADD("screen", RASTER)
-	MCFG_SCREEN_REFRESH_RATE(50)
-	MCFG_SCREEN_VBLANK_TIME(ATTOSECONDS_IN_USEC(100))
+	MCFG_SCREEN_RAW_PARAMS( XTAL_4_433619MHz*2,650,0,640,260,0,250)
+//  MCFG_SCREEN_REFRESH_RATE(50)
+//  MCFG_SCREEN_VBLANK_TIME(ATTOSECONDS_IN_USEC(100))
 	MCFG_SCREEN_UPDATE_DRIVER(rmnimbus_state, screen_update_nimbus)
 	MCFG_SCREEN_VBLANK_DRIVER(rmnimbus_state, screen_eof_nimbus)
 
 	MCFG_VIDEO_ATTRIBUTES(VIDEO_UPDATE_SCANLINE)
 
-	MCFG_PALETTE_LENGTH(SCREEN_NO_COLOURS * 3)
+	MCFG_PALETTE_LENGTH(SCREEN_NO_COLOURS)
 
-	MCFG_SCREEN_SIZE(650, 260)
-	MCFG_SCREEN_VISIBLE_AREA(0, 639, 0, 249)
+//  MCFG_SCREEN_SIZE(650, 260)
+//  MCFG_SCREEN_VISIBLE_AREA(0, 639, 0, 249)
 
 	/* Backing storage */
 	MCFG_WD2793_ADD(FDC_TAG, nimbus_wd17xx_interface )

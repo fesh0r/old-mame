@@ -1,3 +1,5 @@
+// license:BSD-3-Clause
+// copyright-holders:Curt Coder
 #pragma once
 
 #ifndef __V1050__
@@ -7,7 +9,7 @@
 #include "emu.h"
 #include "cpu/z80/z80.h"
 #include "cpu/m6502/m6502.h"
-#include "machine/ctronics.h"
+#include "bus/centronics/ctronics.h"
 #include "machine/i8214.h"
 #include "machine/i8251.h"
 #include "machine/i8255.h"

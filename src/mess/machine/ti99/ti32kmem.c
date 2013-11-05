@@ -1,3 +1,5 @@
+// license:MAME|LGPL-2.1+
+// copyright-holders:Michael Zapf
 /****************************************************************************
 
     TI-99 32 KiB Memory Expansion Card
@@ -89,19 +91,6 @@ WRITE8_MEMBER(ti_32k_expcard_device::write)
 	default:
 		break;
 	}
-}
-
-/*
-    32K memory expansion does not have a CRU interface
-*/
-void ti_32k_expcard_device::crureadz(offs_t offset, UINT8 *value)
-{
-	return;
-}
-
-void ti_32k_expcard_device::cruwrite(offs_t offset, UINT8 value)
-{
-	return;
 }
 
 void ti_32k_expcard_device::device_start(void)

@@ -6,7 +6,7 @@
 #include "emu.h"
 
 #include "machine/ins8250.h"
-#include "machine/mc146818.h"
+#include "machine/ds128x.h"
 #include "machine/pic8259.h"
 #include "machine/pit8253.h"
 
@@ -61,7 +61,7 @@ public:
 		required_device<at_keyboard_controller_device> m_keybc;
 		required_device<isa16_device> m_isabus;
 		required_device<speaker_sound_device> m_speaker;
-		required_device<mc146818_device> m_mc146818;
+		required_device<ds12885_device> m_ds12885;
 		required_device<pc_kbdc_device> m_pc_kbdc;
 		required_device<bus_master_ide_controller_device> m_ide;
 		required_device<bus_master_ide_controller_device> m_ide2;
@@ -96,8 +96,10 @@ public:
 		DECLARE_WRITE_LINE_MEMBER(pc_dack5_w);
 		DECLARE_WRITE_LINE_MEMBER(pc_dack6_w);
 		DECLARE_WRITE_LINE_MEMBER(pc_dack7_w);
-		DECLARE_READ32_MEMBER(ide_r);
-		DECLARE_WRITE32_MEMBER(ide_w);
+		DECLARE_READ8_MEMBER(ide_read_cs1_r);
+		DECLARE_WRITE8_MEMBER(ide_write_cs1_w);
+		DECLARE_READ8_MEMBER(ide2_read_cs1_r);
+		DECLARE_WRITE8_MEMBER(ide2_write_cs1_w);
 		DECLARE_READ8_MEMBER(at_dma8237_2_r);
 		DECLARE_WRITE8_MEMBER(at_dma8237_2_w);
 		DECLARE_READ8_MEMBER(at_keybc_r);

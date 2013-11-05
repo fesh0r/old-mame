@@ -1,8 +1,10 @@
+// license:MAME
+// copyright-holders:Juergen Buchmueller, Robbbert
 /***************************************************************************
     microbee.c
 
     system driver
-    Juergen Buchmueller <pullmoll@t-online.de>, Jan 2000
+    Juergen Buchmueller, Jan 2000
 
     Brett Selwood, Andrew Davies (technical assistance)
 
@@ -853,7 +855,7 @@ static MACHINE_CONFIG_DERIVED( mbee256, mbee128 )
 	MCFG_CPU_MODIFY( "maincpu" )
 	MCFG_CPU_IO_MAP(mbee256_io)
 	MCFG_MACHINE_RESET_OVERRIDE(mbee_state, mbee256 )
-	MCFG_MC146818_ADD( "rtc", MC146818_STANDARD )
+	MCFG_MC146818_ADD( "rtc", XTAL_32_768kHz )
 	MCFG_DEVICE_REMOVE("crtc")
 	MCFG_MC6845_ADD("crtc", SY6545_1, "screen", XTAL_13_5MHz / 8, mbee256_crtc)
 MACHINE_CONFIG_END
@@ -863,7 +865,7 @@ static MACHINE_CONFIG_DERIVED( mbeett, mbeeppc )
 	MCFG_CPU_PROGRAM_MAP(mbeett_mem)
 	MCFG_CPU_IO_MAP(mbeett_io)
 	MCFG_MACHINE_RESET_OVERRIDE(mbee_state, mbeett )
-	MCFG_MC146818_ADD( "rtc", MC146818_STANDARD )
+	MCFG_MC146818_ADD( "rtc", XTAL_32_768kHz )
 	MCFG_DEVICE_REMOVE("crtc")
 	MCFG_MC6845_ADD("crtc", SY6545_1, "screen", XTAL_13_5MHz / 8, mbee256_crtc)
 MACHINE_CONFIG_END
@@ -1163,8 +1165,12 @@ ROM_START( mbee256 ) // 256tc
 	ROM_REGION(0x40000,"maincpu", ROMREGION_ERASEFF)
 
 	ROM_REGION(0x7000,"bootrom", ROMREGION_ERASEFF)
-	ROM_LOAD("256tc_boot_1.20.rom", 0x0000,  0x4000, CRC(fe8d6a84) SHA1(a037a1b90b18a2180e9f5f216b829fcd480449a4) )
-	//ROM_LOAD("256tc_boot_1.15.rom", 0x0000,  0x4000, CRC(1902062d) SHA1(e4a1c0b3f4996e313da0bac0edb6d34e3270723e) )
+	ROM_SYSTEM_BIOS( 0, "1.31", "Version 1.31" )
+	ROMX_LOAD("256tc_boot_1.31.rom", 0x0000,  0x4000, CRC(923baef9) SHA1(3d30d18e765439fb913fbd3e03dd5127fd6b9167), ROM_BIOS(1) )
+	ROM_SYSTEM_BIOS( 1, "1.20", "Version 1.20" )
+	ROMX_LOAD("256tc_boot_1.20.rom", 0x0000,  0x4000, CRC(fe8d6a84) SHA1(a037a1b90b18a2180e9f5f216b829fcd480449a4), ROM_BIOS(2) )
+	ROM_SYSTEM_BIOS( 2, "1.15", "Version 1.15" )
+	ROMX_LOAD("256tc_boot_1.15.rom", 0x0000,  0x4000, CRC(1902062d) SHA1(e4a1c0b3f4996e313da0bac0edb6d34e3270723e), ROM_BIOS(3) )
 
 	ROM_REGION(0x9800, "gfx", 0)
 	ROM_LOAD("char256.bin",           0x1000,  0x1000, CRC(9372af3c) SHA1(a63591822c0504de2fed52e88d64e1dbd6124b74) )

@@ -1,41 +1,8 @@
+// license:BSD-3-Clause
+// copyright-holders:Aaron Giles
 //============================================================
 //
 //  d3dhlsl.c - Win32 Direct3D HLSL implementation
-//
-//============================================================
-//
-//  Copyright Aaron Giles
-//  All rights reserved.
-//
-//  Redistribution and use in source and binary forms, with or
-//  without modification, are permitted provided that the
-//  following conditions are met:
-//
-//    * Redistributions of source code must retain the above
-//      copyright notice, this list of conditions and the
-//      following disclaimer.
-//    * Redistributions in binary form must reproduce the
-//      above copyright notice, this list of conditions and
-//      the following disclaimer in the documentation and/or
-//      other materials provided with the distribution.
-//    * Neither the name 'MAME' nor the names of its
-//      contributors may be used to endorse or promote
-//      products derived from this software without specific
-//      prior written permission.
-//
-//  THIS SOFTWARE IS PROVIDED BY AARON GILES ''AS IS'' AND
-//  ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT
-//  LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND
-//  FITNESS FOR A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO
-//  EVENT SHALL AARON GILES BE LIABLE FOR ANY DIRECT,
-//  INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL
-//  DAMAGE (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF
-//  SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR
-//  PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON
-//  ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT
-//  LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE)
-//  ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN
-//  IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 //
 //============================================================
 
@@ -1709,6 +1676,8 @@ void shaders::raster_bloom_pass(render_target *rt, vec2f &texsize, vec2f &delta,
 
 		HRESULT result = (*d3dintf->device.set_render_target)(d3d->get_device(), 0, rt->bloom_target[bloom_index]);
 		if (result != D3D_OK) mame_printf_verbose("Direct3D: Error %08X during device set_render_target call 6\n", (int)result);
+		result = (*d3dintf->device.clear)(d3d->get_device(), 0, NULL, D3DCLEAR_TARGET, D3DCOLOR_ARGB(0,0,0,0), 0, 0);
+		if (result != D3D_OK) mame_printf_verbose("Direct3D: Error %08X during device clear call\n", (int)result);
 
 		for (UINT pass = 0; pass < num_passes; pass++)
 		{
@@ -1875,28 +1844,22 @@ void shaders::render_quad(poly_info *poly, int vertnum)
 		int bloom_index = 0;
 		float bloom_width = rt->target_width;
 		float bloom_height = rt->target_height;
-		float prim_width = poly->get_prim_width();
-		float prim_height = poly->get_prim_height();
-		float prim_ratio[2] = { prim_width / bloom_width, prim_height / bloom_height };
 		float screen_size[2] = { d3d->get_width(), d3d->get_height() };
-		//float target_size[2] = { bloom_width * 0.5f, bloom_height * 0.5f };
 		curr_effect->set_vector("ScreenSize", 2, screen_size);
 		for(; bloom_size >= 2.0f && bloom_index < 11; bloom_size *= 0.5f)
 		{
-			float target_size[2] = { bloom_width, bloom_height };
-			float source_size[2] = { bloom_width * 0.5f, bloom_height * 0.5f };
+			target_size[0] = bloom_width;
+			target_size[1] = bloom_height;
 			curr_effect->set_vector("TargetSize", 2, target_size);
-			curr_effect->set_vector("SourceSize", 2, source_size);
-			curr_effect->set_vector("PrimRatio", 2, prim_ratio);
 
 			curr_effect->begin(&num_passes, 0);
 
-			curr_effect->set_texture("Diffuse", (bloom_index == 0) ? rt->render_texture[0] : rt->bloom_texture[bloom_index - 1]);
+			curr_effect->set_texture("DiffuseTexture", (bloom_index == 0) ? rt->render_texture[0] : rt->bloom_texture[bloom_index - 1]);
 
 			HRESULT result = (*d3dintf->device.set_render_target)(d3d->get_device(), 0, rt->bloom_target[bloom_index]);
 			if (result != D3D_OK) mame_printf_verbose("Direct3D: Error %08X during device set_render_target call 6\n", (int)result);
-			//result = (*d3dintf->device.clear)(d3d->get_device(), 0, NULL, D3DCLEAR_TARGET, D3DCOLOR_ARGB(0,0,0,0), 0, 0);
-			//if (result != D3D_OK) mame_printf_verbose("Direct3D: Error %08X during device clear call\n", (int)result);
+			result = (*d3dintf->device.clear)(d3d->get_device(), 0, NULL, D3DCLEAR_TARGET, D3DCOLOR_ARGB(0,0,0,0), 0, 0);
+			if (result != D3D_OK) mame_printf_verbose("Direct3D: Error %08X during device clear call\n", (int)result);
 
 			for (UINT pass = 0; pass < num_passes; pass++)
 			{
@@ -1970,8 +1933,8 @@ void shaders::render_quad(poly_info *poly, int vertnum)
 			curr_effect->set_vector("ScreenDims", 2, &screendims.c.x);
 			curr_effect->set_vector("Phosphor", 3, options->phosphor);
 		}
-		curr_effect->set_float("TextureWidth", (float)d3d->get_width());
-		curr_effect->set_float("TextureHeight", (float)d3d->get_height());
+		float target_dims[2] = { d3d->get_width(), d3d->get_height() };
+		curr_effect->set_vector("TargetDims", 2, target_dims);
 		curr_effect->set_float("Passthrough", 0.0f);
 
 		curr_effect->set_texture("Diffuse", rt->render_texture[1]);

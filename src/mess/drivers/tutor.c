@@ -166,15 +166,14 @@ A=AMA, P=PRO, these keys don't exist, and so the games cannot be played.
 
 *********************************************************************************************************/
 
-
 #include "emu.h"
-#include "cpu/tms9900/tms9900l.h"
+#include "cpu/tms9900/tms9995.h"
 #include "sound/wave.h"
 #include "video/tms9928a.h"
 #include "imagedev/cartslot.h"
 #include "imagedev/cassette.h"
 #include "sound/sn76496.h"
-#include "machine/ctronics.h"
+#include "bus/centronics/ctronics.h"
 
 
 class tutor_state : public driver_device
@@ -187,7 +186,7 @@ public:
 	m_centronics(*this, "centronics")
 	{ }
 
-	required_device<cpu_device> m_maincpu;
+	required_device<tms9995_device> m_maincpu;
 	optional_device<cassette_image_device> m_cass;
 	optional_device<centronics_device> m_centronics;
 	DECLARE_READ8_MEMBER(key_r);
@@ -197,6 +196,8 @@ public:
 	DECLARE_WRITE8_MEMBER(tutor_cassette_w);
 	DECLARE_READ8_MEMBER(tutor_printer_r);
 	DECLARE_WRITE8_MEMBER(tutor_printer_w);
+
+	DECLARE_READ8_MEMBER(tutor_highmem_r);
 	char m_cartridge_enable;
 	char m_tape_interrupt_enable;
 	emu_timer *m_tape_interrupt_timer;
@@ -262,6 +263,9 @@ void tutor_state::machine_reset()
 
 	m_printer_data = 0;
 	m_printer_strobe = 0;
+
+	// Enable auto wait states by lowering READY during reset
+	m_maincpu->set_ready(CLEAR_LINE);
 }
 
 /*
@@ -384,6 +388,16 @@ WRITE8_MEMBER( tutor_state::tutor_mapper_w )
 }
 
 /*
+    This is only called from the debugger; the on-chip memory is handled
+    within the CPU itself.
+*/
+READ8_MEMBER( tutor_state::tutor_highmem_r )
+{
+	if (m_maincpu->is_onchip(offset | 0xf000)) return m_maincpu->debug_read_onchip_memory(offset&0xff);
+	return 0;
+}
+
+/*
     Cassette interface:
 
     The cassette interface uses several ports in the >e000 range.
@@ -405,7 +419,7 @@ WRITE8_MEMBER( tutor_state::tutor_mapper_w )
 TIMER_CALLBACK_MEMBER(tutor_state::tape_interrupt_handler)
 {
 	//assert(m_tape_interrupt_enable);
-	m_maincpu->set_input_line(1, (m_cass->input() > 0.0) ? ASSERT_LINE : CLEAR_LINE);
+	m_maincpu->set_input_line(INT_9995_INT4, (m_cass->input() > 0.0) ? ASSERT_LINE : CLEAR_LINE);
 }
 
 /* CRU handler */
@@ -441,7 +455,7 @@ WRITE8_MEMBER( tutor_state::tutor_cassette_w )
 				else
 				{
 					m_tape_interrupt_timer->adjust(attotime::never);
-					m_maincpu->set_input_line(1, CLEAR_LINE);
+					m_maincpu->set_input_line(INT_9995_INT4, CLEAR_LINE);
 				}
 			}
 			break;
@@ -557,7 +571,7 @@ static ADDRESS_MAP_START(tutor_memmap, AS_PROGRAM, 8, tutor_state)
 	AM_RANGE(0xe800, 0xe8ff) AM_READWRITE(tutor_printer_r, tutor_printer_w) /*printer*/
 	AM_RANGE(0xee00, 0xeeff) AM_READNOP AM_WRITE( tutor_cassette_w)     /*cassette interface*/
 
-	AM_RANGE(0xf000, 0xffff) AM_NOP /*free for expansion (and internal processor RAM)*/
+	AM_RANGE(0xf000, 0xffff) AM_READ(tutor_highmem_r) AM_WRITENOP /*free for expansion (and internal processor RAM)*/
 ADDRESS_MAP_END
 
 static ADDRESS_MAP_START(pyuutajr_mem, AS_PROGRAM, 8, tutor_state)
@@ -572,7 +586,7 @@ static ADDRESS_MAP_START(pyuutajr_mem, AS_PROGRAM, 8, tutor_state)
 	AM_RANGE(0xea00, 0xea00) AM_READ_PORT("LINE1")
 	AM_RANGE(0xec00, 0xec00) AM_READ_PORT("LINE2")
 	AM_RANGE(0xee00, 0xee00) AM_READ_PORT("LINE3")
-	AM_RANGE(0xf000, 0xffff) AM_NOP /*free for expansion (and internal processor RAM)*/
+	AM_RANGE(0xf000, 0xffff) AM_READ(tutor_highmem_r) AM_WRITENOP /*free for expansion (and internal processor RAM)*/
 ADDRESS_MAP_END
 
 /*
@@ -729,20 +743,6 @@ static INPUT_PORTS_START(pyuutajr)
 		PORT_BIT(0xff, IP_ACTIVE_HIGH, IPT_UNUSED)
 INPUT_PORTS_END
 
-
-static const struct tms9995reset_param tutor_processor_config =
-{
-#if 0
-	"maincpu",/* region for processor RAM */
-	0xf000,     /* offset : this area is unused in our region, and matches the processor address */
-	0xf0fc,     /* offset for the LOAD vector */
-	1,          /* use fast IDLE */
-#endif
-	1,          /* enable automatic wait state generation */
-	NULL        /* no IDLE callback */
-};
-
-
 //-------------------------------------------------
 //  sn76496_config psg_intf
 //-------------------------------------------------
@@ -752,15 +752,21 @@ static const sn76496_config psg_intf =
 	DEVCB_NULL
 };
 
+static TMS9995_CONFIG( cpuconf95 )
+{
+	DEVCB_NULL,        // external op
+	DEVCB_NULL,        // Instruction acquisition
+	DEVCB_NULL,        // clock out
+	DEVCB_NULL,        // HOLDA
+	DEVCB_NULL,        // DBIN
+	INTERNAL_RAM,      // use internal RAM
+	NO_OVERFLOW_INT    // The generally available versions of TMS9995 have a deactivated overflow interrupt
+};
 
 static MACHINE_CONFIG_START( tutor, tutor_state )
 	/* basic machine hardware */
 	/* TMS9995 CPU @ 10.7 MHz */
-	MCFG_CPU_ADD("maincpu", TMS9995L, 10700000)
-	MCFG_CPU_CONFIG(tutor_processor_config)
-	MCFG_CPU_PROGRAM_MAP(tutor_memmap)
-	MCFG_CPU_IO_MAP(tutor_io)
-
+	MCFG_TMS99xx_ADD("maincpu", TMS9995, 10700000, tutor_memmap, tutor_io, cpuconf95)
 
 	/* video hardware */
 	MCFG_TMS9928A_ADD( "tms9928a", TMS9928A, tutor_tms9928a_interface )

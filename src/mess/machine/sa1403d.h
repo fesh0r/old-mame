@@ -1,3 +1,5 @@
+// license:BSD-3-Clause
+// copyright-holders:Curt Coder
 /**********************************************************************
 
     Shugart SA1403D Winchester Disk Controller emulation
@@ -27,7 +29,7 @@ public:
 	virtual machine_config_constructor device_mconfig_additions() const;
 	virtual ioport_constructor device_input_ports() const;
 
-	virtual void ExecCommand( int *transferLength );
+	virtual void ExecCommand();
 	virtual void WriteData( UINT8 *data, int dataLength );
 };
 

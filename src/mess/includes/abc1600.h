@@ -1,16 +1,17 @@
+// license:BSD-3-Clause
+// copyright-holders:Curt Coder
 #pragma once
 
 #ifndef __ABC1600__
 #define __ABC1600__
 
 #include "emu.h"
+#include "bus/abcbus/abcbus.h"
 #include "cpu/m68000/m68000.h"
 #include "machine/8530scc.h"
 #include "machine/abckb.h"
-#include "machine/abc1600_bus.h"
 #include "machine/abc1600mac.h"
 #include "machine/e0516.h"
-#include "machine/lux4105.h"
 #include "machine/nmc9306.h"
 #include "machine/ram.h"
 #include "machine/serial.h"
@@ -92,10 +93,10 @@ public:
 	required_device<floppy_connector> m_floppy0;
 	required_device<floppy_connector> m_floppy1;
 	required_device<floppy_connector> m_floppy2;
-	required_device<abc1600bus_slot_device> m_bus0i;
-	required_device<abc1600bus_slot_device> m_bus0x;
-	required_device<abc1600bus_slot_device> m_bus1;
-	required_device<abc1600bus_slot_device> m_bus2;
+	required_device<abcbus_slot_device> m_bus0i;
+	required_device<abcbus_slot_device> m_bus0x;
+	required_device<abcbus_slot_device> m_bus1;
+	required_device<abcbus_slot_device> m_bus2;
 
 	virtual void machine_start();
 	virtual void machine_reset();

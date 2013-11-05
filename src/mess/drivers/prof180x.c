@@ -1,3 +1,5 @@
+// license:BSD-3-Clause
+// copyright-holders:Curt Coder
 /***************************************************************************
 
     PROF-180X
@@ -24,7 +26,7 @@
 #include "emu.h"
 #include "cpu/z80/z80.h"
 #include "machine/ram.h"
-#include "machine/ctronics.h"
+#include "bus/centronics/ctronics.h"
 #include "machine/upd765.h"
 #include "includes/prof180x.h"
 

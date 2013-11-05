@@ -97,7 +97,7 @@
 #include "emuopts.h"
 #include "cpu/z80/z80.h"
 #include "includes/nc.h"
-#include "machine/ctronics.h"
+#include "bus/centronics/ctronics.h"
 #include "machine/i8251.h"  /* for NC100 uart */
 #include "machine/mc146818.h"   /* for NC200 real time clock */
 #include "machine/rp5c01.h" /* for NC100 real time clock */
@@ -107,6 +107,7 @@
 #include "sound/beep.h"
 #include "machine/ram.h"
 #include "rendlay.h"
+#include "mcfglgcy.h"
 
 #define VERBOSE 0
 #define LOG(x) do { if (VERBOSE) logerror x; } while (0)
@@ -405,75 +406,23 @@ void nc_state::nc_refresh_memory_config()
 }
 
 
-
-/* restore a block of memory from the nvram file */
-void nc_state::nc_common_restore_memory_from_stream()
+static NVRAM_HANDLER( nc )
 {
-	UINT32 stored_size;
-	UINT32 restore_size;
+	nc_state *state = machine.driver_data<nc_state>();
 
-	if (!m_file)
-		return;
-
-	LOG(("restoring nc memory\n"));
-	/* get size of memory data stored */
-	if (m_file->read(&stored_size, sizeof(UINT32)) != sizeof(UINT32))
-		stored_size = 0;
-
-	if (stored_size > m_ram->size())
-		restore_size = m_ram->size();
+	if (read_or_write)
+	{
+		file->write(state->m_ram->pointer(), state->m_ram->size());
+	}
+	else if (file)
+	{
+		file->read(state->m_ram->pointer(), state->m_ram->size());
+	}
 	else
-		restore_size = stored_size;
-
-	/* read as much as will fit into memory */
-	m_file->read(m_ram->pointer(), restore_size);
-	/* seek over remaining data */
-	m_file->seek(SEEK_CUR,stored_size - restore_size);
+	{
+		// leave whatever ram device defaulted to
+	}
 }
-
-/* store a block of memory to the nvram file */
-void nc_state::nc_common_store_memory_to_stream()
-{
-	UINT32 size = m_ram->size();
-	if (!m_file)
-		return;
-
-	LOG(("storing nc memory\n"));
-	/* write size of memory data */
-	m_file->write(&size, sizeof(UINT32));
-
-	/* write data block */
-	m_file->write(m_ram->pointer(), size);
-}
-
-void nc_state::nc_common_open_stream_for_reading()
-{
-	char filename[MAX_DRIVER_NAME_CHARS + 5];
-
-	sprintf(filename,"%s.hack", machine().system().name);
-
-	m_file = global_alloc(emu_file(machine().options().memcard_directory(), OPEN_FLAG_WRITE));
-	m_file->open(filename);
-}
-
-void nc_state::nc_common_open_stream_for_writing()
-{
-	char filename[MAX_DRIVER_NAME_CHARS + 5];
-
-	sprintf(filename,"%s.hack", machine().system().name);
-
-	m_file = global_alloc(emu_file(machine().options().memcard_directory(), OPEN_FLAG_WRITE));
-	m_file->open(filename);
-}
-
-
-void nc_state::nc_common_close_stream()
-{
-	if (m_file)
-		global_free(m_file);
-}
-
-
 
 
 TIMER_DEVICE_CALLBACK_MEMBER(nc_state::dummy_timer_callback)
@@ -907,26 +856,13 @@ void nc_state::machine_reset()
 
 	nc_common_init_machine();
 
-	nc_common_open_stream_for_reading();
-	nc_common_restore_memory_from_stream();
-	nc_common_close_stream();
-
 	/* serial */
 	m_irq_latch_mask = (1<<0) | (1<<1);
-}
-
-void nc_state::nc100_machine_stop()
-{
-	nc_common_open_stream_for_writing();
-	nc_common_store_memory_to_stream();
-	nc_common_close_stream();
 }
 
 void nc_state::machine_start()
 {
 	m_type = NC_TYPE_1xx;
-
-	machine().add_notifier(MACHINE_NOTIFY_EXIT, machine_notify_delegate(FUNC(nc_state::nc100_machine_stop),this));
 
 	/* keyboard timer */
 	m_keyboard_timer = machine().scheduler().timer_alloc(timer_expired_delegate(FUNC(nc_state::nc_keyboard_timer_callback),this));
@@ -1280,28 +1216,15 @@ MACHINE_RESET_MEMBER(nc_state,nc200)
 
 	m_nc200_uart_interrupt_irq = 0;
 
-	nc_common_open_stream_for_reading();
-	nc_common_restore_memory_from_stream();
-	nc_common_close_stream();
-
 	/* fdc, serial */
 	m_irq_latch_mask = /*(1<<5) |*/ (1<<2);
 
 	nc200_video_set_backlight(0);
 }
 
-void nc_state::nc200_machine_stop()
-{
-	nc_common_open_stream_for_writing();
-	nc_common_store_memory_to_stream();
-	nc_common_close_stream();
-}
-
 MACHINE_START_MEMBER(nc_state,nc200)
 {
 	m_type = NC_TYPE_200;
-
-	machine().add_notifier(MACHINE_NOTIFY_EXIT, machine_notify_delegate(FUNC(nc_state::nc200_machine_stop),this));
 
 	/* keyboard timer */
 	m_keyboard_timer = machine().scheduler().timer_alloc(timer_expired_delegate(FUNC(nc_state::nc_keyboard_timer_callback),this));
@@ -1600,6 +1523,7 @@ static MACHINE_CONFIG_START( nc100, nc_state )
 	/* internal ram */
 	MCFG_RAM_ADD(RAM_TAG)
 	MCFG_RAM_DEFAULT_SIZE("64K")
+	MCFG_NVRAM_HANDLER(nc)
 
 	/* dummy timer */
 	MCFG_TIMER_DRIVER_ADD_PERIODIC("dummy_timer", nc_state, dummy_timer_callback, attotime::from_hz(50))
@@ -1644,7 +1568,7 @@ static MACHINE_CONFIG_DERIVED( nc200, nc100 )
 	MCFG_FLOPPY_DRIVE_ADD("upd765:0", ibmpc_floppies, "525dd", ibmpc_floppy_formats)
 	MCFG_FLOPPY_DRIVE_ADD("upd765:1", ibmpc_floppies, "525dd", ibmpc_floppy_formats)
 
-	MCFG_MC146818_ADD( "mc", MC146818_STANDARD )
+	MCFG_MC146818_ADD( "mc", XTAL_4_194304Mhz )
 
 	/* internal ram */
 	MCFG_RAM_MODIFY(RAM_TAG)
@@ -1672,6 +1596,12 @@ ROM_START(nc100)
 ROM_END
 
 
+ROM_START(dw225)
+	ROM_REGION(((64*1024)+(512*1024)), "maincpu",0)
+	ROM_LOAD("dr (1.06).ic303",  0x010000, 0x080000, CRC(fcf2f7bd) SHA1(a69951618b24e97154cb4284d215cbf4aa9fb34f))
+ROM_END
+
+
 ROM_START(nc150)
 	ROM_REGION(((64*1024)+(512*1024)), "maincpu",0)
 	ROM_SYSTEM_BIOS(0, "b2", "French B2")
@@ -1688,5 +1618,6 @@ ROM_END
 
 /*    YEAR  NAME    PARENT  COMPAT  MACHINE INPUT   INIT    COMPANY         FULLNAME    FLAGS */
 COMP( 1992, nc100,  0,      0,      nc100,  nc100, nc_state,  nc,      "Amstrad plc",  "NC100",    0 )
+COMP( 1992, dw225,  nc100,  0,      nc100,  nc100, nc_state,  nc,      "NTS Computer Systems", "DreamWriter 225",    0 )
 COMP( 1992, nc150,  nc100,  0,      nc100,  nc100, nc_state,  nc,      "Amstrad plc",  "NC150",    0 )
 COMP( 1993, nc200,  0,      0,      nc200,  nc200, nc_state,  nc,      "Amstrad plc",  "NC200",    GAME_NOT_WORKING ) // boot hangs while checking the MC146818 UIP (update in progress) bit

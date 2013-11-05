@@ -1,14 +1,14 @@
+// license:BSD-3-Clause
+// copyright-holders:Curt Coder
 #pragma once
 
 #ifndef __PROF80__
 #define __PROF80__
 
-
 #include "emu.h"
+#include "bus/ecbbus/ecbbus.h"
 #include "cpu/z80/z80.h"
 #include "cpu/z80/z80daisy.h"
-#include "machine/ecbbus.h"
-#include "machine/ecb_grip.h"
 #include "machine/ram.h"
 #include "machine/rescap.h"
 #include "machine/serial.h"

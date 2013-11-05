@@ -1,3 +1,5 @@
+// license:MAME|LGPL-2.1+
+// copyright-holders:Michael Zapf
 /****************************************************************************
 
     Peripheral expansion box
@@ -49,11 +51,13 @@ public:
 	peribox_device(const machine_config &mconfig, const char *tag, device_t *owner, UINT32 clock);
 	peribox_device(const machine_config &mconfig, device_type type, const char *name, const char *tag, device_t *owner, UINT32 clock, const char *shortname, const char *source);
 
-	// Next six methods are called from the console
+	// Next seven methods are called from the console
 	DECLARE_READ8Z_MEMBER(readz);
 	DECLARE_WRITE8_MEMBER(write);
-	void crureadz(offs_t offset, UINT8 *value);
-	void cruwrite(offs_t offset, UINT8 value);
+	DECLARE_SETADDRESS_DBIN_MEMBER(setaddress_dbin);
+
+	DECLARE_READ8Z_MEMBER(crureadz);
+	DECLARE_WRITE8_MEMBER(cruwrite);
 	DECLARE_WRITE_LINE_MEMBER(senila);
 	DECLARE_WRITE_LINE_MEMBER(senilb);
 
@@ -143,6 +147,8 @@ public:
 	// Called from the box (direction to card)
 	DECLARE_READ8Z_MEMBER(readz);
 	DECLARE_WRITE8_MEMBER(write);
+	DECLARE_SETADDRESS_DBIN_MEMBER(setaddress_dbin);
+
 	DECLARE_WRITE_LINE_MEMBER(senila);
 	DECLARE_WRITE_LINE_MEMBER(senilb);
 
@@ -151,8 +157,8 @@ public:
 	DECLARE_WRITE_LINE_MEMBER( set_intb );
 	DECLARE_WRITE_LINE_MEMBER( set_ready );
 
-	void crureadz(offs_t offset, UINT8 *value);
-	void cruwrite(offs_t offset, UINT8 value);
+	DECLARE_READ8Z_MEMBER(crureadz);
+	DECLARE_WRITE8_MEMBER(cruwrite);
 
 	// called from the box itself
 	void set_genmod(bool set);
@@ -189,8 +195,8 @@ public:
 		m_genmod = false;
 	}
 
-	virtual void crureadz(offs_t offset, UINT8 *value) =0;
-	virtual void cruwrite(offs_t offset, UINT8 data) =0;
+	virtual DECLARE_READ8Z_MEMBER(crureadz) =0;
+	virtual DECLARE_WRITE8_MEMBER(cruwrite) =0;
 
 	void    set_senila(int state) { m_senila = state; }
 	void    set_senilb(int state) { m_senilb = state; }

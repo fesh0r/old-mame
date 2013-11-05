@@ -1,10 +1,34 @@
+// license:MAME|LGPL-2.1+
+// copyright-holders:Miodrag Milanovic,Jonathan Gevaryahu
 /***************************************************************************
 
     Canon Cat, Model V777
     IAI Swyft Model P0001
-    driver by Miodrag Milanovic and Lord Nightmare
+    Copyright (C) 2009-2013 Miodrag Milanovic and Jonathan Gevaryahu AKA Lord Nightmare
     With information and help from John "Sandy" Bumgarner, Dwight Elvey,
     Charles Springer, Terry Holmes, Jonathan Sand, Aza Raskin and others.
+
+
+    This source file is dual-licensed under the following licenses:
+    1. The MAME license as of September 2013
+    2. The GNU LGPLv2.1:
+
+    This library is free software; you can redistribute it and/or
+    modify it under the terms of the GNU Lesser General Public
+    License as published by the Free Software Foundation; either
+    version 2.1 of the License, or (at your option) any later version.
+
+    This library is distributed in the hope that it will be useful,
+    but WITHOUT ANY WARRANTY; without even the implied warranty of
+    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
+    Lesser General Public License for more details.
+
+    You should have received a copy of the GNU Lesser General Public
+    License along with this library; if not, write to the Free Software
+    Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301  USA
+
+    Please contact the authors if you require other licensing.
+
 
     This driver is dedicated in memory of Jef Raskin and Dave Boulton
 
@@ -161,41 +185,80 @@ X3: 2.4576Mhz, used by the modem chip AMI S35213 at IC37
 IAI Swyft:
 Board name: 950-0001C
 "INFORMATION APPLIANCE INC. COPYRIGHT 1985"
- _________________|||||||||_____________________________________________________________________________
-|                 video out         [unknown IDC connector]____                                         |
-|                                                         /    \                                        |
-<4 pin edge)           74LS107                            |PB1 |        uA339     MC3403                |
-|                                          7407           \____/                                        |
-| Y1       "TIMING B" 74LS132    74LS175                                                                |
-|                                                  ____________                                         |
-| TMS4256   74LS161  "DECODE E" "DISK 3.5C"       |            |                           4N37         |
-|                                                 |  MC6850P   |                                   -----|
-| TMS4256   74LS166   74HCT259   74LS299          '------------'        MC3403    MC3403           LINE =
-|                      ___________________     ___________________                                 -----|
-| TMS4256   74LS373   |                   |   |                   |                                PHONE=
-|                     |   MC68008P8       |   |       R6522P      |                                -----|
-| TMS4256   74F153    '-------------------'   '-------------------'     MN4053    MN4053          .-----|
-|                             (jumper E1)                                                         |J1   =
-| TMS4256   74F153    74HCT08     __________   ___________________      MC14412   DS1489          | B   =
-|                                |          | |                   | ||                            | R   =
-| TMS4256   74F153    74HC4040E  | AM27256  | |       R6522P      | ||                            | E   =
-|                                '----------' '-------------------' ||                            | A   =
-| TMS4256   74F153    "VIDEO 2B" .----------.                       J4                            | K   =
-|                                | AM27256  |   74HC02     74HC374  ||                            | O   =
-| TMS4256   74F153    74LS393    |__________|                       ||  UM95089  Y2               | U   =
-|_____________________________________(j9)________________________________________________________|_T___=
+ _________________|||||||||___________________________________________________________________________________
+|                     J8               [=======J3=======]  ____                              Trans-           |
+==                                                        /    \  (E2)                       former           |
+==Jx                   74LS107   J5                       |PB1 |        uA339     MC3403                 -----|
+|                                          7407           \____/                                         J7   =
+| Y1       "TIMING B" 74LS132    74LS175                                                                 -----|
+|                                                  ____________                            4N37  Relay   -----|
+| TMS4256   74LS161  "DECODE E" "DISK 3.5C"       |            |                                         J6   =
+|                                                 |  MC6850P   |                                         -----|
+| TMS4256   74LS166   74HCT259   74LS299          '------------'        MC3403    MC3403                 _____|
+|                      ___________________     ___________________             ||                       |     =
+| TMS4256   74LS373   |                   |   |                   |            J2                       | J1  =
+|                     |   MC68008P8       |   |       R6522P      |            ||              I   P R  |     =
+| TMS4256   74F153    '-------------------'   '-------------------'     MN4053 || MN4053       N   R E  | B   =
+|                                    (E1)                                                      D   O S  | R   =
+| TMS4256   74F153    74HCT08     __________   ___________________      MC14412   DS1489       U E T I  | E   =
+|                                |          | |                   | ||                         C S E S  | A   =
+| TMS4256   74F153    74HC4040E  | AM27256  | |       R6522P      | ||                         T D C T  | K   =
+|                                '----------' '-------------------' ||  INFORMATION            O   T O  | O   =
+| TMS4256   74F153    "VIDEO 2B" .----------.                       J4  APPLIANCE INC.         R   I R  | U   =
+|                                | AM27256  |   74HC02     74HC374  ||  Copyright 1985         S   O S  | T   =
+| TMS4256   74F153    74LS393  B1|__________|                       ||  UM95089  Y2                N    |     =
+|_____________________________[________J9___]__________________________________________________D13______|_____=
 
-"TIMING B" - AMPAL16R4APC (marked on silkscreen "TIMING PAL")
-"DECODE E" - AMPAL16L8PC (marked on silkscreen "DECODE PAL")
-"VIDEO 2B" - AMPAL16R4APC (marked on silkscreen "VIDEO PAL")
-"DISK 3.5C" - AMPAL16R4PC (marked on silkscreen "DISK PAL")
-4N37 (marked on silkscreen "4N35")
-74F153 (marked on silkscreen "74ALS153")
+*Devices of interest:
+J1: breakout of joystick, serial/rs232, hex-keypad, parallel port, and forth switch (and maybe cassette?) pins
+    DIL 60 pin 2-row right-angle rectangular connector with metal shield contact;
+    not all 60 pins are populated in the connector, only pins 1-6, 8, 13-15, 17-18, 23-30, 35-60 are present
+    (traced partly by dwight)
+J2: unpopulated 8-pin sip header, serial/rs232-related?
+    (vcc ? ? ? ? ? ? gnd)
+J3: Floppy Connector
+    (standard DIL 34 pin 2-row rectangular connector for mini-shugart/pc floppy cable; pin 2 IS connected somewhere)
+J4: 18-pin sip header for keyboard ribbon cable
+    (needs tracing to see the VIA hookup order)
+J5: locking-tab-type "CONN HEADER VERT 4POS .100 TIN" connector for supplying power
+    through a small cable with a berg connector at the other end, to the floppy drive
+    (5v gnd gnd 12v)
+J6: Phone connector, rj11 jack
+J7: Line connector, rj11 jack
+J8: 9-pin Video out/power in connector "CONN RECEPT 6POS .156 R/A PCB" plus "CONN RECEPT 3POS .156 R/A PCB" acting as one 9-pin connector
+    (NC ? ? ? NC NC ? 12v 5v) (video, vsync, hsync and case/video-gnd are likely here)
+J9: unpopulated DIL 40-pin straight connector for a ROM debug/expansion/RAM-shadow daughterboard
+    the pins after pin 12 connect to that of the ROM-LO 27256 pinout counting pins 1,28,2,27,3,26,etc
+    the ROM-HI rom has a different /HICE pin which is not connected to this connector
+    /LOCE is most likely !(a19|a18)&a15
+    /HICE is most likely !(a19|a18)&!a15
+    pin 1 (GND) is in the lower left and the pins count low-high then to the right
+    (gnd ? ? ? ?   ? vcc a14 a13 a8 a9 a11 /OE a10 /LOCE d7 d6 d5 d4 d3 )
+    (GND ? ? ? gnd ? vcc a12 a7  a6 a5 a4  a3  a2  a1    a0 d0 d1 d2 gnd)
+Jx: 4 pin on top side, 6 pin on bottom side edge ?debug? connector (doesn't have a Jx number)
+    (trace me!)
+B1: a cut-able trace on the pcb. Not cut, affects one of the pins on the unpopulated J9 connector only.
+E1: jumper, unknown purpose, not set
+E2: jumper, unknown purpose, not set
+D13: LED
+R6522P (upper): parallel port via
+R6522P (lower): keyboard via
+UM95089: DTMF Tone generator chip (if you read the datasheet this is technically ROM based!)
+Y1: 15.8976Mhz, main clock?
+Y2: 3.579545Mhz, used by the DTMF generator chip UM95089 (connects to pins 7 and 8 of it)
 TMS4256-15NL - 262144 x 1 DRAM
 PB1 - piezo speaker
-Crystals:
-Y1: 15.8976Mhz, main clock?
-Y2: 3.579545Mhz, used by the DTMF generator chip UM95089?
+
+*Pals:
+"TIMING B" - AMPAL16R4APC (marked on silkscreen "TIMING PAL")
+"DECODE E" - AMPAL16L8PC (marked on silkscreen "DECODE PAL")
+"VIDEO 2B" - AMPAL16R4PC (marked on silkscreen "VIDEO PAL")
+"DISK 3.5C" - AMPAL16R4PC (marked on silkscreen "DISK PAL")
+
+*Deviations from silkscreen:
+4N37 (marked on silkscreen "4N35")
+74F153 (marked on silkscreen "74ALS153")
+74HCT259 is socketed, possibly intended that the rom expansion daughterboard will have a ribbon cable fit in its socket?
 
 
 ToDo:
@@ -250,15 +313,18 @@ ToDo:
 
 * Swyft
 - Figure out the keyboard (interrupts are involved? or maybe an NMI on a
-  timer/vblank? It iss possible this uses the same DUART+IP2 'keyboard read
-  int' stuff as the cat does)
-- Beeper
-- Communications port (Duart? or some other plain UART?)
+  timer/vblank? It iss possible this uses a similar 'keyboard read int'
+  to what the cat does)
+- get the keyboard scanning actually working; the VIAs are going nuts right now.
+- Beeper (on one of the vias?)
+- vblank/hblank stuff
+- Get the 6850 ACIA working for communications
 - Floppy (probably similar to the Cat)
-- Centronics port (probably similar to the Cat)
-- Joystick port
-- Forth button (keep in mind shift-usefront-space ALWAYS enables forth on a swyft)
-- Multple undumped firmware revisions exist
+- Centronics port (attached to one of the VIAs)
+- Joystick port (also likely on a via)
+- Keypad? (also likely on a via done as a grid scan?)
+- Forth button (on the port on the back; keep in mind shift-usefront-space ALWAYS enables forth on a swyft)
+- Multple undumped firmware revisions exist (330 and 331 are dumped)
 
 ****************************************************************************/
 
@@ -282,10 +348,14 @@ ToDo:
 #undef DEBUG_DUART_OUTPUT_LINES
 #undef DEBUG_DUART_INPUT_LINES
 #undef DEBUG_DUART_TXD
-// TODO: the duart irq handler doesn't work becuase there is no easy way to strobe the duart to force it to check its inputs yet
+// TODO: the duart irq handler doesn't work because there was no easy way to strobe the duart to force it to check its inputs; now with devcb there is, but it hasn't been hooked up yet
 #undef DEBUG_DUART_IRQ_HANDLER
 
 #undef DEBUG_TEST_W
+
+#define DEBUG_SWYFT_VIA0 1
+#define DEBUG_SWYFT_VIA1 1
+
 
 // Includes
 #include "emu.h"
@@ -314,7 +384,8 @@ public:
 		m_via1(*this, "via6522_1"),
 		//m_speaker(*this, "speaker"),
 		m_svram(*this, "svram"), // nvram
-		m_p_videoram(*this, "p_videoram"),
+		m_p_cat_videoram(*this, "p_cat_vram"),
+		m_p_swyft_videoram(*this, "p_swyft_vram"),
 		m_y0(*this, "Y0"),
 		m_y1(*this, "Y1"),
 		m_y2(*this, "Y2"),
@@ -338,7 +409,8 @@ public:
 	DECLARE_WRITE8_MEMBER(cat_duart_output);
 	//required_device<speaker_sound_device> m_speaker;
 	optional_shared_ptr<UINT16> m_svram;
-	required_shared_ptr<UINT16> m_p_videoram;
+	optional_shared_ptr<UINT16> m_p_cat_videoram;
+	optional_shared_ptr<UINT8> m_p_swyft_videoram;
 	optional_ioport m_y0;
 	optional_ioport m_y1;
 	optional_ioport m_y2;
@@ -382,9 +454,43 @@ public:
 	DECLARE_READ16_MEMBER(cat_0080_r);
 	DECLARE_READ16_MEMBER(cat_0000_r);
 
+	DECLARE_READ8_MEMBER(swyft_d0000);
+
+	DECLARE_READ8_MEMBER(swyft_via0_r);
+	DECLARE_WRITE8_MEMBER(swyft_via0_w);
+	DECLARE_READ8_MEMBER(via0_pa_r);
+	DECLARE_WRITE8_MEMBER(via0_pa_w);
+	DECLARE_READ_LINE_MEMBER(via0_ca1_r);
+	DECLARE_WRITE_LINE_MEMBER(via0_ca1_w);
+	DECLARE_READ_LINE_MEMBER(via0_ca2_r);
+	DECLARE_WRITE_LINE_MEMBER(via0_ca2_w);
+	DECLARE_READ8_MEMBER(via0_pb_r);
+	DECLARE_WRITE8_MEMBER(via0_pb_w);
+	DECLARE_READ_LINE_MEMBER(via0_cb1_r);
+	DECLARE_WRITE_LINE_MEMBER(via0_cb1_w);
+	DECLARE_READ_LINE_MEMBER(via0_cb2_r);
+	DECLARE_WRITE_LINE_MEMBER(via0_cb2_w);
+	DECLARE_WRITE_LINE_MEMBER(via0_int_w);
+
+	DECLARE_READ8_MEMBER(swyft_via1_r);
+	DECLARE_WRITE8_MEMBER(swyft_via1_w);
+	DECLARE_READ8_MEMBER(via1_pa_r);
+	DECLARE_WRITE8_MEMBER(via1_pa_w);
+	DECLARE_READ_LINE_MEMBER(via1_ca1_r);
+	DECLARE_WRITE_LINE_MEMBER(via1_ca1_w);
+	DECLARE_READ_LINE_MEMBER(via1_ca2_r);
+	DECLARE_WRITE_LINE_MEMBER(via1_ca2_w);
+	DECLARE_READ8_MEMBER(via1_pb_r);
+	DECLARE_WRITE8_MEMBER(via1_pb_w);
+	DECLARE_READ_LINE_MEMBER(via1_cb1_r);
+	DECLARE_WRITE_LINE_MEMBER(via1_cb1_w);
+	DECLARE_READ_LINE_MEMBER(via1_cb2_r);
+	DECLARE_WRITE_LINE_MEMBER(via1_cb2_w);
+	DECLARE_WRITE_LINE_MEMBER(via1_int_w);
+
 	UINT8 m_duart_inp;
 	/* gate array 2 has a 16-bit counter inside which counts at 10mhz and
-	   rolls over at FFFF->0000; on rollover (or maybe at FFFF terminal count)
+	   rolls over at FFFF->0000; on roll-over (or maybe at FFFF terminal count)
 	   it triggers the KTOBF output. It does this every 6.5535ms, which causes
 	   a 74LS74 d-latch at IC100 to switch the state of the DUART IP2 line;
 	   this causes the DUART to fire an interrupt, which makes the 68000 read
@@ -539,7 +645,7 @@ WRITE16_MEMBER( cat_state::cat_floppy_data_w )
 	 * ||\------- /INDEX: 0 = index sensor active, 1 = index sensor inactive (verified)
 	 * |\-------- ? this bit may indicate which drive is selected, i.e. same as floppy control bit 7; low on drive 1, high on drive 0?
 	 * \--------- ? this bit may indicate 'data separator overflow'; it is usually low but becomes high if you manually select the floppy drive
-	 ALL of these bits except bit 7 seem to be reset when the selected drive in floppy control is switched
+	 ALL of these bits except bit F seem to be reset when the selected drive in floppy control is switched
 	 */
 READ16_MEMBER( cat_state::cat_floppy_status_r )
 {
@@ -581,6 +687,17 @@ READ16_MEMBER( cat_state::cat_keyboard_r )
 // 0x80000e-0x80000f read
 READ16_MEMBER( cat_state::cat_battery_r )
 {
+	/*
+	 * FEDCBA98 (76543210 is open bus)
+	 * |||||||\-- ?
+	 * ||||||\--- ?
+	 * |||||\---- ?
+	 * ||||\----- ?
+	 * |||\------ ?
+	 * ||\------- ?
+	 * |\-------- ?
+	 * \--------- Battery status (0 = good, 1 = bad)
+	 */
 	/* just return that battery is full, i.e. bit 15 is 0 */
 	/* to make the cat think the battery is bad, return 0x8080 instead of 0x0080 */
 	// TODO: hook this to a dipswitch
@@ -684,7 +801,7 @@ READ16_MEMBER( cat_state::cat_0080_r )
 }
 
 
-/* Canon cat memory map, based on a 16MB dump of the entire address space of a running unit using forth "1000000 0 do i c@ semit loop"
+/* Canon cat memory map, based on testing and a 16MB dump of the entire address space of a running unit using forth "1000000 0 do i c@ semit loop"
 68k address map:
 a23 a22 a21 a20 a19 a18 a17 a16 a15 a14 a13 a12 a11 a10 a9  a8  a7  a6  a5  a4  a3  a2  a1  (a0 via UDS/LDS)
 *i  *i  *   x   x   *   *   *   x   x   x   x   x   x   x   x   x   x   x   x   x   x   x   x       *GATE ARRAY 2 DECODES THESE LINES TO ENABLE THIS AREA* (a23 and a22 are indirectly decoded via the /RAMROMCS and /IOCS lines from gate array 1)
@@ -732,7 +849,7 @@ static ADDRESS_MAP_START(cat_mem, AS_PROGRAM, 16, cat_state)
 	AM_RANGE(0x000000, 0x03ffff) AM_ROM AM_MIRROR(0x180000) // 256 KB ROM
 	AM_RANGE(0x040000, 0x043fff) AM_RAM AM_SHARE("svram") AM_MIRROR(0x18C000)// SRAM powered by battery
 	AM_RANGE(0x200000, 0x27ffff) AM_ROM AM_REGION("svrom",0x0000) AM_MIRROR(0x180000) // SV ROM
-	AM_RANGE(0x400000, 0x47ffff) AM_RAM AM_SHARE("p_videoram") AM_MIRROR(0x180000) // 512 KB RAM
+	AM_RANGE(0x400000, 0x47ffff) AM_RAM AM_SHARE("p_cat_vram") AM_MIRROR(0x180000) // 512 KB RAM
 	AM_RANGE(0x600000, 0x67ffff) AM_READWRITE(cat_2e80_r,cat_video_control_w) AM_MIRROR(0x180000) // Gate Array #1: Video
 	AM_RANGE(0x800000, 0x800001) AM_READWRITE(cat_floppy_control_r, cat_floppy_control_w) AM_MIRROR(0x18FFE0) // floppy control lines and readback
 	AM_RANGE(0x800002, 0x800003) AM_READWRITE(cat_0080_r, cat_keyboard_w) AM_MIRROR(0x18FFE0) // keyboard col write
@@ -752,29 +869,6 @@ static ADDRESS_MAP_START(cat_mem, AS_PROGRAM, 16, cat_state)
 	AM_RANGE(0x870000, 0x870001) AM_READ(cat_2e80_r) AM_MIRROR(0x18FFFE) // Open bus?
 	AM_RANGE(0xA00000, 0xA00001) AM_READ(cat_2e80_r) AM_MIRROR(0x1FFFFE) // Open bus/dtack? The 0xA00000-0xA3ffff area is ram used for shadow rom storage on cat developer machines, which is either banked over top of, or jumped to instead of the normal rom
 	AM_RANGE(0xC00000, 0xC00001) AM_READ(cat_2e80_r) AM_MIRROR(0x3FFFFE) // Open bus/vme?
-ADDRESS_MAP_END
-
-/* Swyft Memory map, based on watching the infoapp roms do their thing:
-68k address map:
-a23 a22 a21 a20 a19 a18 a17 a16 a15 a14 a13 a12 a11 a10 a9  a8  a7  a6  a5  a4  a3  a2  a1  (a0 via UDS/LDS)
-?   ?   ?   ?   0   0   ?   ?   *   *   *   *   *   *   *   *   *   *   *   *   *   *   *   a        R   ROM (a=0 is low, a=1 is high)
-?   ?   ?   ?   0   1   *   *   *   *   *   *   *   *   *   *   *   *   *   *   *   *   *   a        RW  RAM
-?   ?   ?   ?   1   1  ?0? ?1?  ?   ?   ?   ?   ?   ?   ?   ?   ?   ?   ?   ?   *   *   *   *        R   ? status of something? floppy?
-?   ?   ?   ?   1   1  ?1? ?0?  ?   0   0   1   ?   ?   ?   ?   ?   ?   ?   ?   ?   ?   ?   ?        ?R?W   6850 acia control reg lives here, gets 0x55 steadystate and 0x57 written to it to reset it
-?   ?   ?   ?   1   1  ?1? ?0?  ?   0   1   0   ?   ?   *   *   *   *  ?*?  ?   ?   ?   ?   ?        RW  VIA 0
-?   ?   ?   ?   1   1  ?1? ?0?  ?   1   0   0   ?   ?   *   *   *   *  ?*?  ?   ?   ?   ?   ?        RW  VIA 1
-              ^               ^               ^               ^               ^
-*/
-
-static ADDRESS_MAP_START(swyft_mem, AS_PROGRAM, 16, cat_state)
-	ADDRESS_MAP_UNMAP_HIGH
-	AM_RANGE(0x000000, 0x00ffff) AM_ROM AM_MIRROR(0xF00000) // 64 KB ROM
-	AM_RANGE(0x040000, 0x07ffff) AM_RAM AM_MIRROR(0xF00000) AM_SHARE("p_videoram") // 256 KB RAM
-	//AM_RANGE(0x0d0000, 0x0d000f) AM_READ(unknown_d0004) // status of something? reads from d0000, d0004, d0008, d000a, d000e
-	AM_RANGE(0x0e1000, 0x0e1001) AM_DEVWRITE8("acia6850", acia6850_device, control_write, 0xFF00) // 6850 ACIA lives here
-	// where are the other 3 acia registers? e1002-e1003, and read/write for each?
-	//AM_RANGE(0x0e2000, 0x0e2fff) AM_READWRITE(unknown_e2000) // io area with selector on a9 a8 a7 a6?
-	//AM_RANGE(0x0e4000, 0x0e4fff) AM_READWRITE(unknown_e4000) // there's likely a modem chip mapped around somewhere
 ADDRESS_MAP_END
 
 /* Input ports */
@@ -886,6 +980,7 @@ static INPUT_PORTS_START( cat )
 INPUT_PORTS_END
 
 static INPUT_PORTS_START( swyft )
+// insert dwight and sandy's swyft keyboard map here once we figure out the byte line order
 INPUT_PORTS_END
 
 
@@ -956,7 +1051,7 @@ UINT32 cat_state::screen_update_cat(screen_device &screen, bitmap_ind16 &bitmap,
 			int horpos = 0;
 			for (x = 0; x < 42; x++)
 			{
-				code = m_p_videoram[addr++];
+				code = m_p_cat_videoram[addr++];
 				for (b = 15; b >= 0; b--)
 				{
 					bitmap.pix16(y, horpos++) = ((code >> b) & 0x01) ^ m_video_invert;
@@ -966,42 +1061,6 @@ UINT32 cat_state::screen_update_cat(screen_device &screen, bitmap_ind16 &bitmap,
 	} else {
 		const rectangle black_area(0, 672 - 1, 0, 344 - 1);
 		bitmap.fill(0, black_area);
-	}
-	return 0;
-}
-
-MACHINE_START_MEMBER(cat_state,swyft)
-{
-	//m_6ms_timer = timer_alloc(TIMER_COUNTER_6MS); // CRUDE HACK
-}
-
-MACHINE_RESET_MEMBER(cat_state,swyft)
-{
-	//m_maincpu->set_irq_acknowledge_callback(device_irq_acknowledge_delegate(FUNC(cat_state::cat_int_ack),this));
-	//m_6ms_timer->adjust(attotime::zero, 0, attotime::from_hz((XTAL_19_968MHz/2)/65536)); // horrible hack
-}
-
-VIDEO_START_MEMBER(cat_state,swyft)
-{
-}
-
-UINT32 cat_state::screen_update_swyft(screen_device &screen, bitmap_ind16 &bitmap, const rectangle &cliprect)
-{
-	UINT16 code;
-	int y, x, b;
-
-	int addr = 0;
-	for (y = 0; y < 242; y++)
-	{
-		int horpos = 0;
-		for (x = 0; x < 20; x++)
-		{
-			code = m_p_videoram[addr++];
-			for (b = 15; b >= 0; b--)
-			{
-				bitmap.pix16(y, horpos++) = (code >> b) & 0x01;
-			}
-		}
 	}
 	return 0;
 }
@@ -1097,6 +1156,152 @@ static MACHINE_CONFIG_START( cat, cat_state )
 	MCFG_NVRAM_ADD_0FILL("nvram")
 MACHINE_CONFIG_END
 
+
+/* Swyft Memory map, based on watching the infoapp roms do their thing:
+68k address map:
+(a23,a22,a21,a20 lines don't exist on the 68008 so are considered unconnected)
+a23 a22 a21 a20 a19 a18 a17 a16 a15 a14 a13 a12 a11 a10 a9  a8  a7  a6  a5  a4  a3  a2  a1  a0
+x   x   x   x   0   0   ?   ?   0   *   *   *   *   *   *   *   *   *   *   *   *   *   *   *        R   ROM-LO (/LOCE is 0, /HICE is 1)
+x   x   x   x   0   0   ?   ?   1   *   *   *   *   *   *   *   *   *   *   *   *   *   *   *        R   ROM-HI (/LOCE is 1, /HICE is 0)
+x   x   x   x   0   1   *   *   *   *   *   *   *   *   *   *   *   *   *   *   *   *   *   a        RW  RAM
+x   x   x   x   1   1  ?0? ?1?  ?   ?   ?   ?   ?   ?   ?   ?   ?   ?   ?   ?   *   *   *   *        R   ? status of something? floppy?
+x   x   x   x   1   1  ?1? ?0?  ?   0   0   1   ?   ?   ?   ?   ?   ?   ?   ?   ?   ?   ?   ?        ?R?W   6850 acia control reg lives here, gets 0x55 steadystate and 0x57 written to it to reset it
+x   x   x   x   1   1  ?1? ?0?  ?   0   1   0   ?   ?   *   *   *   *  ?*?  ?   ?   ?   ?   ?        RW  VIA 0
+x   x   x   x   1   1  ?1? ?0?  ?   1   0   0   ?   ?   *   *   *   *  ?*?  ?   ?   ?   ?   ?        RW  VIA 1
+              ^               ^               ^               ^               ^
+*/
+
+/* Swyft rom and ram notes:
+rom:
+**Vectors:
+0x0000-0x0003: SP boot vector
+0x0004-0x0007: PC boot vector
+**unknown:
+0x0009-0x00BF: ? table
+0x00C0-0x01DF: ? table
+0x01E0-0x02DF: ? table (may be part of next table)
+0x02E0-0x03DF: ? table
+0x03E0-0x0B3F: int16-packed jump table (expanded to int32s at ram at 0x46000-0x46EC0 on boot)
+0x0B40-0x0E83: ? function index tables?
+0x0E84-0x1544: binary code (purpose?)
+0x1545-0x24CF: ?
+**Fonts:
+0x24D0-0x254F: ? (likely font 1 width lookup table)
+0x2550-0x2BCF: Font 1 data
+0x2BD0-0x2C4F: ? (likely font 2 width lookup table)
+0x2C50-0x32CF: Font 2 data
+**unknown?:
+0x32D0-0x360F: String data (and control codes?)
+0x3610-0x364F: ? fill (0x03 0xe8)
+0x3650-0x369F: ? fill (0x03 0x20)
+0x36A0-0x384d: ? forth code?
+0x384e-0x385d: Lookup table for phone keypad
+0x385e-...: ?
+...-0xC951: ?
+0xC952: boot vector
+0xC952-0xCAAE: binary code (purpose?)
+    0xCD26-0xCD3B: ?init forth bytecode?
+0xCD3C-0xCEBA: 0xFF fill (unused?)
+0xCEEB-0xFFFE: Forth dictionaries for compiling, with <word> then <3 bytes> afterward? (or before it? most likely afterward)
+
+ram: (system dram ranges from 0x40000-0x7FFFF)
+0x40000-0x425CF - the screen display ram
+(?0x425D0-0x44BA0 - ?unknown (maybe screen ram page 2?))
+0x44DC6 - SP vector
+0x46000-0x46EC0 - jump tables to instructions for ? (each forth word?)
+
+
+on boot:
+copy/expand packed rom short words 0x3E0-0xB3F to long words at 0x46000-0x46EC0
+copy 0x24f longwords of zero beyond that up to 0x47800
+CD26->A5 <?pointer to init stream function?>
+44DC6->A7 <reset SP... why it does this twice, once by the vector and once here, i'm gonna guess has to do with running the code in a debugger or on a development daughterboard like the cat had, where the 68008 wouldn't get explicitly reset>
+44F2A->A6 <?pointer to work ram space?>
+EA2->A4 <?function>
+E94->A3 <?function>
+EAE->A2 <?function>
+41800->D7 <?forth? opcode index base; the '1800' portion gets the opcode type added to it then is multiplied by 4 to produce the jump table offset within the 0x46000-0x46EC0 range>
+46e3c->D4 <?pointer to more work ram space?>
+CD22->D5 <?pointer to another function?>
+write 0xFFFF to d0004.l
+jump to A4(EA2)
+
+read first stream byte (which is 0x03) from address pointed to by A5 (which is CD26), inc A5, OR the opcode (0x03) to D7
+ (Note: if the forth opcodes are in order in the dictionary, then 0x03 is "!char" which is used to read a char from an arbitrary address)
+copy D7 to A0
+Add A0 low word to itself
+Add A0 low word to itself again
+move the long word from address pointed to by A0 (i.e. the specific opcode's area at the 46xxx part of ram) to A1
+Jump to A1(11A4)
+
+11A4: move 41b00 to D0 (select an opcode "page" 1bxx)
+jump to 118E
+
+118E: read next stream byte (in this case, 0x8E) from address pointed to by A5 (which is CD27), inc A5, OR the opcode (0x8e) to D7
+add to 41b00 in d0, for 41b8E
+Add A0 low word to itself
+Add A0 low word to itself again
+move the long word from address pointed to by A0 (i.e. the specific opcode's area at the 46xxx part of ram) to A1
+Jump to A1(CD06)
+
+CD06: jump to A3 (E94)
+
+E94: subtract D5 from A5 (cd28 - cd22 = 0x0006)
+write 6 to address @A5(44f28) and decrement A5
+write D4(46e3c) to address @a6(44f26) and decrement a5
+lea ($2, A1), A5 - i.e. increment A1 by 2, and write that to A5, so write CD06+2=CD08 to A5
+A1->D5
+A0->D4
+read next stream byte (in this case, 0x03) from address pointed to by A5 (which is CD08), inc A5, OR the opcode (0x03) to D7
+
+*/
+
+static ADDRESS_MAP_START(swyft_mem, AS_PROGRAM, 8, cat_state)
+	ADDRESS_MAP_UNMAP_HIGH
+	AM_RANGE(0x000000, 0x00ffff) AM_ROM AM_MIRROR(0xF00000) // 64 KB ROM
+	AM_RANGE(0x040000, 0x07ffff) AM_RAM AM_MIRROR(0xF00000) AM_SHARE("p_swyft_vram") // 256 KB RAM
+	AM_RANGE(0x0d0000, 0x0d000f) AM_READ(swyft_d0000) AM_MIRROR(0xF00000) // status of something? reads from d0000, d0004, d0008, d000a, d000e
+	AM_RANGE(0x0e1000, 0x0e1000) AM_DEVWRITE("acia6850", acia6850_device, control_write) AM_MIRROR(0xF00000) // 6850 ACIA lives here
+	AM_RANGE(0x0e2000, 0x0e2fff) AM_READWRITE(swyft_via0_r, swyft_via0_w) AM_MIRROR(0xF00000)// io area with selector on a9 a8 a7 a6?
+	AM_RANGE(0x0e4000, 0x0e4fff) AM_READWRITE(swyft_via1_r, swyft_via1_w) AM_MIRROR(0xF00000)
+ADDRESS_MAP_END
+
+MACHINE_START_MEMBER(cat_state,swyft)
+{
+	//m_6ms_timer = timer_alloc(TIMER_COUNTER_6MS); // CRUDE HACK
+}
+
+MACHINE_RESET_MEMBER(cat_state,swyft)
+{
+	//m_maincpu->set_irq_acknowledge_callback(device_irq_acknowledge_delegate(FUNC(cat_state::cat_int_ack),this));
+	//m_6ms_timer->adjust(attotime::zero, 0, attotime::from_hz((XTAL_19_968MHz/2)/65536)); // horrible hack
+}
+
+VIDEO_START_MEMBER(cat_state,swyft)
+{
+}
+
+UINT32 cat_state::screen_update_swyft(screen_device &screen, bitmap_ind16 &bitmap, const rectangle &cliprect)
+{
+	UINT16 code;
+	int y, x, b;
+
+	int addr = 0;
+	for (y = 0; y < 242; y++)
+	{
+		int horpos = 0;
+		for (x = 0; x < 40; x++)
+		{
+			code = m_p_swyft_videoram[addr++];
+			for (b = 7; b >= 0; b--)
+			{
+				bitmap.pix16(y, horpos++) = (code >> b) & 0x01;
+			}
+		}
+	}
+	return 0;
+}
+
 static const acia6850_interface swyft_acia_config =
 {
 	3579545, // guess
@@ -1110,43 +1315,241 @@ static const acia6850_interface swyft_acia_config =
 
 static const via6522_interface swyft_via0_config =
 {
-	DEVCB_NULL,
-	DEVCB_NULL,
-	DEVCB_NULL,
-	DEVCB_NULL,
-	DEVCB_NULL,
-	DEVCB_NULL,
-	DEVCB_NULL,
-	DEVCB_NULL,
-	DEVCB_NULL,
-	DEVCB_NULL,
-	DEVCB_NULL,
-	DEVCB_NULL,
-	DEVCB_NULL,
+	DEVCB_DEVICE_MEMBER(DEVICE_SELF_OWNER, cat_state, via0_pa_r), // PA in
+	DEVCB_DEVICE_MEMBER(DEVICE_SELF_OWNER, cat_state, via0_pb_r), // PB in
+	DEVCB_DEVICE_LINE_MEMBER(DEVICE_SELF_OWNER, cat_state, via0_ca1_r), // CA1 in callback
+	DEVCB_DEVICE_LINE_MEMBER(DEVICE_SELF_OWNER, cat_state, via0_cb1_r), // CB1 in callback
+	DEVCB_DEVICE_LINE_MEMBER(DEVICE_SELF_OWNER, cat_state, via0_ca2_r), // CA2 in callback
+	DEVCB_DEVICE_LINE_MEMBER(DEVICE_SELF_OWNER, cat_state, via0_cb2_r), // CB2 in callback
+	DEVCB_DEVICE_MEMBER(DEVICE_SELF_OWNER, cat_state, via0_pa_w), // PA out
+	DEVCB_DEVICE_MEMBER(DEVICE_SELF_OWNER, cat_state, via0_pb_w), // PB out
+	DEVCB_DEVICE_LINE_MEMBER(DEVICE_SELF_OWNER, cat_state, via0_ca1_w), // CA1 out callback
+	DEVCB_DEVICE_LINE_MEMBER(DEVICE_SELF_OWNER, cat_state, via0_cb1_w), // CA2 out callback
+	DEVCB_DEVICE_LINE_MEMBER(DEVICE_SELF_OWNER, cat_state, via0_ca2_w), // CB1 out callback
+	DEVCB_DEVICE_LINE_MEMBER(DEVICE_SELF_OWNER, cat_state, via0_cb2_w), // CB2 out callback
+	DEVCB_DEVICE_LINE_MEMBER(DEVICE_SELF_OWNER, cat_state, via0_int_w), // interrupt callback
 };
 
 static const via6522_interface swyft_via1_config =
 {
-	DEVCB_NULL,
-	DEVCB_NULL,
-	DEVCB_NULL,
-	DEVCB_NULL,
-	DEVCB_NULL,
-	DEVCB_NULL,
-	DEVCB_NULL,
-	DEVCB_NULL,
-	DEVCB_NULL,
-	DEVCB_NULL,
-	DEVCB_NULL,
-	DEVCB_NULL,
-	DEVCB_NULL,
+	DEVCB_DEVICE_MEMBER(DEVICE_SELF_OWNER, cat_state, via1_pa_r), // PA in
+	DEVCB_DEVICE_MEMBER(DEVICE_SELF_OWNER, cat_state, via1_pb_r), // PB in
+	DEVCB_DEVICE_LINE_MEMBER(DEVICE_SELF_OWNER, cat_state, via1_ca1_r), // CA1 in callback
+	DEVCB_DEVICE_LINE_MEMBER(DEVICE_SELF_OWNER, cat_state, via1_cb1_r), // CB1 in callback
+	DEVCB_DEVICE_LINE_MEMBER(DEVICE_SELF_OWNER, cat_state, via1_ca2_r), // CA2 in callback
+	DEVCB_DEVICE_LINE_MEMBER(DEVICE_SELF_OWNER, cat_state, via1_cb2_r), // CB2 in callback
+	DEVCB_DEVICE_MEMBER(DEVICE_SELF_OWNER, cat_state, via1_pa_w), // PA out
+	DEVCB_DEVICE_MEMBER(DEVICE_SELF_OWNER, cat_state, via1_pb_w), // PB out
+	DEVCB_DEVICE_LINE_MEMBER(DEVICE_SELF_OWNER, cat_state, via1_ca1_w), // CA1 out callback
+	DEVCB_DEVICE_LINE_MEMBER(DEVICE_SELF_OWNER, cat_state, via1_cb1_w), // CA2 out callback
+	DEVCB_DEVICE_LINE_MEMBER(DEVICE_SELF_OWNER, cat_state, via1_ca2_w), // CB1 out callback
+	DEVCB_DEVICE_LINE_MEMBER(DEVICE_SELF_OWNER, cat_state, via1_cb2_w), // CB2 out callback
+	DEVCB_DEVICE_LINE_MEMBER(DEVICE_SELF_OWNER, cat_state, via1_int_w), // interrupt callback
 };
+
+READ8_MEMBER( cat_state::swyft_d0000 )
+{
+	// wtf is this supposed to be?
+	UINT8 byte = 0xFF; // ?
+	logerror("mystery device: read from 0x%5X, returning %02X\n", offset+0xD0000, byte);
+	return byte;
+}
+
+
+// if bit is 1 enable: (obviously don't set more than one bit or you get bus contention!)
+//                                           acia
+//                                       via0
+//                                    via1
+// x   x   x   x   1   1  ?1? ?0?  ?   ^   ^   ^   ?   ?   *   *   *   *  ?*?  ?   ?   ?   ?   ?
+//                                                         ^   ^   ^   ^  <- these four bits address the VIA registers? is this correct?
+static const char *const swyft_via_regnames[] = { "0: ORB/IRB", "1: ORA/IRA", "2: DDRB", "3: DDRA", "4: T1C-L", "5: T1C-H", "6: T1L-L", "7: T1L-H", "8: T2C-L" "9: T2C-H", "A: SR", "B: ACR", "C: PCR", "D: IFR", "E: IER", "F: ORA/IRA*" };
+
+READ8_MEMBER( cat_state::swyft_via0_r )
+{
+	if (offset&0x000C3F) fprintf(stderr,"VIA0: read from invalid offset in 68k space: %06X!\n", offset);
+	UINT8 data = m_via0->read(space, (offset>>6)&0xF);
+#ifdef DEBUG_SWYFT_VIA0
+	logerror("VIA0 register %s read by cpu: returning %02x\n", swyft_via_regnames[(offset>>5)&0xF], data);
+#endif
+	return data;
+}
+
+WRITE8_MEMBER( cat_state::swyft_via0_w )
+{
+#ifdef DEBUG_SWYFT_VIA0
+	logerror("VIA0 register %s written by cpu with data %02x\n", swyft_via_regnames[(offset>>5)&0xF], data);
+#endif
+	if (offset&0x000C3F) fprintf(stderr,"VIA0: write to invalid offset in 68k space: %06X, data: %02X!\n", offset, data);
+	m_via1->write(space, (offset>>6)&0xF, data);
+}
+
+READ8_MEMBER( cat_state::swyft_via1_r )
+{
+	if (offset&0x000C3F) fprintf(stderr," VIA1: read from invalid offset in 68k space: %06X!\n", offset);
+	UINT8 data = m_via1->read(space, (offset>>6)&0xF);
+#ifdef DEBUG_SWYFT_VIA1
+	logerror(" VIA1 register %s read by cpu: returning %02x\n", swyft_via_regnames[(offset>>5)&0xF], data);
+#endif
+	return data;
+}
+
+WRITE8_MEMBER( cat_state::swyft_via1_w )
+{
+#ifdef DEBUG_SWYFT_VIA1
+	logerror(" VIA1 register %s written by cpu with data %02x\n", swyft_via_regnames[(offset>>5)&0xF], data);
+#endif
+	if (offset&0x000C3F) fprintf(stderr," VIA1: write to invalid offset in 68k space: %06X, data: %02X!\n", offset, data);
+	m_via0->write(space, (offset>>6)&0xF, data);
+}
+
+// first via
+READ8_MEMBER( cat_state::via0_pa_r )
+{
+	logerror("VIA0: Port A read!\n");
+	return 0xFF;
+}
+
+WRITE8_MEMBER( cat_state::via0_pa_w )
+{
+	logerror("VIA0: Port A written with data of 0x%02x!\n", data);
+}
+
+READ_LINE_MEMBER ( cat_state::via0_ca1_r )
+{
+	logerror("VIA0: CA1 read!\n");
+	return 1;
+}
+
+WRITE_LINE_MEMBER ( cat_state::via0_ca1_w )
+{
+	logerror("VIA0: CA1 written with %d!\n", state);
+}
+
+READ_LINE_MEMBER ( cat_state::via0_ca2_r )
+{
+	logerror("VIA0: CA2 read!\n");
+	return 1;
+}
+
+WRITE_LINE_MEMBER ( cat_state::via0_ca2_w )
+{
+	logerror("VIA0: CA2 written with %d!\n", state);
+}
+
+READ8_MEMBER( cat_state::via0_pb_r )
+{
+	logerror("VIA0: Port B read!\n");
+	return 0xFF;
+}
+
+WRITE8_MEMBER( cat_state::via0_pb_w )
+{
+	logerror("VIA0: Port B written with data of 0x%02x!\n", data);
+}
+
+READ_LINE_MEMBER ( cat_state::via0_cb1_r )
+{
+	logerror("VIA0: CB1 read!\n");
+	return 1;
+}
+
+WRITE_LINE_MEMBER ( cat_state::via0_cb1_w )
+{
+	logerror("VIA0: CB1 written with %d!\n", state);
+}
+
+READ_LINE_MEMBER ( cat_state::via0_cb2_r )
+{
+	logerror("VIA0: CB2 read!\n");
+	return 1;
+}
+
+WRITE_LINE_MEMBER ( cat_state::via0_cb2_w )
+{
+	logerror("VIA0: CB2 written with %d!\n", state);
+}
+
+WRITE_LINE_MEMBER ( cat_state::via0_int_w )
+{
+	logerror("VIA0: INT output set to %d!\n", state);
+}
+
+// second via
+READ8_MEMBER( cat_state::via1_pa_r )
+{
+	logerror(" VIA1: Port A read!\n");
+	return 0xFF;
+}
+
+WRITE8_MEMBER( cat_state::via1_pa_w )
+{
+	logerror(" VIA1: Port A written with data of 0x%02x!\n", data);
+}
+
+READ_LINE_MEMBER ( cat_state::via1_ca1_r )
+{
+	logerror(" VIA1: CA1 read!\n");
+	return 1;
+}
+
+WRITE_LINE_MEMBER ( cat_state::via1_ca1_w )
+{
+	logerror(" VIA1: CA1 written with %d!\n", state);
+}
+
+READ_LINE_MEMBER ( cat_state::via1_ca2_r )
+{
+	logerror(" VIA1: CA2 read!\n");
+	return 1;
+}
+
+WRITE_LINE_MEMBER ( cat_state::via1_ca2_w )
+{
+	logerror(" VIA1: CA2 written with %d!\n", state);
+}
+
+READ8_MEMBER( cat_state::via1_pb_r )
+{
+	logerror(" VIA1: Port B read!\n");
+	return 0xFF;
+}
+
+WRITE8_MEMBER( cat_state::via1_pb_w )
+{
+	logerror(" VIA1: Port B written with data of 0x%02x!\n", data);
+}
+
+READ_LINE_MEMBER ( cat_state::via1_cb1_r )
+{
+	logerror(" VIA1: CB1 read!\n");
+	return 1;
+}
+
+WRITE_LINE_MEMBER ( cat_state::via1_cb1_w )
+{
+	logerror(" VIA1: CB1 written with %d!\n", state);
+}
+
+READ_LINE_MEMBER ( cat_state::via1_cb2_r )
+{
+	logerror(" VIA1: CB2 read!\n");
+	return 1;
+}
+
+WRITE_LINE_MEMBER ( cat_state::via1_cb2_w )
+{
+	logerror(" VIA1: CB2 written with %d!\n", state);
+}
+
+WRITE_LINE_MEMBER ( cat_state::via1_int_w )
+{
+	logerror(" VIA1: INT output set to %d!\n", state);
+}
 
 static MACHINE_CONFIG_START( swyft, cat_state )
 
 	/* basic machine hardware */
-	//MCFG_CPU_ADD("maincpu",M68008, XTAL_15_8976MHz/2) //MC68008P8, Y1=15.8796Mhz, clock GUESSED at Y1 / 2
-	MCFG_CPU_ADD("maincpu",M68000, XTAL_15_8976MHz/2) //MC68008P8, Y1=15.8796Mhz, clock GUESSED at Y1 / 2
+	MCFG_CPU_ADD("maincpu",M68008, XTAL_15_8976MHz/2) //MC68008P8, Y1=15.8976Mhz, clock GUESSED at Y1 / 2
 	MCFG_CPU_PROGRAM_MAP(swyft_mem)
 
 	MCFG_MACHINE_START_OVERRIDE(cat_state,swyft)
@@ -1166,19 +1569,25 @@ static MACHINE_CONFIG_START( swyft, cat_state )
 	MCFG_VIDEO_START_OVERRIDE(cat_state,swyft)
 
 	MCFG_ACIA6850_ADD("acia6850", swyft_acia_config) // unknown clock
+	MCFG_VIA6522_ADD("via6522_0", XTAL_15_8976MHz/16, swyft_via0_config) // unknown clock, GUESSED
+	MCFG_VIA6522_ADD("via6522_1", XTAL_15_8976MHz/16, swyft_via1_config) // unknown clock, GUESSED
 MACHINE_CONFIG_END
 
 /* ROM definition */
 ROM_START( swyft )
 	ROM_REGION( 0x10000, "maincpu", ROMREGION_ERASEFF )
-	ROM_LOAD( "infoapp.lo", 0x0000, 0x8000, CRC(52c1bd66) SHA1(b3266d72970f9d64d94d405965b694f5dcb23bca) )
-	ROM_LOAD( "infoapp.hi", 0x8000, 0x8000, CRC(83505015) SHA1(693c914819dd171114a8c408f399b56b470f6be0) )
-	/* a version of the swyft roms are labeled '331 low' and '331 high' */
-	ROM_REGION( 0x1000, "pals", ROMREGION_ERASEFF )
-	ROM_LOAD( "timing b.pal16r4", 0x0000, 0x38b, NO_DUMP)
-	ROM_LOAD( "decode e.pal16l8", 0x0400, 0x38b, NO_DUMP)
-	ROM_LOAD( "video 2b.pal16r4", 0x0800, 0x38b, NO_DUMP)
-	ROM_LOAD( "disk 3.5c.pal16r4", 0x0c00, 0x38b, NO_DUMP)
+	ROM_SYSTEM_BIOS( 0, "v331", "IAI Swyft Version 331 Firmware")
+	ROMX_LOAD( "331-lo.u30", 0x0000, 0x8000, CRC(d6cc2e2f) SHA1(39ff26c18b1cf589fc48793263f280ef3780cc61), ROM_BIOS(1))
+	ROMX_LOAD( "331-hi.u31", 0x8000, 0x8000, CRC(4677630a) SHA1(8845d702fa8b8e1a08352f4c59d3076cc2e1307e), ROM_BIOS(1))
+	/* this version of the swyft code identifies itself at 0x3FCB as version 330 */
+	ROM_SYSTEM_BIOS( 1, "v330", "IAI Swyft Version 330 Firmware")
+	ROMX_LOAD( "infoapp.lo.u30", 0x0000, 0x8000, CRC(52c1bd66) SHA1(b3266d72970f9d64d94d405965b694f5dcb23bca), ROM_BIOS(2))
+	ROMX_LOAD( "infoapp.hi.u31", 0x8000, 0x8000, CRC(83505015) SHA1(693c914819dd171114a8c408f399b56b470f6be0), ROM_BIOS(2))
+	ROM_REGION( 0x4000, "pals", ROMREGION_ERASEFF )
+	ROM_LOAD( "timing_b.ampal16r4a.u9.jed", 0x0000, 0xb08, CRC(643e6e83) SHA1(7db167883f9d6cf385ce496d08976dc16fc3e2c3))
+	ROM_LOAD( "decode_e.ampal16l8.u20.jed", 0x1000, 0xb08, CRC(0b1dbd76) SHA1(08c144ad7a7bbdd53eefd271b2f6813f8b3b1594))
+	ROM_LOAD( "video_2b.ampal16r4.u25.jed", 0x2000, 0xb08, CRC(caf91148) SHA1(3f8ddcb512a1c05395c74ad9a6ba7b87027ce4ec))
+	ROM_LOAD( "disk_3.5c.ampal16r4.u28.jed", 0x3000, 0xb08, CRC(fd994d02) SHA1(f910ab16587dd248d63017da1e5b37855e4c1a0c))
 ROM_END
 
 ROM_START( cat )
@@ -1230,7 +1639,7 @@ ROM_START( cat )
 	 *  (since no rom is in the socket; it reads as open bus, sometimes 0x2E)
 	 * svrom-2 maps to 240000-25ffff every ODD byte (d8-d0)
 	 *  (since no rom is in the socket; it reads as open bus, sometimes 0x80)
-	 * there is no svrom-3; 240000-25ffff EVEN always reads as 0x2E
+	 * there is no svrom-3 socket; 240000-25ffff EVEN always reads as 0x2E
 	 * since ROM_FILL16BE(0x0, 0x80000, 0x2e80) doesn't exist, the
 	 * even bytes and latter chunk of the svrom space need to be filled in
 	 * DRIVER_INIT or some other means needs to be found to declare them as

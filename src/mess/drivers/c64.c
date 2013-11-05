@@ -1,3 +1,5 @@
+// license:BSD-3-Clause
+// copyright-holders:Curt Coder
 /*
 
     TODO:
@@ -982,6 +984,15 @@ WRITE_LINE_MEMBER( c64_state::exp_reset_w )
 		machine_reset();
 	}
 }
+
+
+//-------------------------------------------------
+//  SLOT_INTERFACE( sx1541_iec_devices )
+//-------------------------------------------------
+
+SLOT_INTERFACE_START( sx1541_iec_devices )
+	SLOT_INTERFACE("sx1541", SX1541)
+SLOT_INTERFACE_END
 
 
 

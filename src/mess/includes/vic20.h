@@ -1,23 +1,21 @@
+// license:BSD-3-Clause
+// copyright-holders:Curt Coder
 #pragma once
 
 #ifndef __VIC20__
 #define __VIC20__
 
-
 #include "emu.h"
-#include "includes/cbm.h"
-#include "machine/cbm_snqk.h"
+#include "bus/cbmiec/cbmiec.h"
+#include "bus/pet/cass.h"
+#include "bus/vcs/ctrl.h"
+#include "bus/vic20/exp.h"
+#include "bus/vic20/user.h"
 #include "cpu/m6502/m6510.h"
 #include "imagedev/cartslot.h"
 #include "machine/6522via.h"
-#include "machine/cbmiec.h"
-#include "machine/cbmipt.h"
-#include "machine/ieee488.h"
-#include "machine/petcass.h"
+#include "machine/cbm_snqk.h"
 #include "machine/ram.h"
-#include "machine/vcsctrl.h"
-#include "machine/vic20exp.h"
-#include "machine/vic20user.h"
 #include "sound/dac.h"
 #include "sound/mos6560.h"
 

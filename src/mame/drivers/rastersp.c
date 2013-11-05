@@ -891,7 +891,7 @@ static MACHINE_CONFIG_START( rastersp, rastersp_state )
 	/* Devices */
 	MCFG_TIMER_DRIVER_ADD("tms_timer1", rastersp_state, tms_timer1)
 	MCFG_TIMER_DRIVER_ADD("tms_tx_timer", rastersp_state, tms_tx_timer)
-	MCFG_MC146818_ADD("rtc", MC146818_STANDARD)
+	MCFG_MC146818_ADD( "rtc", XTAL_32_768kHz )
 	MCFG_NVRAM_HANDLER(rastersp)
 
 	MCFG_NSCSI_BUS_ADD("scsibus")
@@ -941,7 +941,7 @@ ROM_START( rotr )
 	ROM_REGION(0x8000, "nvram", 0) /* Default NVRAM */
 	ROM_LOAD( "rotr.nv", 0x0000, 0x8000, CRC(62543517) SHA1(a4bf3431cdab956839bb155c4a8c140d30e5c7ec) )
 
-	DISK_REGION( "scsibus:0:harddisk" )
+	DISK_REGION( "scsibus:0:harddisk:image" )
 	DISK_IMAGE( "rotr", 0, SHA1(d67d7feb52d8c7ba1d2a190a40d97e84871f2d80) )
 ROM_END
 
@@ -973,7 +973,7 @@ ROM_START( fbcrazy )
 
 	ROM_REGION(0x8000, "nvram", ROMREGION_ERASEFF )
 
-	DISK_REGION( "scsibus:0:harddisk" )
+	DISK_REGION( "scsibus:0:harddisk:image" )
 	DISK_IMAGE( "fbcrazy_hdd", 0, NO_DUMP )
 ROM_END
 

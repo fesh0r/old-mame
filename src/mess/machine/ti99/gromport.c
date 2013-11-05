@@ -1,3 +1,5 @@
+// license:MAME|LGPL-2.1+
+// copyright-holders:Michael Zapf
 /***************************************************************************
     GROM port - the cartridge port of the TI-99/4, TI-99/4A, and
     TI-99/8 console.
@@ -113,9 +115,6 @@
 #define VERBOSE 1
 #define LOG logerror
 
-#define GROM_AREA 0x9800
-#define GROM_MASK 0xf800
-
 #define GROM3_TAG "grom3"
 #define GROM4_TAG "grom4"
 #define GROM5_TAG "grom5"
@@ -149,16 +148,16 @@ WRITE8_MEMBER(gromport_device::write)
 		m_connector->write(space, offset, data);
 }
 
-void gromport_device::crureadz(offs_t offset, UINT8 *value)
+READ8Z_MEMBER(gromport_device::crureadz)
 {
 	if (m_connector != NULL)
-		m_connector->crureadz(offset, value);
+		m_connector->crureadz(space, offset, value);
 }
 
-void gromport_device::cruwrite(offs_t offset, UINT8 data)
+WRITE8_MEMBER(gromport_device::cruwrite)
 {
 	if (m_connector != NULL)
-		m_connector->cruwrite(offset, data);
+		m_connector->cruwrite(space, offset, data);
 }
 
 WRITE_LINE_MEMBER(gromport_device::ready_line)
@@ -173,6 +172,12 @@ void gromport_device::device_start()
 void gromport_device::device_reset()
 {
 	m_reset_on_insert = (ioport("CARTRESET")->read()==0x01);
+}
+
+void gromport_device::set_grom_base(UINT16 grombase, UINT16 grommask)
+{
+	m_grombase = grombase;
+	m_grommask = grommask;
 }
 
 /*
@@ -191,13 +196,13 @@ void gromport_device::cartridge_inserted()
 	}
 }
 
-
 void gromport_device::device_config_complete()
 {
 	const gromport_config *intf = reinterpret_cast<const gromport_config *>(static_config());
 	m_console_ready.resolve(intf->ready, *this);
 	m_console_reset.resolve(intf->reset, *this);
 	m_connector = static_cast<ti99_cartridge_connector_device*>(first_subdevice());
+	set_grom_base(0x9800, 0xf800);
 }
 
 SLOT_INTERFACE_START( gromport )
@@ -242,9 +247,24 @@ ti99_cartridge_connector_device::ti99_cartridge_connector_device(const machine_c
 {
 }
 
-void ti99_cartridge_connector_device::ready_line(int state)
+WRITE_LINE_MEMBER( ti99_cartridge_connector_device::ready_line )
 {
 	m_gromport->ready_line(state);
+}
+
+void ti99_cartridge_connector_device::device_config_complete()
+{
+	m_gromport = static_cast<gromport_device*>(owner());
+}
+
+UINT16 ti99_cartridge_connector_device::grom_base()
+{
+	return m_gromport->get_grom_base();
+}
+
+UINT16 ti99_cartridge_connector_device::grom_mask()
+{
+	return m_gromport->get_grom_mask();
 }
 
 single_conn_device::single_conn_device(const machine_config &mconfig, const char *tag, device_t *owner, UINT32 clock)
@@ -265,16 +285,21 @@ WRITE8_MEMBER(single_conn_device::write)
 	m_cartridge->write(space, offset, data);
 }
 
-void single_conn_device::crureadz(offs_t offset, UINT8 *value)
+READ8Z_MEMBER(single_conn_device::crureadz)
 {
 	// Pass through
-	m_cartridge->crureadz(offset, value);
+	m_cartridge->crureadz(space, offset, value);
 }
 
-void single_conn_device::cruwrite(offs_t offset, UINT8 data)
+WRITE8_MEMBER(single_conn_device::cruwrite)
 {
 	// Pass through
-	m_cartridge->cruwrite(offset, data);
+	m_cartridge->cruwrite(space, offset, data);
+}
+
+void single_conn_device::device_start()
+{
+	m_cartridge = static_cast<ti99_cartridge_device*>(first_subdevice());
 }
 
 void single_conn_device::device_reset()
@@ -289,12 +314,6 @@ MACHINE_CONFIG_END
 machine_config_constructor single_conn_device::device_mconfig_additions() const
 {
 	return MACHINE_CONFIG_NAME( single_slot );
-}
-
-void single_conn_device::device_config_complete()
-{
-	m_cartridge = static_cast<ti99_cartridge_device*>(first_subdevice());
-	m_gromport = static_cast<gromport_device*>(owner());
 }
 
 /********************************************************/
@@ -403,7 +422,7 @@ int multi_conn_device::get_active_slot(bool changebase, offs_t offset)
 	int slot;
 	if (changebase)
 	{
-		if ((offset & GROM_MASK) == GROM_AREA)
+		if ((offset & grom_mask()) == grom_base())
 		{
 			set_slot((offset>>2) & 0x00ff);
 		}
@@ -432,7 +451,7 @@ READ8Z_MEMBER(multi_conn_device::readz)
 	// If we have a GROM access, we need to send the read request to all
 	// attached cartridges so the slot is irrelevant here. Each GROM
 	// contains an internal address counter, and we must make sure they all stay in sync.
-	if ((offset & GROM_MASK) == GROM_AREA)
+	if ((offset & grom_mask()) == grom_base())
 	{
 		for (int i=0; i < NUMBER_OF_CARTRIDGE_SLOTS; i++)
 		{
@@ -462,7 +481,7 @@ WRITE8_MEMBER(multi_conn_device::write)
 
 	// Same issue as above (read)
 	// We don't have GRAM cartridges, anyway, so it's just used for setting the address.
-	if ((offset & GROM_MASK) == GROM_AREA)
+	if ((offset & grom_mask()) == grom_base())
 	{
 		for (int i=0; i < NUMBER_OF_CARTRIDGE_SLOTS; i++)
 		{
@@ -482,7 +501,7 @@ WRITE8_MEMBER(multi_conn_device::write)
 	}
 }
 
-void multi_conn_device::crureadz(offs_t offset, UINT8 *value)
+READ8Z_MEMBER(multi_conn_device::crureadz)
 {
 	int slot = get_active_slot(false, offset);
 	/* Sanity check. Higher slots are always empty. */
@@ -491,11 +510,11 @@ void multi_conn_device::crureadz(offs_t offset, UINT8 *value)
 
 	if (m_cartridge[slot] != NULL)
 	{
-		m_cartridge[slot]->crureadz(offset, value);
+		m_cartridge[slot]->crureadz(space, offset, value);
 	}
 }
 
-void multi_conn_device::cruwrite(offs_t offset, UINT8 data)
+WRITE8_MEMBER(multi_conn_device::cruwrite)
 {
 	int slot = get_active_slot(true, offset);
 
@@ -505,7 +524,7 @@ void multi_conn_device::cruwrite(offs_t offset, UINT8 data)
 
 	if (m_cartridge[slot] != NULL)
 	{
-		m_cartridge[slot]->cruwrite(offset, data);
+		m_cartridge[slot]->cruwrite(space, offset, data);
 	}
 }
 
@@ -517,7 +536,6 @@ void multi_conn_device::device_start()
 	{
 		m_cartridge[i] = NULL;
 	}
-	m_gromport = static_cast<gromport_device*>(owner());
 }
 
 void multi_conn_device::device_reset(void)
@@ -682,7 +700,7 @@ gkracker_device::gkracker_device(const machine_config &mconfig, const char *tag,
 
 READ8Z_MEMBER(gkracker_device::readz)
 {
-	if ((offset & GROM_MASK) == GROM_AREA)
+	if ((offset & grom_mask()) == grom_base())
 	{
 		// Reads from the GRAM space of the GRAM Kracker.
 
@@ -792,7 +810,7 @@ WRITE8_MEMBER(gkracker_device::write)
 		m_cartridge->write(space, offset, data, mem_mask);
 	}
 
-	if ((offset & GROM_MASK) == GROM_AREA)
+	if ((offset & grom_mask()) == grom_base())
 	{
 		// Write to the GRAM space of the GRAM Kracker.
 		if ((offset & 0x0002)==0x0002)
@@ -879,14 +897,14 @@ WRITE8_MEMBER(gkracker_device::write)
 	}
 }
 
-void gkracker_device::crureadz(offs_t offset, UINT8 *value)
+READ8Z_MEMBER( gkracker_device::crureadz )
 {
-	if (m_cartridge != NULL) m_cartridge->crureadz(offset, value);
+	if (m_cartridge != NULL) m_cartridge->crureadz(space, offset, value);
 }
 
-void gkracker_device::cruwrite(offs_t offset, UINT8 data)
+WRITE8_MEMBER( gkracker_device::cruwrite )
 {
-	if (m_cartridge != NULL) m_cartridge->cruwrite(offset, data);
+	if (m_cartridge != NULL) m_cartridge->cruwrite(space, offset, data);
 }
 
 INPUT_CHANGED_MEMBER( gkracker_device::gk_changed )
@@ -973,7 +991,6 @@ void gkracker_device::device_start()
 	m_grom_ptr = memregion(GKRACKER_ROM_TAG)->base();
 	m_cartridge = NULL;
 	for (int i=1; i < 6; i++) m_gk_switch[i] = 0;
-	m_gromport = static_cast<gromport_device*>(owner());
 }
 
 void gkracker_device::device_reset()
@@ -1197,6 +1214,16 @@ bool ti99_cartridge_device::has_grom()
 	return m_pcb->m_grom_size>0;
 }
 
+UINT16 ti99_cartridge_device::grom_base()
+{
+	return m_connector->grom_base();
+}
+
+UINT16 ti99_cartridge_device::grom_mask()
+{
+	return m_connector->grom_mask();
+}
+
 bool ti99_cartridge_device::call_load()
 {
 	// File name is in m_basename
@@ -1273,6 +1300,7 @@ bool ti99_cartridge_device::call_load()
 	}
 
 	prepare_cartridge();
+	m_pcb->set_cartridge(this);
 	m_slot = get_index_from_tagname();
 	m_connector->insert(m_slot, this);
 	return false;
@@ -1316,17 +1344,17 @@ WRITE8_MEMBER(ti99_cartridge_device::write)
 	if (m_pcb != NULL) m_pcb->write(space, offset, data);
 }
 
-void ti99_cartridge_device::crureadz(offs_t offset, UINT8 *value)
+READ8Z_MEMBER(ti99_cartridge_device::crureadz)
 {
-	if (m_pcb != NULL) m_pcb->crureadz(offset, value);
+	if (m_pcb != NULL) m_pcb->crureadz(space, offset, value);
 }
 
-void ti99_cartridge_device::cruwrite(offs_t offset, UINT8 data)
+WRITE8_MEMBER(ti99_cartridge_device::cruwrite)
 {
-	if (m_pcb != NULL) m_pcb->cruwrite(offset, data);
+	if (m_pcb != NULL) m_pcb->cruwrite(space, offset, data);
 }
 
-void ti99_cartridge_device::ready_line(int state)
+WRITE_LINE_MEMBER( ti99_cartridge_device::ready_line )
 {
 	m_connector->ready_line(state);
 }
@@ -1406,6 +1434,21 @@ ti99_cartridge_pcb::ti99_cartridge_pcb()
 {
 }
 
+UINT16 ti99_cartridge_pcb::grom_base()
+{
+	return m_cart->grom_base();
+}
+
+UINT16 ti99_cartridge_pcb::grom_mask()
+{
+	return m_cart->grom_mask();
+}
+
+void ti99_cartridge_pcb::set_cartridge(ti99_cartridge_device *cart)
+{
+	m_cart = cart;
+}
+
 READ8Z_MEMBER(ti99_cartridge_pcb::gromreadz)
 {
 	for (int i=0; i < 5; i++)
@@ -1430,7 +1473,7 @@ WRITE8_MEMBER(ti99_cartridge_pcb::gromwrite)
 
 READ8Z_MEMBER(ti99_cartridge_pcb::readz)
 {
-	if ((offset & GROM_MASK)==GROM_AREA)
+	if ((offset & grom_mask())==grom_base())
 		gromreadz(space, offset, value, mem_mask);
 	else
 	{
@@ -1447,7 +1490,7 @@ READ8Z_MEMBER(ti99_cartridge_pcb::readz)
 WRITE8_MEMBER(ti99_cartridge_pcb::write)
 {
 	// LOG("write standard\n");
-	if ((offset & GROM_MASK)==GROM_AREA)
+	if ((offset & grom_mask())==grom_base())
 		gromwrite(space, offset, data, mem_mask);
 	else
 	{
@@ -1455,11 +1498,11 @@ WRITE8_MEMBER(ti99_cartridge_pcb::write)
 	}
 }
 
-void ti99_cartridge_pcb::crureadz(offs_t offset, UINT8 *value)
+READ8Z_MEMBER(ti99_cartridge_pcb::crureadz)
 {
 }
 
-void ti99_cartridge_pcb::cruwrite(offs_t offset, UINT8 data)
+WRITE8_MEMBER(ti99_cartridge_pcb::cruwrite)
 {
 }
 
@@ -1479,7 +1522,7 @@ inline void ti99_cartridge_pcb::set_grom_pointer(int number, device_t *dev)
 
 READ8Z_MEMBER(ti99_paged_cartridge::readz)
 {
-	if ((offset & GROM_MASK)==GROM_AREA)
+	if ((offset & grom_mask())==grom_base())
 		gromreadz(space, offset, value, mem_mask);
 	else
 	{
@@ -1497,7 +1540,7 @@ READ8Z_MEMBER(ti99_paged_cartridge::readz)
 WRITE8_MEMBER(ti99_paged_cartridge::write)
 {
 	// LOG("write standard\n");
-	if ((offset & GROM_MASK)==GROM_AREA)
+	if ((offset & grom_mask())==grom_base())
 		gromwrite(space, offset, data, mem_mask);
 
 	else {
@@ -1515,7 +1558,7 @@ WRITE8_MEMBER(ti99_paged_cartridge::write)
 /* Read function for the minimem cartridge. */
 READ8Z_MEMBER(ti99_minimem_cartridge::readz)
 {
-	if ((offset & GROM_MASK)==GROM_AREA)
+	if ((offset & grom_mask())==grom_base())
 		gromreadz(space, offset, value, mem_mask);
 
 	else
@@ -1538,7 +1581,7 @@ READ8Z_MEMBER(ti99_minimem_cartridge::readz)
 WRITE8_MEMBER(ti99_minimem_cartridge::write)
 {
 	// LOG("write standard\n");
-	if ((offset & GROM_MASK)==GROM_AREA)
+	if ((offset & grom_mask())==grom_base())
 		gromwrite(space, offset, data, mem_mask);
 
 	else
@@ -1573,7 +1616,7 @@ WRITE8_MEMBER(ti99_minimem_cartridge::write)
 /* Read function for the super cartridge. */
 READ8Z_MEMBER(ti99_super_cartridge::readz)
 {
-	if ((offset & GROM_MASK)==GROM_AREA)
+	if ((offset & grom_mask())==grom_base())
 		gromreadz(space, offset, value, mem_mask);
 	else
 	{
@@ -1587,7 +1630,7 @@ READ8Z_MEMBER(ti99_super_cartridge::readz)
 /* Write function for the super cartridge. */
 WRITE8_MEMBER(ti99_super_cartridge::write)
 {
-	if ((offset & GROM_MASK)==GROM_AREA)
+	if ((offset & grom_mask())==grom_base())
 		gromwrite(space, offset, data, mem_mask);
 	else
 	{
@@ -1595,7 +1638,7 @@ WRITE8_MEMBER(ti99_super_cartridge::write)
 	}
 }
 
-void ti99_super_cartridge::crureadz(offs_t offset, UINT8 *value)
+READ8Z_MEMBER(ti99_super_cartridge::crureadz)
 {
 	// offset is the bit number. The CRU base address is already divided  by 2.
 
@@ -1633,7 +1676,7 @@ void ti99_super_cartridge::crureadz(offs_t offset, UINT8 *value)
 	}
 }
 
-void ti99_super_cartridge::cruwrite(offs_t offset, UINT8 data)
+WRITE8_MEMBER(ti99_super_cartridge::cruwrite)
 {
 	if ((offset & 0xfff0) == 0x0800)
 	{
@@ -1658,7 +1701,7 @@ void ti99_super_cartridge::cruwrite(offs_t offset, UINT8 data)
 /* Read function for the mbx cartridge. */
 READ8Z_MEMBER(ti99_mbx_cartridge::readz)
 {
-	if ((offset & GROM_MASK)==GROM_AREA)
+	if ((offset & grom_mask())==grom_base())
 		gromreadz(space, offset, value, mem_mask);
 	else
 	{
@@ -1681,7 +1724,7 @@ READ8Z_MEMBER(ti99_mbx_cartridge::readz)
 /* Write function for the mbx cartridge. */
 WRITE8_MEMBER(ti99_mbx_cartridge::write)
 {
-	if ((offset & GROM_MASK)==GROM_AREA)
+	if ((offset & grom_mask())==grom_base())
 		gromwrite(space, offset, data, mem_mask);
 	else
 	{
@@ -1811,7 +1854,7 @@ WRITE8_MEMBER(ti99_pagedcru_cartridge::write)
 	return;
 }
 
-void ti99_pagedcru_cartridge::crureadz(offs_t offset, UINT8 *value)
+READ8Z_MEMBER(ti99_pagedcru_cartridge::crureadz)
 {
 	int page = m_rom_page;
 	if ((offset & 0xf800)==0x0800)
@@ -1825,7 +1868,7 @@ void ti99_pagedcru_cartridge::crureadz(offs_t offset, UINT8 *value)
 	}
 }
 
-void ti99_pagedcru_cartridge::cruwrite(offs_t offset, UINT8 data)
+WRITE8_MEMBER(ti99_pagedcru_cartridge::cruwrite)
 {
 	if ((offset & 0xf800)==0x0800)
 	{
@@ -1871,7 +1914,7 @@ void ti99_pagedcru_cartridge::cruwrite(offs_t offset, UINT8 data)
 
 READ8Z_MEMBER(ti99_gromemu_cartridge::readz)
 {
-	if ((offset & GROM_MASK)==GROM_AREA)
+	if ((offset & grom_mask())==grom_base())
 		gromemureadz(space, offset, value, mem_mask);
 	else
 	{
@@ -1900,7 +1943,7 @@ READ8Z_MEMBER(ti99_gromemu_cartridge::readz)
 WRITE8_MEMBER(ti99_gromemu_cartridge::write)
 {
 	// LOG("write standard\n");
-	if ((offset & GROM_MASK)==GROM_AREA)
+	if ((offset & grom_mask())==grom_base())
 		gromemuwrite(space, offset, data, mem_mask);
 
 	else {

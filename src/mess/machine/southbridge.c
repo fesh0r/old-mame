@@ -114,13 +114,15 @@ static MACHINE_CONFIG_FRAGMENT( southbridge )
 	MCFG_PC_KBDC_ADD("pc_kbdc", pc_kbdc_intf)
 	MCFG_PC_KBDC_SLOT_ADD("pc_kbdc", "kbd", pc_at_keyboards, STR_KBD_MICROSOFT_NATURAL)
 
-	MCFG_MC146818_IRQ_ADD("rtc", MC146818_STANDARD, DEVWRITELINE("pic8259_slave", pic8259_device, ir0_w))
+	MCFG_DS12885_ADD("rtc")
+	MCFG_MC146818_IRQ_HANDLER(DEVWRITELINE("pic8259_slave", pic8259_device, ir0_w))
+	MCFG_MC146818_CENTURY_INDEX(0x32)
 
-	MCFG_BUS_MASTER_IDE_CONTROLLER_ADD("ide", ata_devices, "hdd", NULL, true)
+	MCFG_BUS_MASTER_IDE_CONTROLLER_ADD("ide", ata_devices, "hdd", NULL, false)
 	MCFG_ATA_INTERFACE_IRQ_HANDLER(DEVWRITELINE("pic8259_slave", pic8259_device, ir6_w))
 	MCFG_BUS_MASTER_IDE_CONTROLLER_SPACE(":maincpu", AS_PROGRAM)
 
-	MCFG_BUS_MASTER_IDE_CONTROLLER_ADD("ide2", ata_devices, "cdrom", NULL, true)
+	MCFG_BUS_MASTER_IDE_CONTROLLER_ADD("ide2", ata_devices, "cdrom", NULL, false)
 	MCFG_ATA_INTERFACE_IRQ_HANDLER(DEVWRITELINE("pic8259_slave", pic8259_device, ir7_w))
 	MCFG_BUS_MASTER_IDE_CONTROLLER_SPACE(":maincpu", AS_PROGRAM)
 
@@ -157,7 +159,7 @@ southbridge_device::southbridge_device(const machine_config &mconfig, device_typ
 	m_keybc(*this, "keybc"),
 	m_isabus(*this, "isabus"),
 	m_speaker(*this, "speaker"),
-	m_mc146818(*this, "rtc"),
+	m_ds12885(*this, "rtc"),
 	m_pc_kbdc(*this, "pc_kbdc"),
 	m_ide(*this, "ide"),
 	m_ide2(*this, "ide2")
@@ -174,6 +176,27 @@ IRQ_CALLBACK_MEMBER(southbridge_device::at_irq_callback)
 	return m_pic8259_master->inta_r();
 }
 
+/// HACK: the memory system cannot cope with mixing the  8 bit device map from the fdc with a 32 bit handler
+READ8_MEMBER(southbridge_device::ide_read_cs1_r)
+{
+	return m_ide->read_cs1(space, 1, (UINT32) 0xff0000) >> 16;
+}
+
+WRITE8_MEMBER(southbridge_device::ide_write_cs1_w)
+{
+	m_ide->write_cs1(space, 1, (UINT32) data << 16, (UINT32) 0xff0000);
+}
+
+READ8_MEMBER(southbridge_device::ide2_read_cs1_r)
+{
+	return m_ide2->read_cs1(space, 1, (UINT32) 0xff0000) >> 16;
+}
+
+WRITE8_MEMBER(southbridge_device::ide2_write_cs1_w)
+{
+	m_ide2->write_cs1(space, 1, (UINT32) data << 16, (UINT32) 0xff0000);
+}
+
 //-------------------------------------------------
 //  device_start - device-specific startup
 //-------------------------------------------------
@@ -187,14 +210,17 @@ void southbridge_device::device_start()
 	spaceio.install_readwrite_handler(0x0040, 0x005f, read8_delegate(FUNC(pit8254_device::read),&(*m_pit8254)), write8_delegate(FUNC(pit8254_device::write),&(*m_pit8254)), 0xffffffff);
 	spaceio.install_readwrite_handler(0x0060, 0x0063, read8_delegate(FUNC(southbridge_device::at_keybc_r),this), write8_delegate(FUNC(southbridge_device::at_keybc_w),this), 0xffffffff);
 	spaceio.install_readwrite_handler(0x0064, 0x0067, read8_delegate(FUNC(at_keyboard_controller_device::status_r),&(*m_keybc)), write8_delegate(FUNC(at_keyboard_controller_device::command_w),&(*m_keybc)), 0xffffffff);
-	spaceio.install_readwrite_handler(0x0070, 0x007f, read8_delegate(FUNC(mc146818_device::read),&(*m_mc146818)), write8_delegate(FUNC(mc146818_device::write),&(*m_mc146818)), 0xffffffff);
+	spaceio.install_readwrite_handler(0x0070, 0x007f, read8_delegate(FUNC(ds12885_device::read),&(*m_ds12885)), write8_delegate(FUNC(ds12885_device::write),&(*m_ds12885)), 0xffffffff);
 	spaceio.install_readwrite_handler(0x0080, 0x009f, read8_delegate(FUNC(southbridge_device::at_page8_r),this), write8_delegate(FUNC(southbridge_device::at_page8_w),this), 0xffffffff);
 	spaceio.install_readwrite_handler(0x00a0, 0x00bf, read8_delegate(FUNC(pic8259_device::read),&(*m_pic8259_slave)), write8_delegate(FUNC(pic8259_device::write),&(*m_pic8259_slave)), 0xffffffff);
 	spaceio.install_readwrite_handler(0x00c0, 0x00df, read8_delegate(FUNC(southbridge_device::at_dma8237_2_r),this), write8_delegate(FUNC(southbridge_device::at_dma8237_2_w),this), 0xffffffff);
 	spaceio.install_readwrite_handler(0x0170, 0x0177, read32_delegate(FUNC(bus_master_ide_controller_device::read_cs0),&(*m_ide2)), write32_delegate(FUNC(bus_master_ide_controller_device::write_cs0), &(*m_ide2)),0xffffffff);
 	spaceio.install_readwrite_handler(0x01f0, 0x01f7, read32_delegate(FUNC(bus_master_ide_controller_device::read_cs0),&(*m_ide)), write32_delegate(FUNC(bus_master_ide_controller_device::write_cs0), &(*m_ide)),0xffffffff);
-	spaceio.install_readwrite_handler(0x0370, 0x0377, read32_delegate(FUNC(bus_master_ide_controller_device::read_cs1),&(*m_ide2)), write32_delegate(FUNC(bus_master_ide_controller_device::write_cs1), &(*m_ide2)),0xffffffff);
-	spaceio.install_readwrite_handler(0x03f0, 0x03f7, read32_delegate(FUNC(bus_master_ide_controller_device::read_cs1),&(*m_ide)), write32_delegate(FUNC(bus_master_ide_controller_device::write_cs1), &(*m_ide)),0xffffffff);
+//  HACK: this works if you take out the (non working) fdc
+//  spaceio.install_readwrite_handler(0x0370, 0x0377, read32_delegate(FUNC(bus_master_ide_controller_device::read_cs1),&(*m_ide2)), write32_delegate(FUNC(bus_master_ide_controller_device::write_cs1), &(*m_ide2)),0xffffffff);
+//  spaceio.install_readwrite_handler(0x03f0, 0x03f7, read32_delegate(FUNC(bus_master_ide_controller_device::read_cs1),&(*m_ide)), write32_delegate(FUNC(bus_master_ide_controller_device::write_cs1), &(*m_ide)),0xffffffff);
+	spaceio.install_readwrite_handler(0x0374, 0x0377, read8_delegate(FUNC(southbridge_device::ide2_read_cs1_r),this), write8_delegate(FUNC(southbridge_device::ide2_write_cs1_w), this),0xff0000);
+	spaceio.install_readwrite_handler(0x03f4, 0x03f7, read8_delegate(FUNC(southbridge_device::ide_read_cs1_r),this), write8_delegate(FUNC(southbridge_device::ide_write_cs1_w), this),0xff0000);
 	spaceio.nop_readwrite(0x00e0, 0x00ef);
 
 
@@ -329,34 +355,37 @@ WRITE_LINE_MEMBER( southbridge_device::pc_dma_hrq_changed )
 
 READ8_MEMBER(southbridge_device::pc_dma_read_byte)
 {
+	address_space& prog_space = m_maincpu->space(AS_PROGRAM); // get the right address space
 	if(m_dma_channel == -1)
 		return 0xff;
 	UINT8 result;
 	offs_t page_offset = (((offs_t) m_dma_offset[0][m_dma_channel]) << 16) & 0xFF0000;
 
-	result = space.read_byte(page_offset + offset);
+	result = prog_space.read_byte(page_offset + offset);
 	return result;
 }
 
 
 WRITE8_MEMBER(southbridge_device::pc_dma_write_byte)
 {
+	address_space& prog_space = m_maincpu->space(AS_PROGRAM); // get the right address space
 	if(m_dma_channel == -1)
 		return;
 	offs_t page_offset = (((offs_t) m_dma_offset[0][m_dma_channel]) << 16) & 0xFF0000;
 
-	space.write_byte(page_offset + offset, data);
+	prog_space.write_byte(page_offset + offset, data);
 }
 
 
 READ8_MEMBER(southbridge_device::pc_dma_read_word)
 {
+	address_space& prog_space = m_maincpu->space(AS_PROGRAM); // get the right address space
 	if(m_dma_channel == -1)
 		return 0xff;
 	UINT16 result;
-	offs_t page_offset = (((offs_t) m_dma_offset[1][m_dma_channel & 3]) << 16) & 0xFF0000;
+	offs_t page_offset = (((offs_t) m_dma_offset[1][m_dma_channel & 3]) << 16) & 0xFE0000;
 
-	result = space.read_word(page_offset + ( offset << 1 ) );
+	result = prog_space.read_word(page_offset + ( offset << 1 ) );
 	m_dma_high_byte = result & 0xFF00;
 
 	return result & 0xFF;
@@ -365,11 +394,12 @@ READ8_MEMBER(southbridge_device::pc_dma_read_word)
 
 WRITE8_MEMBER(southbridge_device::pc_dma_write_word)
 {
+	address_space& prog_space = m_maincpu->space(AS_PROGRAM); // get the right address space
 	if(m_dma_channel == -1)
 		return;
-	offs_t page_offset = (((offs_t) m_dma_offset[1][m_dma_channel & 3]) << 16) & 0xFF0000;
+	offs_t page_offset = (((offs_t) m_dma_offset[1][m_dma_channel & 3]) << 16) & 0xFE0000;
 
-	space.write_word(page_offset + ( offset << 1 ), m_dma_high_byte | data);
+	prog_space.write_word(page_offset + ( offset << 1 ), m_dma_high_byte | data);
 }
 
 
@@ -429,7 +459,7 @@ READ8_MEMBER( southbridge_device::at_portb_r )
 	/* This needs fixing/updating not sure what this is meant to fix */
 	if ( --m_poll_delay < 0 )
 	{
-		m_poll_delay = 3;
+		m_poll_delay = 20;
 		m_at_offset1 ^= 0x10;
 	}
 	data = (data & ~0x10) | ( m_at_offset1 & 0x10 );
@@ -487,9 +517,9 @@ WRITE8_MEMBER( southbridge_device::write_rtc )
 	if (offset==0) {
 		m_nmi_enabled = BIT(data,7);
 		m_isabus->set_nmi_state((m_nmi_enabled==0) && (m_channel_check==0));
-		m_mc146818->write(space,0,data);
+		m_ds12885->write(space,0,data);
 	}
 	else {
-		m_mc146818->write(space,offset,data);
+		m_ds12885->write(space,offset,data);
 	}
 }

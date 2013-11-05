@@ -1,3 +1,5 @@
+// license:MAME|LGPL-2.1+
+// copyright-holders:Michael Zapf
 /****************************************************************************
 
     TI-99 Standard Floppy Disk Controller Card
@@ -63,7 +65,7 @@ READ8Z_MEMBER(ti_fdc_device::readz)
 
 			if ((offset & 0x1ff9)==0x1ff0)
 			{
-				reply = wd17xx_r(m_controller, space, (offset >> 1)&0x03);
+				if (!space.debugger_access()) reply = wd17xx_r(m_controller, space, (offset >> 1)&0x03);
 			}
 			else
 			{
@@ -87,7 +89,7 @@ WRITE8_MEMBER(ti_fdc_device::write)
 			// 0101 1111 1111 1xx0
 			if ((offset & 0x1ff9)==0x1ff8)
 			{
-				wd17xx_w(m_controller, space, (offset >> 1)&0x03, data);
+				if (!space.debugger_access()) wd17xx_w(m_controller, space, (offset >> 1)&0x03, data);
 			}
 		}
 	}
@@ -102,7 +104,7 @@ WRITE8_MEMBER(ti_fdc_device::write)
     bit 6: always 1
     bit 7: selected side
 */
-void ti_fdc_device::crureadz(offs_t offset, UINT8 *value)
+READ8Z_MEMBER(ti_fdc_device::crureadz)
 {
 	if ((offset & 0xff00)==m_cru_base)
 	{
@@ -122,7 +124,7 @@ void ti_fdc_device::crureadz(offs_t offset, UINT8 *value)
 	}
 }
 
-void ti_fdc_device::cruwrite(offs_t offset, UINT8 data)
+WRITE8_MEMBER(ti_fdc_device::cruwrite)
 {
 	int drive, drivebit;
 

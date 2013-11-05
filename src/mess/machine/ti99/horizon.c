@@ -1,3 +1,5 @@
+// license:MAME|LGPL-2.1+
+// copyright-holders:Michael Zapf
 /****************************************************************************
 
     Horizon Ramdisk
@@ -243,7 +245,7 @@ WRITE8_MEMBER(horizon_ramdisk_device::write)
 	}
 }
 
-void horizon_ramdisk_device::crureadz(offs_t offset, UINT8 *value)
+READ8Z_MEMBER(horizon_ramdisk_device::crureadz)
 {
 	// There is no CRU read operation for the Horizon.
 	return;
@@ -261,7 +263,7 @@ void horizon_ramdisk_device::setbit(int& page, int pattern, bool set)
 	}
 }
 
-void horizon_ramdisk_device::cruwrite(offs_t offset, UINT8 data)
+WRITE8_MEMBER(horizon_ramdisk_device::cruwrite)
 {
 	int size = ioport("HORIZONSIZE")->read();
 	int split_bit = size + 10;

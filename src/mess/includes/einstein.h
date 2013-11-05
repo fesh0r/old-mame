@@ -1,8 +1,11 @@
-/*****************************************************************************
- *
- * includes/einstein.h
- *
- ****************************************************************************/
+/***************************************************************************
+
+    Tatung Einstein
+
+    license: MAME
+    copyright-holders: Kevin Thacker, Dirk Best, Phill Harvey-Smith
+
+***************************************************************************/
 
 #ifndef EINSTEIN_H_
 #define EINSTEIN_H_
@@ -15,7 +18,7 @@
 #include "video/tms9928a.h"
 #include "machine/ram.h"
 #include "machine/i8251.h"
-#include "machine/ctronics.h"
+#include "bus/centronics/ctronics.h"
 
 /***************************************************************************
     CONSTANTS

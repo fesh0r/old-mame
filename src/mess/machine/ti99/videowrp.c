@@ -1,3 +1,5 @@
+// license:MAME|LGPL-2.1+
+// copyright-holders:Michael Zapf
 /****************************************************************************
 
     TI-99/4(A) and /8 Video subsystem
@@ -56,6 +58,8 @@ ti_sound_sn76496_device::ti_sound_sn76496_device(const machine_config &mconfig, 
 */
 READ8Z_MEMBER( ti_std_video_device::readz )
 {
+	if (space.debugger_access()) return;
+
 	if (offset & 2)
 	{       /* read VDP status */
 		*value = m_tms9928a->register_read(space, 0);
@@ -68,6 +72,8 @@ READ8Z_MEMBER( ti_std_video_device::readz )
 
 WRITE8_MEMBER( ti_std_video_device::write )
 {
+	if (space.debugger_access()) return;
+
 	if (offset & 2)
 	{   /* write VDP address */
 		m_tms9928a->register_write(space, 0, data);
@@ -85,6 +91,8 @@ WRITE8_MEMBER( ti_std_video_device::write )
 */
 READ16_MEMBER( ti_exp_video_device::read16 )
 {
+	if (space.debugger_access()) return 0;
+
 	if (offset & 1)
 	{   /* read VDP status */
 		return ((int) m_v9938->status_r()) << 8;
@@ -97,6 +105,8 @@ READ16_MEMBER( ti_exp_video_device::read16 )
 
 WRITE16_MEMBER( ti_exp_video_device::write16 )
 {
+	if (space.debugger_access()) return;
+
 	switch (offset & 3)
 	{
 	case 0:
@@ -125,6 +135,8 @@ WRITE16_MEMBER( ti_exp_video_device::write16 )
 */
 READ8Z_MEMBER( ti_exp_video_device::readz )
 {
+	if (space.debugger_access()) return;
+
 	if (offset & 2)
 	{   /* read VDP status */
 		*value = m_v9938->status_r();
@@ -140,6 +152,8 @@ READ8Z_MEMBER( ti_exp_video_device::readz )
 */
 WRITE8_MEMBER( ti_exp_video_device::write )
 {
+	if (space.debugger_access()) return;
+
 	switch (offset & 6)
 	{
 	case 0:
@@ -199,6 +213,7 @@ static const sn76496_config sound_config =
 
 WRITE8_MEMBER( ti_sound_system_device::write )
 {
+	if (space.debugger_access()) return;
 	m_sound_chip->write(space, 0, data);
 }
 
@@ -211,7 +226,9 @@ void ti_sound_system_device::device_start(void)
 
 WRITE_LINE_MEMBER( ti_sound_system_device::sound_ready )
 {
-	m_console_ready(state);
+	// Need to disable this until READY handling is properly implemented in the sound chip
+	// and in the console (otherwise external speech like in Parsec will be interrupted)
+	//m_console_ready(state);
 }
 
 MACHINE_CONFIG_FRAGMENT( sn94624 )

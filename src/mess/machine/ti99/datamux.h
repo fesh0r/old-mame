@@ -1,3 +1,5 @@
+// license:MAME|LGPL-2.1+
+// copyright-holders:Michael Zapf
 /****************************************************************************
 
     TI-99/4(A) databus multiplexer circuit
@@ -70,8 +72,10 @@ public:
 	ti99_datamux_device(const machine_config &mconfig, const char *tag, device_t *owner, UINT32 clock);
 	DECLARE_READ16_MEMBER( read );
 	DECLARE_WRITE16_MEMBER( write );
+	DECLARE_SETOFFSET_MEMBER( setoffset );
 
-	void clock_in(int state);
+	DECLARE_WRITE_LINE_MEMBER( clock_in );
+	DECLARE_WRITE_LINE_MEMBER( dbin_in );
 
 protected:
 	/* Constructor */
@@ -81,14 +85,30 @@ protected:
 	virtual ioport_constructor device_input_ports() const;
 
 private:
+	// Keeps the address space pointer
+	address_space* m_spacep;
+
 	// Common read routine
 	void read_all(address_space& space, UINT16 addr, UINT8 *target);
 
 	// Common write routine
 	void write_all(address_space& space, UINT16 addr, UINT8 value);
 
+	// Common set address method
+	void setaddress_all(address_space& space, UINT16 addr);
+
+	// Debugger access
+	UINT16 debugger_read(address_space& space, UINT16 addr);
+	void debugger_write(address_space& space, UINT16 addr, UINT16 data);
+
 	// Ready line to the CPU
 	devcb_resolved_write_line m_ready;
+
+	/* Address latch (emu). In reality, the address bus remains constant. */
+	UINT16 m_addr_buf;
+
+	/* Stores the state of the DBIN line. */
+	bool    m_read_mode;
 
 	/* All devices that are attached to the 8-bit bus. */
 	simple_list<attached_device> m_devices;
@@ -104,6 +124,9 @@ private:
 
 	/* Use the memory expansion? */
 	bool m_use32k;
+
+	/* Memory base for piggy-back 32K expansion. If 0, expansion is not used. */
+	UINT16  m_base32k;
 
 	/* Reference to the CPU; avoid lookups. */
 	device_t *m_cpu;

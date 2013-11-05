@@ -1,3 +1,5 @@
+// license:BSD-3-Clause
+// copyright-holders:Curt Coder
 /*
 
 http://www.6502.org/users/andre/petindex/boards.html
@@ -1267,6 +1269,15 @@ static MC6845_INTERFACE( cbm8296_crtc_intf )
 	DEVCB_DEVICE_LINE_MEMBER(M6520_1_TAG, pia6821_device, cb1_w),
 	NULL
 };
+
+
+//-------------------------------------------------
+//  SLOT_INTERFACE( cbm8296d_ieee488_devices )
+//-------------------------------------------------
+
+SLOT_INTERFACE_START( cbm8296d_ieee488_devices )
+	SLOT_INTERFACE("c8250lp", C8250LP)
+SLOT_INTERFACE_END
 
 
 

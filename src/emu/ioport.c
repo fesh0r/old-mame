@@ -1,39 +1,10 @@
+// license:BSD-3-Clause
+// copyright-holders:Aaron Giles
 /***************************************************************************
 
     ioport.c
 
     Input/output port handling.
-
-****************************************************************************
-
-    Copyright Aaron Giles
-    All rights reserved.
-
-    Redistribution and use in source and binary forms, with or without
-    modification, are permitted provided that the following conditions are
-    met:
-
-        * Redistributions of source code must retain the above copyright
-          notice, this list of conditions and the following disclaimer.
-        * Redistributions in binary form must reproduce the above copyright
-          notice, this list of conditions and the following disclaimer in
-          the documentation and/or other materials provided with the
-          distribution.
-        * Neither the name 'MAME' nor the names of its contributors may be
-          used to endorse or promote products derived from this software
-          without specific prior written permission.
-
-    THIS SOFTWARE IS PROVIDED BY AARON GILES ''AS IS'' AND ANY EXPRESS OR
-    IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED
-    WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE
-    DISCLAIMED. IN NO EVENT SHALL AARON GILES BE LIABLE FOR ANY DIRECT,
-    INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES
-    (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR
-    SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION)
-    HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT,
-    STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING
-    IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
-    POSSIBILITY OF SUCH DAMAGE.
 
 ****************************************************************************
 
@@ -274,6 +245,7 @@ struct ioport_field_live
 	ioport_value            value;              // current value of this port
 	UINT8                   impulse;            // counter for impulse controls
 	bool                    last;               // were we pressed last time?
+	bool                    toggle;             // current toggle setting
 	digital_joystick::direction_t joydir;       // digital joystick direction index
 	astring                 name;               // overridden name
 };
@@ -1842,6 +1814,12 @@ void ioport_field::get_user_settings(user_settings &settings)
 		settings.centerdelta = m_live->analog->centerdelta();
 		settings.reverse = m_live->analog->reverse();
 	}
+
+	// non-analog settings
+	else
+	{
+		settings.toggle = m_live->toggle;
+	}
 }
 
 
@@ -1873,6 +1851,12 @@ void ioport_field::set_user_settings(const user_settings &settings)
 		m_live->analog->m_delta = settings.delta;
 		m_live->analog->m_centerdelta = settings.centerdelta;
 		m_live->analog->m_reverse = settings.reverse;
+	}
+
+	// non-analog settings
+	else
+	{
+		m_live->toggle = settings.toggle;
 	}
 }
 
@@ -2065,12 +2049,12 @@ void ioport_field::frame_update(ioport_value &result, bool mouse_down)
 	// if this is a switch-down event, handle impulse and toggle
 	if (changed && curstate)
 	{
-		// impluse controls: reset the impulse counter
+		// impulse controls: reset the impulse counter
 		if (effective_impulse != 0 && m_live->impulse == 0)
 			m_live->impulse = effective_impulse;
 
 		// toggle controls: flip the toggle state or advance to the next setting
-		if (toggle())
+		if (m_live->toggle)
 		{
 			if (m_settinglist.count() == 0)
 				m_live->value ^= m_mask;
@@ -2089,7 +2073,7 @@ void ioport_field::frame_update(ioport_value &result, bool mouse_down)
 
 	// for toggle switches, the current value is folded into the port's default value
 	// so we always return FALSE here
-	if (toggle())
+	if (m_live->toggle)
 		curstate = false;
 
 	// additional logic to restrict digital joysticks
@@ -2291,6 +2275,7 @@ ioport_field_live::ioport_field_live(ioport_field &field, analog_field *analog)
 		value(field.defvalue()),
 		impulse(0),
 		last(0),
+		toggle(field.toggle()),
 		joydir(digital_joystick::JOYDIR_COUNT)
 {
 	// fill in the basic values
@@ -3216,11 +3201,20 @@ bool ioport_manager::load_game_config(xml_data_node *portnode, int type, int pla
 						if (newseq[seqtype][0] != INPUT_CODE_INVALID)
 							field->live().seq[seqtype] = newseq[seqtype];
 
-					// for non-analog fields, fetch the value
+					// fetch configurable attributes
+					// for non-analog fields
 					if (field->live().analog == NULL)
+					{
+						// fetch the value
 						field->live().value = xml_get_attribute_int(portnode, "value", field->defvalue());
 
-					// for analog fields, fetch configurable analog attributes
+						// fetch yes/no for toggle setting
+						const char *togstring = xml_get_attribute_string(portnode, "toggle", NULL);
+						if (togstring != NULL)
+							field->live().toggle = (strcmp(togstring, "yes") == 0);
+					}
+
+					// for analog fields
 					else
 					{
 						// get base attributes
@@ -3367,7 +3361,10 @@ void ioport_manager::save_game_inputs(xml_data_node *parentnode)
 
 				// non-analog changes
 				if (!field->is_analog())
+				{
 					changed |= ((field->live().value & field->mask()) != (field->defvalue() & field->mask()));
+					changed |= (field->live().toggle != field->toggle());
+				}
 
 				// analog changes
 				else
@@ -3402,6 +3399,8 @@ void ioport_manager::save_game_inputs(xml_data_node *parentnode)
 						{
 							if ((field->live().value & field->mask()) != (field->defvalue() & field->mask()))
 								xml_set_attribute_int(portnode, "value", field->live().value & field->mask());
+							if (field->live().toggle != field->toggle())
+								xml_set_attribute(portnode, "toggle", field->live().toggle ? "yes" : "no");
 						}
 
 						// write out analog changes

@@ -1,3 +1,5 @@
+// license:MAME
+// copyright-holders:smf
 #include "idehd.h"
 
 /***************************************************************************
@@ -361,7 +363,7 @@ void ata_mass_storage_device::fill_buffer()
 					start_busy(TIME_MULTIPLE_SECTORS, PARAM_COMMAND);
 			}
 			else
-				start_busy(TIME_PER_SECTOR, PARAM_COMMAND);
+				start_busy(TIME_MULTIPLE_SECTORS, PARAM_COMMAND);
 		}
 		break;
 	}
@@ -431,20 +433,15 @@ void ata_mass_storage_device::read_first_sector()
 		set_dasp(ASSERT_LINE);
 
 		/* just set a timer */
-		if (m_command == IDE_COMMAND_READ_MULTIPLE)
-		{
-			int new_lba = lba_address();
-			attotime seek_time;
+		int new_lba = lba_address();
+		attotime seek_time;
 
-			if (new_lba == m_cur_lba || new_lba == m_cur_lba + 1)
-				start_busy(TIME_NO_SEEK_MULTISECTOR, PARAM_COMMAND);
-			else
-				start_busy(TIME_SEEK_MULTISECTOR, PARAM_COMMAND);
-
-			m_cur_lba = new_lba;
-		}
+		if (new_lba == m_cur_lba || new_lba == m_cur_lba + 1)
+			start_busy(TIME_NO_SEEK_MULTISECTOR, PARAM_COMMAND);
 		else
-			start_busy(TIME_PER_SECTOR, PARAM_COMMAND);
+			start_busy(TIME_SEEK_MULTISECTOR, PARAM_COMMAND);
+
+		m_cur_lba = new_lba;
 	}
 }
 
@@ -769,7 +766,6 @@ void ide_hdd_device::device_reset()
 		UINT32 metalength;
 		if (m_handle->read_metadata (HARD_DISK_IDENT_METADATA_TAG, 0, m_buffer, 512, metalength) == CHDERR_NONE)
 		{
-			printf( "identify from chd\n" );
 			for( int w = 0; w < 256; w++ )
 			{
 				m_identify_buffer[w] = (m_buffer[(w * 2) + 1] << 8) | m_buffer[w * 2];

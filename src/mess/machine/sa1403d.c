@@ -1,3 +1,5 @@
+// license:BSD-3-Clause
+// copyright-holders:Curt Coder
 /**********************************************************************
 
     Shugart SA1403D Winchester Disk Controller emulation
@@ -126,12 +128,12 @@ sa1403d_device::sa1403d_device(const machine_config &mconfig, const char *tag, d
 {
 }
 
-void sa1403d_device::ExecCommand( int *transferLength )
+void sa1403d_device::ExecCommand()
 {
 	switch( command[ 0 ] )
 	{
 	default:
-		scsihd_device::ExecCommand( transferLength );
+		scsihd_device::ExecCommand();
 		break;
 	}
 }

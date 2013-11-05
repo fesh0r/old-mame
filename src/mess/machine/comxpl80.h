@@ -1,3 +1,5 @@
+// license:BSD-3-Clause
+// copyright-holders:Curt Coder
 /**********************************************************************
 
     COMX PL-80 plotter emulation
@@ -14,7 +16,7 @@
 
 #include "emu.h"
 #include "cpu/m6805/m6805.h"
-#include "machine/ctronics.h"
+#include "bus/centronics/ctronics.h"
 
 
 

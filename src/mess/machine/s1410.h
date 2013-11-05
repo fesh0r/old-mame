@@ -1,3 +1,5 @@
+// license:BSD-3-Clause
+// copyright-holders:Curt Coder
 /**********************************************************************
 
     Xebec S1410 5.25" Winchester Disk Controller emulation
@@ -25,7 +27,7 @@ public:
 	virtual const rom_entry *device_rom_region() const;
 	virtual machine_config_constructor device_mconfig_additions() const;
 
-	virtual void ExecCommand( int *transferLength );
+	virtual void ExecCommand();
 	virtual void WriteData( UINT8 *data, int dataLength );
 };
 

@@ -1,16 +1,18 @@
+// license:BSD-3-Clause
+// copyright-holders:Curt Coder
 #pragma once
 
 #ifndef __XOR100__
 #define __XOR100__
 
 #include "emu.h"
+#include "bus/s100/s100.h"
 #include "cpu/z80/z80.h"
 #include "machine/ram.h"
 #include "machine/com8116.h"
-#include "machine/ctronics.h"
+#include "bus/centronics/ctronics.h"
 #include "machine/i8255.h"
 #include "machine/i8251.h"
-#include "machine/s100.h"
 #include "machine/serial.h"
 #include "machine/wd_fdc.h"
 #include "machine/z80ctc.h"

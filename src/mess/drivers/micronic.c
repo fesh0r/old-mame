@@ -1,3 +1,5 @@
+// license:BSD-3-Clause
+// copyright-holders:Sandro Ronco
 /***************************************************************************
 
     Micronics 1000
@@ -389,7 +391,8 @@ static MACHINE_CONFIG_START( micronic, micronic_state )
 
 	MCFG_NVRAM_HANDLER(micronic)
 
-	MCFG_MC146818_IRQ_ADD( MC146818_TAG, MC146818_IGNORE_CENTURY, WRITELINE(micronic_state, mc146818_irq))
+	MCFG_MC146818_ADD( MC146818_TAG, XTAL_32_768kHz )
+	MCFG_MC146818_IRQ_HANDLER(WRITELINE(micronic_state, mc146818_irq))
 MACHINE_CONFIG_END
 
 /* ROM definition */

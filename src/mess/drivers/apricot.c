@@ -2,6 +2,9 @@
 
     ACT Apricot PC/Xi
 
+    license: MAME, GPL-2.0+
+    copyright-holders: Dirk Best
+
     - Error 29 (timer failed)
     - Dump of the keyboard MCU ROM needed (can be dumped using test mode)
 
@@ -16,7 +19,7 @@
 #include "machine/pic8259.h"
 #include "machine/z80dart.h"
 #include "machine/serial.h"
-#include "machine/ctronics.h"
+#include "bus/centronics/ctronics.h"
 #include "machine/wd_fdc.h"
 #include "video/mc6845.h"
 #include "sound/sn76496.h"

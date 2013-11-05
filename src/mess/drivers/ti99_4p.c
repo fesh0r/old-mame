@@ -1,3 +1,5 @@
+// license:MAME|LGPL-2.1+
+// copyright-holders:Michael Zapf
 /****************************************************************************
 
     SNUG SGCPU (a.k.a. 99/4p) system
@@ -503,13 +505,13 @@ WRITE8_MEMBER( ti99_4p_state::cruwrite )
 	}
 
 	// No match - pass to peribox
-	m_peribox->cruwrite(addroff, data);
+	m_peribox->cruwrite(space, addroff, data);
 }
 
 READ8_MEMBER( ti99_4p_state::cruread )
 {
 	UINT8 value = 0;
-	m_peribox->crureadz(offset<<4, &value);
+	m_peribox->crureadz(space, offset<<4, &value);
 	return value;
 }
 
@@ -777,7 +779,7 @@ WRITE8_MEMBER( ti99_4p_state::tms9901_interrupt )
 	// offset contains the interrupt level (0-15)
 	// However, the TI board just ignores that level and hardwires it to 1
 	// See below (interrupt_level)
-	m_cpu->set_input_line(INPUT_LINE_99XX_INTREQ, data);
+	m_cpu->set_input_line(INT_9900_INTREQ, data);
 }
 
 READ8_MEMBER( ti99_4p_state::interrupt_level )

@@ -1,3 +1,5 @@
+// license:BSD-3-Clause
+// copyright-holders:Curt Coder
 #pragma once
 
 #ifndef __PORTFOLIO__
@@ -7,7 +9,7 @@
 #include "cpu/i86/i86.h"
 #include "imagedev/cartslot.h"
 #include "imagedev/printer.h"
-#include "machine/ctronics.h"
+#include "bus/centronics/ctronics.h"
 #include "machine/i8255.h"
 #include "machine/ins8250.h"
 #include "machine/nvram.h"

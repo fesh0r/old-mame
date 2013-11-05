@@ -1,3 +1,5 @@
+// license:BSD-3-Clause
+// copyright-holders:Curt Coder
 #pragma once
 
 #ifndef __TRS80M2__
@@ -9,7 +11,7 @@
 #include "cpu/z80/z80daisy.h"
 #include "cpu/mcs48/mcs48.h"
 #include "cpu/m68000/m68000.h"
-#include "machine/ctronics.h"
+#include "bus/centronics/ctronics.h"
 #include "machine/keyboard.h"
 #include "machine/pic8259.h"
 #include "machine/ram.h"

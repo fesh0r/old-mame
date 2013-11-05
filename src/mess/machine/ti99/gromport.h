@@ -1,3 +1,5 @@
+// license:MAME|LGPL-2.1+
+// copyright-holders:Michael Zapf
 /***************************************************************************
     Gromport of the TI-99 consoles
 
@@ -32,11 +34,14 @@ public:
 	gromport_device(const machine_config &mconfig, const char *tag, device_t *owner, UINT32 clock);
 	DECLARE_READ8Z_MEMBER(readz);
 	DECLARE_WRITE8_MEMBER(write);
-	void crureadz(offs_t offset, UINT8 *value);
-	void cruwrite(offs_t offset, UINT8 data);
+	DECLARE_READ8Z_MEMBER(crureadz);
+	DECLARE_WRITE8_MEMBER(cruwrite);
 	DECLARE_WRITE_LINE_MEMBER(ready_line);
 
 	void    cartridge_inserted();
+	void    set_grom_base(UINT16 grombase, UINT16 grommask);
+	UINT16  get_grom_base() { return m_grombase; }
+	UINT16  get_grom_mask() { return m_grommask; }
 
 protected:
 	virtual void device_start();
@@ -49,6 +54,8 @@ private:
 	bool m_reset_on_insert;
 	devcb_resolved_write_line m_console_reset;
 	devcb_resolved_write_line m_console_ready;
+	UINT16      m_grombase;
+	UINT16      m_grommask;
 };
 
 SLOT_INTERFACE_EXTERN(gromport);
@@ -70,12 +77,15 @@ public:
 
 	DECLARE_READ8Z_MEMBER(readz);
 	DECLARE_WRITE8_MEMBER(write);
-	void    crureadz(offs_t offset, UINT8 *value);
-	void    cruwrite(offs_t offset, UINT8 data);
-	void    ready_line(int state);
+	DECLARE_READ8Z_MEMBER(crureadz);
+	DECLARE_WRITE8_MEMBER(cruwrite);
+
+	DECLARE_WRITE_LINE_MEMBER(ready_line);
 	bool    is_available() { return m_pcb != NULL; }
 	bool    has_grom();
 	void    set_slot(int i);
+	UINT16  grom_base();
+	UINT16  grom_mask();
 
 protected:
 	virtual void device_start() { };
@@ -124,15 +134,20 @@ class ti99_cartridge_connector_device : public bus8z_device
 public:
 	virtual DECLARE_READ8Z_MEMBER(readz) =0;
 	virtual DECLARE_WRITE8_MEMBER(write) =0;
-	virtual void crureadz(offs_t offset, UINT8 *value) =0;
-	virtual void cruwrite(offs_t offset, UINT8 data) =0;
-	void ready_line(int state);
+	virtual DECLARE_READ8Z_MEMBER(crureadz) = 0;
+	virtual DECLARE_WRITE8_MEMBER(cruwrite) = 0;
+
+	DECLARE_WRITE_LINE_MEMBER(ready_line);
 
 	virtual void insert(int index, ti99_cartridge_device* cart) { m_gromport->cartridge_inserted(); };
 	virtual void remove(int index) { };
+	UINT16 grom_base();
+	UINT16 grom_mask();
 
 protected:
 	ti99_cartridge_connector_device(const machine_config &mconfig, device_type type, const char *name, const char *tag, device_t *owner, UINT32 clock, const char *shortname, const char *source);
+	virtual void device_config_complete();
+
 	gromport_device*    m_gromport;
 };
 
@@ -146,14 +161,13 @@ public:
 
 	DECLARE_READ8Z_MEMBER(readz);
 	DECLARE_WRITE8_MEMBER(write);
-	void crureadz(offs_t offset, UINT8 *value);
-	void cruwrite(offs_t offset, UINT8 data);
+	DECLARE_READ8Z_MEMBER(crureadz);
+	DECLARE_WRITE8_MEMBER(cruwrite);
 
 protected:
-	virtual void device_start() { };
+	virtual void device_start();
 	virtual void device_reset();
 	virtual machine_config_constructor device_mconfig_additions() const;
-	virtual void device_config_complete();
 
 private:
 	ti99_cartridge_device *m_cartridge;
@@ -175,8 +189,8 @@ public:
 
 	DECLARE_READ8Z_MEMBER(readz);
 	DECLARE_WRITE8_MEMBER(write);
-	void crureadz(offs_t offset, UINT8 *value);
-	void cruwrite(offs_t offset, UINT8 data);
+	DECLARE_READ8Z_MEMBER(crureadz);
+	DECLARE_WRITE8_MEMBER(cruwrite);
 
 	void insert(int index, ti99_cartridge_device* cart);
 	void remove(int index);
@@ -208,8 +222,8 @@ public:
 
 	DECLARE_READ8Z_MEMBER(readz);
 	DECLARE_WRITE8_MEMBER(write);
-	void crureadz(offs_t offset, UINT8 *value);
-	void cruwrite(offs_t offset, UINT8 data);
+	DECLARE_READ8Z_MEMBER(crureadz);
+	DECLARE_WRITE8_MEMBER(cruwrite);
 
 	void insert(int index, ti99_cartridge_device* cart);
 	void remove(int index);
@@ -260,13 +274,17 @@ public:
 protected:
 	virtual DECLARE_READ8Z_MEMBER(readz);
 	virtual DECLARE_WRITE8_MEMBER(write);
-	virtual void    crureadz(offs_t offset, UINT8 *value);
-	virtual void    cruwrite(offs_t offset, UINT8 data);
+	virtual DECLARE_READ8Z_MEMBER(crureadz);
+	virtual DECLARE_WRITE8_MEMBER(cruwrite);
 
 	DECLARE_READ8Z_MEMBER(gromreadz);
 	DECLARE_WRITE8_MEMBER(gromwrite);
 	inline void         set_grom_pointer(int number, device_t *dev);
+	void                set_cartridge(ti99_cartridge_device *cart);
+	UINT16              grom_base();
+	UINT16              grom_mask();
 
+	ti99_cartridge_device*  m_cart;
 	ti99_grom_device*   m_grom[5];
 	int                 m_grom_size;
 	int                 m_rom_size;
@@ -318,8 +336,8 @@ public:
 	~ti99_super_cartridge() { };
 	DECLARE_READ8Z_MEMBER(readz);
 	DECLARE_WRITE8_MEMBER(write);
-	void    crureadz(offs_t offset, UINT8 *value);
-	void    cruwrite(offs_t offset, UINT8 data);
+	DECLARE_READ8Z_MEMBER(crureadz);
+	DECLARE_WRITE8_MEMBER(cruwrite);
 };
 
 /************************* MBX  ***************************************/
@@ -352,8 +370,8 @@ public:
 	~ti99_pagedcru_cartridge() { };
 	DECLARE_READ8Z_MEMBER(readz);
 	DECLARE_WRITE8_MEMBER(write);
-	void    crureadz(offs_t offset, UINT8 *value);
-	void    cruwrite(offs_t offset, UINT8 data);
+	DECLARE_READ8Z_MEMBER(crureadz);
+	DECLARE_WRITE8_MEMBER(cruwrite);
 };
 
 /********************** GROM emulation cartridge  ************************************/

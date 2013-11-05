@@ -1,39 +1,10 @@
+// license:BSD-3-Clause
+// copyright-holders:Aaron Giles
 /***************************************************************************
 
     addrmap.h
 
     Macros and helper functions for handling address map definitions.
-
-****************************************************************************
-
-    Copyright Aaron Giles
-    All rights reserved.
-
-    Redistribution and use in source and binary forms, with or without
-    modification, are permitted provided that the following conditions are
-    met:
-
-        * Redistributions of source code must retain the above copyright
-          notice, this list of conditions and the following disclaimer.
-        * Redistributions in binary form must reproduce the above copyright
-          notice, this list of conditions and the following disclaimer in
-          the documentation and/or other materials provided with the
-          distribution.
-        * Neither the name 'MAME' nor the names of its contributors may be
-          used to endorse or promote products derived from this software
-          without specific prior written permission.
-
-    THIS SOFTWARE IS PROVIDED BY AARON GILES ''AS IS'' AND ANY EXPRESS OR
-    IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED
-    WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE
-    DISCLAIMED. IN NO EVENT SHALL AARON GILES BE LIABLE FOR ANY DIRECT,
-    INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES
-    (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR
-    SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION)
-    HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT,
-    STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING
-    IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
-    POSSIBILITY OF SUCH DAMAGE.
 
 ***************************************************************************/
 
@@ -127,6 +98,9 @@ public:
 	void set_write_bank(device_t &device, const char *tag);
 	void set_readwrite_bank(device_t &device, const char *tag);
 
+	// set offset handler (only one version, since there is no data width to consider)
+	void set_handler(device_t &device, setoffset_delegate func);
+
 	// submap referencing
 	void set_submap(device_t &device, const char *tag, address_map_delegate func, int bits, UINT64 mask);
 
@@ -142,6 +116,7 @@ public:
 	offs_t                  m_addrmask;             // mask bits
 	map_handler_data        m_read;                 // data for read handler
 	map_handler_data        m_write;                // data for write handler
+	map_handler_data        m_setoffsethd;          // data for setoffset handler
 	const char *            m_share;                // tag of a shared memory block
 	const char *            m_region;               // tag of region containing the memory backing this entry
 	offs_t                  m_rgnoffs;              // offset within the region
@@ -164,6 +139,7 @@ public:
 	write32_space_func      m_wspace32;             // 32-bit legacy address space handler
 	write64_space_func      m_wspace64;             // 64-bit legacy address space handler
 
+	setoffset_delegate       m_soproto;              // set offset proto-delegate
 	address_map_delegate    m_submap_delegate;
 	int                     m_submap_bits;
 
@@ -495,6 +471,11 @@ void _class :: _name(::address_map &map, device_t &device) \
 #define AM_READWRITE32(_rhandler, _whandler, _unitmask) \
 	curentry->set_handler(device, read32_delegate(&drivdata_class::_rhandler, "driver_data::" #_rhandler, DEVICE_SELF, (drivdata_class *)0), write32_delegate(&drivdata_class::_whandler, "driver_data::" #_whandler, DEVICE_SELF, (drivdata_class *)0), _unitmask);
 
+// driver set offset. Upcast to base class because there are no data width variants,
+// and the compiler complains if we don't do it explicitly
+#define AM_SETOFFSET(_handler) \
+	((address_map_entry*)curentry)->set_handler(device, setoffset_delegate(&drivdata_class::_handler, "driver_data::" #_handler, DEVICE_SELF, (drivdata_class *)0));
+
 // device reads
 #define AM_DEVREAD(_tag, _class, _handler) \
 	curentry->set_handler(device, read_delegate(&_class::_handler, #_class "::" #_handler, _tag, (_class *)0));
@@ -524,6 +505,11 @@ void _class :: _name(::address_map &map, device_t &device) \
 	curentry->set_handler(device, read16_delegate(&_class::_rhandler, #_class "::" #_rhandler, _tag, (_class *)0), write16_delegate(&_class::_whandler, #_class "::" #_whandler, _tag, (_class *)0), _unitmask);
 #define AM_DEVREADWRITE32(_tag, _class, _rhandler, _whandler, _unitmask) \
 	curentry->set_handler(device, read32_delegate(&_class::_rhandler, #_class "::" #_rhandler, _tag, (_class *)0), write32_delegate(&_class::_whandler, #_class "::" #_whandler, _tag, (_class *)0), _unitmask);
+
+// device set offset
+#define AM_DEVSETOFFSET(_tag, _class, _handler) \
+	((address_map_entry*)curentry)->set_handler(device, setoffset_delegate(&_class::_handler, #_class "::" #_handler, _tag, (_class *)0));
+
 
 // device mapping
 #define AM_DEVICE(_tag, _class, _handler) \

@@ -349,7 +349,7 @@ To Do / Unknowns:
 
 #include "emu.h"
 #include "cpu/m68000/m68000.h"
-#include "cpu/nec/nec.h"
+#include "cpu/nec/v25.h"
 #include "cpu/z80/z80.h"
 #include "cpu/z180/z180.h"
 #include "machine/eepromser.h"
@@ -792,11 +792,10 @@ READ8_MEMBER(toaplan2_state::v25_jmpr_r)
 
 READ8_MEMBER(toaplan2_state::fixeight_region_r)
 {
-	// this must match the eeprom!
-	// however there is no valid value that makes the dumped eeprom boot
-	// this makes me wonder if there are decryption errors, therefore
-	// this code, and the default eeproms use should be considered subject
-	// to change
+	// this must match the eeprom region!
+	// however on the real PCB any of the EEPROMs we have work without any special treatment
+	// so is there a decryption error causing this to happen, or should this be read back
+	// from somewhere else?
 
 	if (!strcmp(machine().system().name,"fixeightkt"))  return 0x00;
 	if (!strcmp(machine().system().name,"fixeightk"))   return 0x01;
@@ -3007,8 +3006,6 @@ a4849 cd
 
 */
 
-static const nec_config nitro_config ={ nitro_decryption_table, };
-
 static MACHINE_CONFIG_START( dogyuun, toaplan2_state )
 
 	/* basic machine hardware */
@@ -3019,7 +3016,7 @@ static MACHINE_CONFIG_START( dogyuun, toaplan2_state )
 	MCFG_CPU_ADD("audiocpu", V25, XTAL_25MHz/2)         /* NEC V25 type Toaplan marked CPU ??? */
 	MCFG_CPU_PROGRAM_MAP(v25_mem)
 	MCFG_CPU_IO_MAP(dogyuun_v25_port)
-	MCFG_CPU_CONFIG(nitro_config)
+	MCFG_V25_CONFIG(nitro_decryption_table)
 
 	MCFG_MACHINE_START_OVERRIDE(toaplan2_state,toaplan2)
 
@@ -3063,7 +3060,7 @@ static MACHINE_CONFIG_START( kbash, toaplan2_state )
 	MCFG_CPU_ADD("audiocpu", V25, XTAL_16MHz)           /* NEC V25 type Toaplan marked CPU ??? */
 	MCFG_CPU_PROGRAM_MAP(kbash_v25_mem)
 	MCFG_CPU_IO_MAP(v25_port)
-	MCFG_CPU_CONFIG(nitro_config)
+	MCFG_V25_CONFIG(nitro_decryption_table)
 
 	MCFG_MACHINE_START_OVERRIDE(toaplan2_state,toaplan2)
 
@@ -3299,8 +3296,6 @@ static const UINT8 ts001turbo_decryption_table[256] = {
 	/*r*//*r*//*r*//*r*//*r*//*r*//*r*//*r*/ /*r*//*x*//*r*//*r*//*r*/     /*r*/
 };
 
-static const nec_config ts001turbo_config ={ ts001turbo_decryption_table, };
-
 
 static MACHINE_CONFIG_START( fixeight, toaplan2_state )
 
@@ -3312,7 +3307,7 @@ static MACHINE_CONFIG_START( fixeight, toaplan2_state )
 	MCFG_CPU_ADD("audiocpu", V25, XTAL_16MHz)           /* NEC V25 type Toaplan marked CPU ??? */
 	MCFG_CPU_PROGRAM_MAP(fixeight_v25_mem)
 	MCFG_CPU_IO_MAP(fixeight_v25_port)
-	MCFG_CPU_CONFIG(ts001turbo_config)
+	MCFG_V25_CONFIG(ts001turbo_decryption_table)
 
 	MCFG_MACHINE_START_OVERRIDE(toaplan2_state,toaplan2)
 
@@ -3391,7 +3386,7 @@ static MACHINE_CONFIG_START( vfive, toaplan2_state )
 	MCFG_CPU_ADD("audiocpu", V25, XTAL_20MHz/2) /* Verified on pcb, NEC V25 type Toaplan mark scratched out */
 	MCFG_CPU_PROGRAM_MAP(vfive_v25_mem)
 	MCFG_CPU_IO_MAP(v25_port)
-	MCFG_CPU_CONFIG(nitro_config)
+	MCFG_V25_CONFIG(nitro_decryption_table)
 
 	MCFG_MACHINE_START_OVERRIDE(toaplan2_state,toaplan2)
 
@@ -4030,6 +4025,8 @@ ROM_END
 	ROM_LOAD( "tp-026-4", 0x200000, 0x200000, CRC(b760cb53) SHA1(bc9c5e49e45cdda0f774be0038aa4deb21d4d285) ) \
 	ROM_REGION( 0x40000, "oki", 0 ) \
 	ROM_LOAD( "tp-026-2", 0x00000, 0x40000, CRC(85063f1f) SHA1(1bf4d77494de421c98f6273b9876e60d827a6826) )
+
+// note you may need to byteswap these EEPROM files to reprogram the original chip, this is the same for many supported in MAME.
 
 ROM_START( fixeightkt )
 	ROMS_FIXEIGHT
@@ -4959,7 +4956,6 @@ GAME( 1991, whoopee,    pipibibs, tekipaki, whoopee, driver_device,  0,        R
 GAME( 1991, pipibibsbl, pipibibs, pipibibsbl, pipibibsbl, toaplan2_state, pipibibsbl, ROT0, "bootleg (Ryouta Kikaku)", "Pipi & Bibis / Whoopee!! (bootleg)", GAME_SUPPORTS_SAVE )
 
 // region is in eeprom (and also requires correct return value from a v25 mapped address??)
-// todo: something could be wrong here, because the _dumped_ eeprom doesn't work..
 GAME( 1992, fixeight,   0,        fixeight, fixeight, toaplan2_state, fixeight, ROT270, "Toaplan", "FixEight (Europe)",  GAME_SUPPORTS_SAVE )
 GAME( 1992, fixeightk,  fixeight, fixeight, fixeight, toaplan2_state, fixeight, ROT270, "Toaplan", "FixEight (Korea)",  GAME_SUPPORTS_SAVE )
 GAME( 1992, fixeighth,  fixeight, fixeight, fixeight, toaplan2_state, fixeight, ROT270, "Toaplan", "FixEight (Hong Kong)",  GAME_SUPPORTS_SAVE )

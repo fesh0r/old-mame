@@ -1,3 +1,5 @@
+// license:MAME|LGPL-2.1+
+// copyright-holders:Michael Zapf
 /****************************************************************************
 
     TI-99 SuperAMS Memory Expansion Card. Uses a 74LS612 memory mapper.
@@ -84,15 +86,14 @@ WRITE8_MEMBER(sams_memory_expansion_device::write)
 /*
     CRU read. None here.
 */
-void sams_memory_expansion_device::crureadz(offs_t offset, UINT8 *value)
+READ8Z_MEMBER(sams_memory_expansion_device::crureadz)
 {
-	return;
 }
 
 /*
     CRU write. Turns on the mapper and allows to change it.
 */
-void sams_memory_expansion_device::cruwrite(offs_t offset, UINT8 data)
+WRITE8_MEMBER(sams_memory_expansion_device::cruwrite)
 {
 	if ((offset & 0xff00)==SAMS_CRU_BASE)
 	{

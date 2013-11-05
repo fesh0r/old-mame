@@ -62,6 +62,7 @@ video HW too.
 #include "cpu/i86/i86.h"
 #include "cpu/i86/i286.h"
 #include "sound/speaker.h"
+#include "sound/wave.h"
 
 #include "machine/i8255.h"
 #include "machine/ins8250.h"
@@ -90,6 +91,7 @@ video HW too.
 #include "imagedev/harddriv.h"
 #include "imagedev/cassette.h"
 #include "imagedev/cartslot.h"
+#include "imagedev/serial.h"
 #include "formats/mfi_dsk.h"
 #include "formats/pc_dsk.h"
 #include "formats/asst128_dsk.h"
@@ -138,7 +140,7 @@ ADDRESS_MAP_END
 
 static ADDRESS_MAP_START( ec1841_map, AS_PROGRAM, 16, pc_state )
 	ADDRESS_MAP_UNMAP_HIGH
-	AM_RANGE(0x00000, 0x7ffff) AM_RAMBANK("bank10") // up to 4 banks
+	AM_RANGE(0x00000, 0x7ffff) AM_RAM
 	AM_RANGE(0xa0000, 0xbffff) AM_NOP
 	AM_RANGE(0xc0000, 0xc7fff) AM_ROM
 	AM_RANGE(0xc8000, 0xcffff) AM_ROM
@@ -158,8 +160,14 @@ static ADDRESS_MAP_START(mc1502_io, AS_IO, 8, pc_state )
 	AM_RANGE(0x0028, 0x0028) AM_DEVREADWRITE("upd8251", i8251_device, data_r, data_w)   // not working yet
 	AM_RANGE(0x0029, 0x0029) AM_DEVREADWRITE("upd8251", i8251_device, status_r, control_w)
 	AM_RANGE(0x0040, 0x0043) AM_DEVREADWRITE("pit8253", pit8253_device, read, write)
+	// BIOS 5.31, 5.33
+	AM_RANGE(0x004c, 0x004c) AM_READWRITE(mc1502_wd17xx_aux_r, mc1502_wd17xx_aux_w)
+	AM_RANGE(0x004d, 0x004d) AM_READ(mc1502_wd17xx_motor_r)
+	AM_RANGE(0x004e, 0x004e) AM_READ(mc1502_wd17xx_drq_r)           // blocking read!
+	AM_RANGE(0x0048, 0x004b) AM_DEVREADWRITE("vg93", fd1793_t, read, write)
 	AM_RANGE(0x0060, 0x0063) AM_DEVREADWRITE("ppi8255", i8255_device, read, write)
 	AM_RANGE(0x0068, 0x006B) AM_DEVREADWRITE("ppi8255n2", i8255_device, read, write)    // keyboard poll
+	// BIOS 5.0, 5.2
 	AM_RANGE(0x0100, 0x0100) AM_READWRITE(mc1502_wd17xx_aux_r, mc1502_wd17xx_aux_w)
 	AM_RANGE(0x0108, 0x0108) AM_READ(mc1502_wd17xx_drq_r)           // blocking read!
 	AM_RANGE(0x010a, 0x010a) AM_READ(mc1502_wd17xx_motor_r)
@@ -871,6 +879,35 @@ static INPUT_PORTS_START( mc1502 )          /* fix */
 	PORT_INCLUDE( pcvideo_mc1502 )
 INPUT_PORTS_END
 
+static INPUT_PORTS_START( ec1841 )
+	PORT_START("DSW0") /* SA1 */
+	PORT_DIPNAME( 0xc0, 0x40, "Number of floppy drives")
+	PORT_DIPSETTING(    0x00, "1" )
+	PORT_DIPSETTING(    0x40, "2" )
+	PORT_DIPSETTING(    0x80, "3" )
+	PORT_DIPSETTING(    0xc0, "4" )
+	PORT_DIPNAME( 0x30, 0x20, "Graphics adapter")
+	PORT_DIPSETTING(    0x00, "Reserved" )
+	PORT_DIPSETTING(    0x10, "Color 40x25" )
+	PORT_DIPSETTING(    0x20, "Color 80x25" )
+	PORT_DIPSETTING(    0x30, "Monochrome" )
+	PORT_BIT(     0x08, 0x08, IPT_UNUSED )
+	PORT_DIPNAME( 0x04, 0x04, "Floppy type")
+	PORT_DIPSETTING(    0x00, "80 tracks" )
+	PORT_DIPSETTING(    0x04, "40 tracks" )
+	PORT_DIPNAME( 0x02, 0x00, "8087 installed")
+	PORT_DIPSETTING(    0x00, DEF_STR( No ) )
+	PORT_DIPSETTING(    0x02, DEF_STR( Yes ) )
+	PORT_DIPNAME( 0x01, 0x01, "Boot from floppy")
+	PORT_DIPSETTING(    0x00, DEF_STR( No ) )
+	PORT_DIPSETTING(    0x01, DEF_STR( Yes ) )
+
+//  PORT_START("DSW1") /* SA2 */
+
+	PORT_INCLUDE( pcvideo_cga )
+INPUT_PORTS_END
+
+
 
 static const pc_lpt_interface pc_lpt_config =
 {
@@ -1339,6 +1376,11 @@ static const cassette_interface mc1502_cassette_interface =
 	NULL
 };
 
+static const serial_image_interface mc1502_serial =
+{
+	9600, 8, 1, SERIAL_PARITY_NONE, 1, "upd8251"
+};
+
 static MACHINE_CONFIG_START( ibmpcjr, tandy_pc_state )
 	/* basic machine hardware */
 	MCFG_CPU_PC(ibmpcjr, ibmpcjr, I8088, 4900000, pcjr_frame_interrupt) /* TODO: Get correct cpu frequency, probably XTAL_14_31818MHz/3 */
@@ -1426,7 +1468,6 @@ MACHINE_CONFIG_END
 
 static MACHINE_CONFIG_START( mc1502, pc_state )
 	/* basic machine hardware */
-//  MCFG_CPU_PC(mc1502, mc1502, I8088, XTAL_16MHz/3, pcjr_frame_interrupt)  /* check frame_interrupt */
 	MCFG_CPU_ADD("maincpu", I8088, XTAL_16MHz/3)
 	MCFG_CPU_PROGRAM_MAP(mc1502_map)
 	MCFG_CPU_IO_MAP(mc1502_io)
@@ -1441,22 +1482,21 @@ static MACHINE_CONFIG_START( mc1502, pc_state )
 	MCFG_I8255_ADD( "ppi8255", mc1502_ppi8255_interface )       /* not complete */
 	MCFG_I8255_ADD( "ppi8255n2", mc1502_ppi8255_interface_2 )   /* not complete */
 
-	MCFG_I8251_ADD( "upd8251", default_i8251_interface )
+	MCFG_I8251_ADD( "upd8251", mc1502_i8251_interface )
+	MCFG_SERIAL_ADD("irps", mc1502_serial)
 
-	/* video hardware */
-	MCFG_FRAGMENT_ADD( pcvideo_mc1502 )             /* only 1 chargen, CGA_FONT dip always 1 */
+	/* video hardware (only 1 chargen in ROM; CGA_FONT dip always 1 */
+	MCFG_FRAGMENT_ADD( pcvideo_mc1502 )
 	MCFG_GFXDECODE(ibmpcjr)
 
 	/* sound hardware */
 	MCFG_SPEAKER_STANDARD_MONO("mono")
+	MCFG_SOUND_WAVE_ADD(WAVE_TAG, "cassette")
 	MCFG_SOUND_ADD("speaker", SPEAKER_SOUND, 0)
 	MCFG_SOUND_ROUTE(ALL_OUTPUTS, "mono", 0.80)
 
-	/* printer */
-//  MCFG_PC_LPT_ADD("lpt_0", pc_lpt_config)             /* TODO: non-standard */
-
-	/* cassette */
-	MCFG_CASSETTE_ADD( "cassette", mc1502_cassette_interface )    // has no motor control
+	MCFG_CENTRONICS_PRINTER_ADD("centronics", standard_centronics)
+	MCFG_CASSETTE_ADD( "cassette", mc1502_cassette_interface )
 
 	MCFG_FD1793x_ADD("vg93", XTAL_16MHz / 16)
 	MCFG_FLOPPY_DRIVE_ADD("fd0", mc1502_floppies, "525qd", pc_state::floppy_formats)
@@ -1512,14 +1552,13 @@ static MACHINE_CONFIG_START( ec1841, pc_state )
 
 	MCFG_SOFTWARE_LIST_ADD("flop_list","ec1841")
 
-	/* keyboard -- needs dump */
 	MCFG_PC_KBDC_ADD("pc_kbdc", pc_kbdc_intf)
-	MCFG_PC_KBDC_SLOT_ADD("pc_kbdc", "kbd", pc_xt_keyboards, STR_KBD_KEYTRONIC_PC3270)
+	MCFG_PC_KBDC_SLOT_ADD("pc_kbdc", "kbd", pc_xt_keyboards, STR_KBD_EC_1841)
 
 	/* internal ram -- up to 4 banks of 512K */
 	MCFG_RAM_ADD(RAM_TAG)
 	MCFG_RAM_DEFAULT_SIZE("512K")
-//  MCFG_RAM_EXTRA_OPTIONS("640K,1024K,1576K,2048K")
+	MCFG_RAM_EXTRA_OPTIONS("1024K,1576K,2048K")
 MACHINE_CONFIG_END
 
 
@@ -2529,7 +2568,7 @@ COMP( 1989, iskr1030m,  ibm5150,    0,          iskr1031,   pccga, pc_state,    
 COMP( 1992, iskr3104,   ibm5150,    0,          iskr3104,   pcega, pc_state,      pccga,      "Schetmash", "Iskra 3104", GAME_NOT_WORKING)
 COMP( 198?, asst128,    ibm5150,    0,          asst128,    pccga, pc_state,      pccga,      "Schetmash", "Assistent 128", GAME_NOT_WORKING)
 COMP( 1987, ec1840,     ibm5150,    0,          iskr1031,   pccga, pc_state,      pccga,      "<unknown>", "EC-1840", GAME_NOT_WORKING)
-COMP( 1987, ec1841,     ibm5150,    0,          ec1841,     pccga, pc_state,      pccga,      "<unknown>", "EC-1841", GAME_NOT_WORKING)
+COMP( 1987, ec1841,     ibm5150,    0,          ec1841,     ec1841, pc_state,     ec1841,     "<unknown>", "EC-1841", GAME_NOT_WORKING)
 COMP( 1989, ec1845,     ibm5150,    0,          iskr1031,   pccga, pc_state,      pccga,      "<unknown>", "EC-1845", GAME_NOT_WORKING)
 COMP( 1989, mk88,       ibm5150,    0,          iskr1031,   pccga, pc_state,      pccga,      "<unknown>", "MK-88", GAME_NOT_WORKING)
 COMP( 1990, poisk1,     ibm5150,    0,          iskr1031,   pccga, pc_state,      pccga,      "<unknown>", "Poisk-1", GAME_NOT_WORKING)

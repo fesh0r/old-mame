@@ -1,39 +1,10 @@
+// license:BSD-3-Clause
+// copyright-holders:Aaron Giles
 /***************************************************************************
 
     addrmap.c
 
     Macros and helper functions for handling address map definitions.
-
-****************************************************************************
-
-    Copyright Aaron Giles
-    All rights reserved.
-
-    Redistribution and use in source and binary forms, with or without
-    modification, are permitted provided that the following conditions are
-    met:
-
-        * Redistributions of source code must retain the above copyright
-          notice, this list of conditions and the following disclaimer.
-        * Redistributions in binary form must reproduce the above copyright
-          notice, this list of conditions and the following disclaimer in
-          the documentation and/or other materials provided with the
-          distribution.
-        * Neither the name 'MAME' nor the names of its contributors may be
-          used to endorse or promote products derived from this software
-          without specific prior written permission.
-
-    THIS SOFTWARE IS PROVIDED BY AARON GILES ''AS IS'' AND ANY EXPRESS OR
-    IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED
-    WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE
-    DISCLAIMED. IN NO EVENT SHALL AARON GILES BE LIABLE FOR ANY DIRECT,
-    INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES
-    (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR
-    SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION)
-    HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT,
-    STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING
-    IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
-    POSSIBILITY OF SUCH DAMAGE.
 
 ***************************************************************************/
 
@@ -473,6 +444,21 @@ void address_map_entry::internal_set_handler(device_t &device, read64_delegate r
 
 
 //-------------------------------------------------
+//  set_handler - handler setter for setoffset
+//-------------------------------------------------
+
+void address_map_entry::set_handler(device_t &device, setoffset_delegate func)
+{
+	assert(!func.isnull());
+	m_setoffsethd.m_type = AMH_DEVICE_DELEGATE;
+	m_setoffsethd.m_bits = 0;
+	m_setoffsethd.m_mask = 0;
+	m_setoffsethd.m_name = func.name();
+	m_setoffsethd.m_devbase = &device;
+	m_soproto = func;
+}
+
+//-------------------------------------------------
 //  unitmask_is_appropriate - verify that the
 //  provided unitmask is valid and expected
 //-------------------------------------------------
@@ -809,9 +795,9 @@ void address_map::uplift_submaps(running_machine &machine, device_t &device, dev
 				subentry->m_addrmirror |= entry->m_addrmirror;
 
 				// Twiddle the unitmask on the data accessors that need it
-				for (int data_entry = 0; data_entry < 2; data_entry++)
+				for (int data_entry = 0; data_entry < 3; data_entry++)
 				{
-					map_handler_data &mdata = data_entry ? subentry->m_write : subentry->m_read;
+					map_handler_data &mdata = (data_entry==0)? subentry->m_read : ((data_entry==1)? subentry->m_write : subentry->m_setoffsethd);
 
 					if (mdata.m_type == AMH_NONE)
 						continue;

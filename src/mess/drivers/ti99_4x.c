@@ -1,8 +1,8 @@
+// license:MAME|LGPL-2.1+
+// copyright-holders:Michael Zapf
 /****************************************************************************
 
     MESS Driver for TI-99/4 and TI-99/4A Home Computers.
-    Raphael Nabet, 1999-2003.
-
     TI99/4 info:
 
     Similar to TI99/4a, except for the following:
@@ -32,9 +32,9 @@
    |      |         (16 bit)
   Cass  joyport
 
-    Michael Zapf
-
-    February 2012: Rewritten as class
+  Raphael Nabet, 1999-2003.
+  Rewritten by Michael Zapf
+  February 2012: Rewritten as class
 
 *****************************************************************************/
 
@@ -89,6 +89,7 @@ public:
 	DECLARE_READ8_MEMBER( interrupt_level );
 	DECLARE_READ_LINE_MEMBER( ready_connect );
 	DECLARE_WRITE_LINE_MEMBER( clock_out );
+	DECLARE_WRITE_LINE_MEMBER( dbin_line );
 
 	DECLARE_INPUT_CHANGED_MEMBER( load_interrupt );
 	TIMER_DEVICE_CALLBACK_MEMBER(ti99_4ev_hblank_interrupt);
@@ -145,7 +146,7 @@ static ADDRESS_MAP_START(memmap, AS_PROGRAM, 16, ti99_4x_state)
 	ADDRESS_MAP_GLOBAL_MASK(0xffff)
 	AM_RANGE(0x0000, 0x1fff) AM_ROM
 	AM_RANGE(0x8000, 0x80ff) AM_MIRROR(0x0300) AM_RAM
-	AM_RANGE(0x0000, 0xffff) AM_DEVREADWRITE(DATAMUX_TAG, ti99_datamux_device, read, write)
+	AM_RANGE(0x0000, 0xffff) AM_DEVREADWRITE(DATAMUX_TAG, ti99_datamux_device, read, write) AM_DEVSETOFFSET(DATAMUX_TAG, ti99_datamux_device, setoffset)
 ADDRESS_MAP_END
 
 /*
@@ -361,8 +362,8 @@ READ8_MEMBER( ti99_4x_state::cruread )
 	// Also, we translate the bit addresses to base addresses
 
 	// The QI version does not propagate the CRU signals to the cartridge slot
-	if (!m_qi_version) m_gromport->crureadz(offset<<4, &value);
-	m_peribox->crureadz(offset<<4, &value);
+	if (!m_qi_version) m_gromport->crureadz(space, offset<<4, &value);
+	m_peribox->crureadz(space, offset<<4, &value);
 
 	return value;
 }
@@ -371,8 +372,8 @@ WRITE8_MEMBER( ti99_4x_state::cruwrite )
 {
 	if (VERBOSE>6) LOG("ti99_4x: write access to CRU address %04x\n", offset << 1);
 	// The QI version does not propagate the CRU signals to the cartridge slot
-	if (!m_qi_version) m_gromport->cruwrite(offset<<1, data);
-	m_peribox->cruwrite(offset<<1, data);
+	if (!m_qi_version) m_gromport->cruwrite(space, offset<<1, data);
+	m_peribox->cruwrite(space, offset<<1, data);
 }
 
 WRITE8_MEMBER( ti99_4x_state::external_operation )
@@ -583,7 +584,7 @@ WRITE8_MEMBER( ti99_4x_state::tms9901_interrupt )
 	// offset contains the interrupt level (0-15)
 	// However, the TI board just ignores that level and hardwires it to 1
 	// See below (interrupt_level)
-	m_cpu->set_input_line(INPUT_LINE_99XX_INTREQ, data);
+	m_cpu->set_input_line(INT_9900_INTREQ, data);
 }
 
 READ8_MEMBER( ti99_4x_state::interrupt_level )
@@ -599,6 +600,14 @@ READ8_MEMBER( ti99_4x_state::interrupt_level )
 WRITE_LINE_MEMBER( ti99_4x_state::clock_out )
 {
 	m_datamux->clock_in(state);
+}
+
+/*
+   Data bus in (DBIN) line from the CPU.
+*/
+WRITE_LINE_MEMBER( ti99_4x_state::dbin_line )
+{
+	m_datamux->dbin_in(state);
 }
 
 /*****************************************************************************/
@@ -627,16 +636,20 @@ WRITE_LINE_MEMBER( ti99_4x_state::set_tms9901_INT12)
 
 /*
     One of the common hardware mods was to add a switch to trigger a LOAD
-    interrupt (NMI)
+    interrupt
 */
 INPUT_CHANGED_MEMBER( ti99_4x_state::load_interrupt )
 {
-	m_cpu->set_input_line(INPUT_LINE_NMI, (newval==0)? ASSERT_LINE : CLEAR_LINE);
+	m_cpu->set_input_line(INT_9900_LOAD, (newval==0)? ASSERT_LINE : CLEAR_LINE);
 }
 
 /***********************************************************
     Links to external devices
 ***********************************************************/
+
+// FIXME: The sound chip is one of the devices that may operate the ready line
+// at some later time and thus mess up the READY handling (raises the READY
+// line without bothering about the rest). We need to do a proper AND here.
 
 /*
     We may have lots of devices pulling down this line; so we should use a AND
@@ -664,7 +677,7 @@ WRITE_LINE_MEMBER( ti99_4x_state::console_reset )
 {
 	if (machine().phase() != MACHINE_PHASE_INIT)
 	{
-		m_cpu->set_input_line(INPUT_LINE_99XX_RESET, state);
+		m_cpu->set_input_line(INT_9900_RESET, state);
 		m_video->reset_vdp(state);
 	}
 }
@@ -822,7 +835,8 @@ static TMS99xx_CONFIG( ti99_cpuconf )
 	DEVCB_NULL,     // Instruction acquisition
 	DEVCB_DRIVER_LINE_MEMBER(ti99_4x_state, clock_out),
 	DEVCB_NULL,     // wait
-	DEVCB_NULL      // Hold acknowledge
+	DEVCB_NULL,      // Hold acknowledge
+	DEVCB_DRIVER_LINE_MEMBER(ti99_4x_state, dbin_line)      // data bus in
 };
 
 static JOYPORT_CONFIG( joyport4_60 )

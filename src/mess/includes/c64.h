@@ -1,20 +1,21 @@
+// license:BSD-3-Clause
+// copyright-holders:Curt Coder
 #pragma once
 
 #ifndef __C64__
 #define __C64__
 
 #include "emu.h"
+#include "bus/cbmiec/cbmiec.h"
+#include "bus/c64/exp.h"
+#include "bus/c64/user.h"
+#include "bus/pet/cass.h"
+#include "bus/vcs/ctrl.h"
 #include "cpu/m6502/m6510.h"
 #include "machine/cbm_snqk.h"
-#include "machine/c64/exp.h"
-#include "machine/c64/user.h"
-#include "machine/cbmiec.h"
-#include "machine/cbmipt.h"
 #include "machine/mos6526.h"
-#include "machine/petcass.h"
 #include "machine/pla.h"
 #include "machine/ram.h"
-#include "machine/vcsctrl.h"
 #include "sound/dac.h"
 #include "sound/mos6581.h"
 #include "video/mos6566.h"

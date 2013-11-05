@@ -1,3 +1,5 @@
+// license:MAME
+// copyright-holders:Curt Coder, Robbbert, and unknown others
 /***************************************************************************
 Jupiter Ace memory map
 
@@ -45,7 +47,7 @@ Ports:
 #include "formats/ace_tap.h"
 #include "imagedev/cassette.h"
 #include "imagedev/snapquik.h"
-#include "machine/ctronics.h"
+#include "bus/centronics/ctronics.h"
 #include "machine/i8255.h"
 #include "machine/ram.h"
 #include "machine/z80pio.h"

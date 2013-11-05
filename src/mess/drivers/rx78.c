@@ -1,3 +1,5 @@
+// license:MAME
+// copyright-holders:Angelo Salese, Robbbert
 /************************************************************************************************************
 
     Gundam RX-78 (c) 1983 Bandai

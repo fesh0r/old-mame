@@ -1,3 +1,5 @@
+// license:BSD-3-Clause
+// copyright-holders:Curt Coder, Olivier Galibert
 #pragma once
 
 #ifndef __ATARI_ST__
@@ -9,7 +11,7 @@
 #include "imagedev/cartslot.h"
 #include "machine/6850acia.h"
 #include "machine/8530scc.h"
-#include "machine/ctronics.h"
+#include "bus/centronics/ctronics.h"
 #include "machine/mc68901.h"
 #include "machine/midiinport.h"
 #include "machine/midioutport.h"

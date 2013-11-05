@@ -1,3 +1,5 @@
+// license:MAME|LGPL-2.1+
+// copyright-holders:Michael Zapf
 /****************************************************************************
 
     Thierry Nouspikel's USB-SmartMedia card emulation
@@ -134,7 +136,7 @@ void nouspikel_usb_smartmedia_device::usbsm_mem_16_w(offs_t offset, UINT16 data)
 /*
     CRU read
 */
-void nouspikel_usb_smartmedia_device::crureadz(offs_t offset, UINT8 *value)
+READ8Z_MEMBER(nouspikel_usb_smartmedia_device::crureadz)
 {
 	if ((offset & 0xff00)==m_cru_base)
 	{
@@ -170,7 +172,7 @@ void nouspikel_usb_smartmedia_device::crureadz(offs_t offset, UINT8 *value)
 /*
     CRU write
 */
-void nouspikel_usb_smartmedia_device::cruwrite(offs_t offset, UINT8 data)
+WRITE8_MEMBER(nouspikel_usb_smartmedia_device::cruwrite)
 {
 	if ((offset & 0xff00)==m_cru_base)
 	{
@@ -231,6 +233,8 @@ void nouspikel_usb_smartmedia_device::cruwrite(offs_t offset, UINT8 data)
 */
 READ8Z_MEMBER(nouspikel_usb_smartmedia_device::readz)
 {
+	if (space.debugger_access()) return;
+
 	if (((offset & m_select_mask)==m_select_value) && m_selected)
 	{
 		if (m_tms9995_mode ? (!(offset & 1)) : (offset & 1))
@@ -248,6 +252,8 @@ READ8Z_MEMBER(nouspikel_usb_smartmedia_device::readz)
 */
 WRITE8_MEMBER(nouspikel_usb_smartmedia_device::write)
 {
+	if (space.debugger_access()) return;
+
 	if (((offset & m_select_mask)==m_select_value) && m_selected)
 	{
 		/* latch write */

@@ -1,3 +1,5 @@
+// license:BSD-3-Clause
+// copyright-holders:balrog,Jonathan Gevaryahu,Sandro Ronco
 /******************************************************************************
 *
 *  Wavetek/Digelec model 804/EP804 (eprom programmer) driver

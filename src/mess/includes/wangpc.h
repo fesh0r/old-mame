@@ -1,13 +1,16 @@
+// license:BSD-3-Clause
+// copyright-holders:Curt Coder
 #pragma once
 
 #ifndef __WANGPC__
 #define __WANGPC__
 
 #include "emu.h"
+#include "bus/wangpc/wangpc.h"
 #include "cpu/i86/i86.h"
 #include "formats/pc_dsk.h"
 #include "machine/am9517a.h"
-#include "machine/ctronics.h"
+#include "bus/centronics/ctronics.h"
 #include "machine/i8255.h"
 #include "machine/im6402.h"
 #include "machine/mc2661.h"
@@ -16,16 +19,7 @@
 #include "machine/ram.h"
 #include "machine/serial.h"
 #include "machine/upd765.h"
-#include "machine/wangpcbus.h"
 #include "machine/wangpckb.h"
-#include "machine/wangpc_emb.h"
-#include "machine/wangpc_lic.h"
-#include "machine/wangpc_lvc.h"
-#include "machine/wangpc_mcc.h"
-#include "machine/wangpc_mvc.h"
-#include "machine/wangpc_rtc.h"
-#include "machine/wangpc_tig.h"
-#include "machine/wangpc_wdc.h"
 
 #define I8086_TAG       "i8086"
 #define AM9517A_TAG     "am9517a"

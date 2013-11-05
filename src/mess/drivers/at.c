@@ -339,7 +339,9 @@ static MACHINE_CONFIG_FRAGMENT( at_motherboard )
 	MCFG_AT_KEYBOARD_CONTROLLER_ADD("keybc", XTAL_12MHz, keyboard_controller_intf)
 	MCFG_PC_KBDC_ADD("pc_kbdc", pc_kbdc_intf)
 
-	MCFG_MC146818_IRQ_ADD( "rtc", MC146818_STANDARD, WRITELINE(at_state, at_mc146818_irq))
+	MCFG_MC146818_ADD( "rtc", XTAL_32_768kHz )
+	MCFG_MC146818_IRQ_HANDLER(WRITELINE(at_state, at_mc146818_irq))
+	MCFG_MC146818_CENTURY_INDEX(0x32)
 
 	/* sound hardware */
 	MCFG_SPEAKER_STANDARD_MONO("mono")
@@ -369,7 +371,9 @@ static MACHINE_CONFIG_START( ibm5170, at_state )
 	MCFG_PC_KBDC_SLOT_ADD("pc_kbdc", "kbd", pc_at_keyboards, STR_KBD_IBM_PC_AT_84)
 
 	/* software lists */
-	MCFG_SOFTWARE_LIST_ADD("disk_list","ibm5170")
+	MCFG_SOFTWARE_LIST_ADD("pc_disk_list","ibm5150")
+	MCFG_SOFTWARE_LIST_ADD("xt_disk_list","ibm5160_flop")
+	MCFG_SOFTWARE_LIST_ADD("at_disk_list","ibm5170")
 
 	/* internal ram */
 	MCFG_RAM_ADD(RAM_TAG)
@@ -1402,8 +1406,8 @@ COMP ( 1987, atvga,    ibm5170, 0,       atvga,     atvga, at_state,      atvga,
 COMP ( 1988, at386,    ibm5170, 0,       at386,     atvga, at_state,      atvga,  "<generic>",  "PC/AT 386 (VGA, MF2 Keyboard)", GAME_NOT_WORKING )
 COMP ( 1988, ct386sx,  ibm5170, 0,       ct386sx,   atvga, at_state,      atvga,  "<generic>",  "NEAT 386SX (VGA, MF2 Keyboard)", GAME_NOT_WORKING )
 COMP ( 1990, at486,    ibm5170, 0,       at486,     atvga, at_state,      atvga,  "<generic>",  "PC/AT 486 (VGA, MF2 Keyboard)", GAME_NOT_WORKING )
-COMP ( 1990, at586,    ibm5170, 0,       at586,     atvga, at_state,      at586,  "<generic>",  "PC/AT 586 (PIIX4)", GAME_NOT_WORKING )
-COMP ( 1990, at586x3,  ibm5170, 0,       at586x3,   atvga, at_state,      at586,  "<generic>",  "PC/AT 586 (PIIX3)", GAME_NOT_WORKING )
+COMP ( 1990, at586,    ibm5170, 0,       at586,     atvga, at586_state,   at586,  "<generic>",  "PC/AT 586 (PIIX4)", GAME_NOT_WORKING )
+COMP ( 1990, at586x3,  ibm5170, 0,       at586x3,   atvga, at586_state,   at586,  "<generic>",  "PC/AT 586 (PIIX3)", GAME_NOT_WORKING )
 COMP ( 1989, neat,     ibm5170, 0,       neat,      atvga, at_state,      atvga,  "<generic>",  "NEAT (VGA, MF2 Keyboard)", GAME_NOT_WORKING )
 COMP ( 1993, ec1849,   ibm5170, 0,       ec1849,    atcga, at_state,      atcga,  "<unknown>",  "EC-1849", GAME_NOT_WORKING )
 COMP ( 1993, megapc,   ibm5170, 0,       megapc,    atvga, at_state,      atvga,  "Amstrad plc", "MegaPC", GAME_NOT_WORKING )

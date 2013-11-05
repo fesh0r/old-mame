@@ -2,6 +2,9 @@
 
     Chips & Technologies CS4031 chipset
 
+    license: MAME, GPL-2.0+
+    copyright-holders: Dirk Best
+
     Chipset for 486 based PC/AT compatible systems. Consists of two
     individual chips:
 
@@ -27,7 +30,7 @@
 #include "machine/am9517a.h"
 #include "machine/pic8259.h"
 #include "machine/pit8253.h"
-#include "machine/mc146818.h"
+#include "machine/ds128x.h"
 #include "machine/at_keybc.h"
 
 
@@ -236,7 +239,7 @@ private:
 	required_device<pic8259_device> m_intc1;
 	required_device<pic8259_device> m_intc2;
 	required_device<pit8254_device> m_ctc;
-	required_device<mc146818_device> m_rtc;
+	required_device<ds12885_device> m_rtc;
 
 	int m_dma_eop;
 	UINT8 m_dma_page[0x10];

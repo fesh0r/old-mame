@@ -1,3 +1,5 @@
+// license:BSD-3-Clause
+// copyright-holders:Curt Coder
 /*
 
     Wang Professional Computer
@@ -1079,17 +1081,6 @@ static WANGPC_BUS_INTERFACE( bus_intf )
 	DEVCB_DEVICE_LINE_MEMBER(AM9517A_TAG, am9517a_device, dreq3_w),
 	DEVCB_CPU_INPUT_LINE(I8086_TAG, INPUT_LINE_NMI)
 };
-
-static SLOT_INTERFACE_START( wangpc_cards )
-	SLOT_INTERFACE("emb", WANGPC_EMB) // extended memory board
-	SLOT_INTERFACE("lic", WANGPC_LIC) // local interconnect option card
-	SLOT_INTERFACE("lvc", WANGPC_LVC) // low-resolution video controller
-	SLOT_INTERFACE("mcc", WANGPC_MCC) // multiport communications controller
-	SLOT_INTERFACE("mvc", WANGPC_MVC) // medium-resolution video controller
-	SLOT_INTERFACE("rtc", WANGPC_RTC) // remote telecommunications controller
-	SLOT_INTERFACE("tig", WANGPC_TIG) // text/image/graphics controller
-	SLOT_INTERFACE("wdc", WANGPC_WDC) // Winchester disk controller
-SLOT_INTERFACE_END
 
 
 

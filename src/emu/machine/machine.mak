@@ -356,6 +356,15 @@ endif
 
 #-------------------------------------------------
 #
+#@src/emu/machine/cdu76s.h,MACHINES += CDU76S
+#-------------------------------------------------
+
+ifneq ($(filter CDU76S,$(MACHINES)),)
+MACHINEOBJS += $(MACHINEOBJ)/cdu76s.o
+endif
+
+#-------------------------------------------------
+#
 #@src/emu/machine/com8116.h,MACHINES += COM8116
 #-------------------------------------------------
 
@@ -370,15 +379,6 @@ endif
 
 ifneq ($(filter CR589,$(MACHINES)),)
 MACHINEOBJS += $(MACHINEOBJ)/cr589.o
-endif
-
-#-------------------------------------------------
-#
-#@src/emu/machine/ctronics.h,MACHINES += CTRONICS
-#-------------------------------------------------
-
-ifneq ($(filter CTRONICS,$(MACHINES)),)
-MACHINEOBJS += $(MACHINEOBJ)/ctronics.o
 endif
 
 #-------------------------------------------------
@@ -549,6 +549,15 @@ endif
 
 #-------------------------------------------------
 #
+#@src/emu/machine/i80130.h,MACHINES += I80130
+#-------------------------------------------------
+
+ifneq ($(filter I80130,$(MACHINES)),)
+MACHINEOBJS += $(MACHINEOBJ)/i80130.o
+endif
+
+#-------------------------------------------------
+#
 #@src/emu/machine/atadev.h,MACHINES += IDE
 #@src/emu/machine/ataintf.h,MACHINES += IDE
 #-------------------------------------------------
@@ -562,6 +571,7 @@ MACHINEOBJS += $(MACHINEOBJ)/atapihle.o
 MACHINEOBJS += $(MACHINEOBJ)/idectrl.o
 MACHINEOBJS += $(MACHINEOBJ)/idehd.o
 MACHINEOBJS += $(MACHINEOBJ)/vt83c461.o
+MACHINES += T10
 endif
 
 #-------------------------------------------------
@@ -763,7 +773,7 @@ endif
 #-------------------------------------------------
 
 ifneq ($(filter MC146818,$(MACHINES)),)
-MACHINEOBJS += $(MACHINEOBJ)/mc146818.o
+MACHINEOBJS += $(MACHINEOBJ)/mc146818.o $(MACHINEOBJ)/ds128x.o
 endif
 
 #-------------------------------------------------
@@ -907,6 +917,42 @@ endif
 
 ifneq ($(filter MOS6529,$(MACHINES)),)
 MACHINEOBJS += $(MACHINEOBJ)/mos6529.o
+endif
+
+#-------------------------------------------------
+#
+#@src/emu/machine/mos6702.h,MACHINES += MOS6702
+#-------------------------------------------------
+
+ifneq ($(filter MOS6702,$(MACHINES)),)
+MACHINEOBJS += $(MACHINEOBJ)/mos6702.o
+endif
+
+#-------------------------------------------------
+#
+#@src/emu/machine/mos8706.h,MACHINES += MOS8706
+#-------------------------------------------------
+
+ifneq ($(filter MOS8706,$(MACHINES)),)
+MACHINEOBJS += $(MACHINEOBJ)/mos8706.o
+endif
+
+#-------------------------------------------------
+#
+#@src/emu/machine/mos8722.h,MACHINES += MOS8722
+#-------------------------------------------------
+
+ifneq ($(filter MOS8722,$(MACHINES)),)
+MACHINEOBJS += $(MACHINEOBJ)/mos8722.o
+endif
+
+#-------------------------------------------------
+#
+#@src/emu/machine/mos8726.h,MACHINES += MOS8726
+#-------------------------------------------------
+
+ifneq ($(filter MOS8726,$(MACHINES)),)
+MACHINEOBJS += $(MACHINEOBJ)/mos8726.o
 endif
 
 #-------------------------------------------------
@@ -1097,6 +1143,15 @@ endif
 
 #-------------------------------------------------
 #
+#@src/emu/machine/64h156.h,MACHINES += RP5C15
+#-------------------------------------------------
+
+ifneq ($(filter R64H156,$(MACHINES)),)
+MACHINEOBJS += $(MACHINEOBJ)/64h156.o
+endif
+
+#-------------------------------------------------
+#
 #@src/emu/machine/rtc4543.h,MACHINES += RTC4543
 #-------------------------------------------------
 
@@ -1193,15 +1248,7 @@ MACHINEOBJS += $(MACHINEOBJ)/scsicd.o
 MACHINEOBJS += $(MACHINEOBJ)/scsidev.o
 MACHINEOBJS += $(MACHINEOBJ)/scsihd.o
 MACHINEOBJS += $(MACHINEOBJ)/scsihle.o
-endif
-
-#-------------------------------------------------
-#
-#@src/emu/machine/scudsp.h,MACHINES += SCUDSP
-#-------------------------------------------------
-
-ifneq ($(filter SCUDSP,$(MACHINES)),)
-MACHINEOBJS += $(MACHINEOBJ)/scudsp.o
+MACHINES += T10
 endif
 
 #-------------------------------------------------
@@ -1247,6 +1294,17 @@ endif
 
 ifneq ($(filter STVCD,$(MACHINES)),)
 MACHINEOBJS += $(MACHINEOBJ)/stvcd.o
+endif
+
+#-------------------------------------------------
+#
+#-------------------------------------------------
+
+ifneq ($(filter T10,$(MACHINES)),)
+MACHINEOBJS += $(MACHINEOBJ)/t10mmc.o
+MACHINEOBJS += $(MACHINEOBJ)/t10sbc.o
+MACHINEOBJS += $(MACHINEOBJ)/t10spc.o
+MACHINES += T10
 endif
 
 #-------------------------------------------------
@@ -1517,4 +1575,13 @@ endif
 $(MACHINEOBJ)/s3c2400.o:    $(MACHINESRC)/s3c24xx.c
 $(MACHINEOBJ)/s3c2410.o:    $(MACHINESRC)/s3c24xx.c
 $(MACHINEOBJ)/s3c2440.o:    $(MACHINESRC)/s3c24xx.c
+
+#-------------------------------------------------
+#
+#@src/emu/machine/ncr5380n.h,MACHINES += NCR5380N
+#-------------------------------------------------
+
+ifneq ($(filter NCR5380N,$(MACHINES)),)
+MACHINEOBJS += $(MACHINEOBJ)/ncr5380n.o
+endif
 

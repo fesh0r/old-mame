@@ -1,3 +1,5 @@
+// license:BSD-3-Clause
+// copyright-holders:Kevin Horton,Jonathan Gevaryahu,Sandro Ronco
 /******************************************************************************
 *
 *  Fidelity Electronics Z80 based board driver

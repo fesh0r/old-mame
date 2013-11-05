@@ -13,9 +13,11 @@
 
 #include "emu.h"
 #include "includes/pc.h"
+#include "cpu/i86/i86.h"
 
 #include "machine/i8255.h"
 #include "machine/ins8250.h"
+#include "machine/i8251.h"
 #include "machine/mc146818.h"
 #include "machine/pic8259.h"
 
@@ -86,7 +88,16 @@
 READ8_MEMBER(pc_state::ec1841_memboard_r)
 {
 	pc_state *st = space.machine().driver_data<pc_state>();
-	return st->m_memboard[(offset % 4)];
+	UINT8 data;
+
+	data = offset % 4;
+	if (data > m_memboards)
+		data = 0xff;
+	else
+		data = st->m_memboard[data];
+	DBG_LOG(1,"ec1841_memboard",("R (%d of %d) == %02X\n", offset, m_memboards, data ));
+
+	return data;
 }
 
 WRITE8_MEMBER(pc_state::ec1841_memboard_w)
@@ -95,15 +106,13 @@ WRITE8_MEMBER(pc_state::ec1841_memboard_w)
 	address_space &program = st->m_maincpu->space(AS_PROGRAM);
 	UINT8 current;
 
-	DBG_LOG(1,"ec1841_memboard_w",("(%d) <- %02X\n", offset, data));
+	current = st->m_memboard[offset];
 
-	// for now, handle only board 0
-	if (offset > 0) {
-		st->m_memboard[offset] = data;
+	DBG_LOG(1,"ec1841_memboard",("W (%d of %d) <- %02X (%02X)\n", offset, m_memboards, data, current));
+
+	if (offset > m_memboards) {
 		return;
 	}
-
-	current = st->m_memboard[offset];
 
 	if (BIT(current, 2) && !BIT(data, 2)) {
 		// disable read access
@@ -118,14 +127,20 @@ WRITE8_MEMBER(pc_state::ec1841_memboard_w)
 	}
 
 	if (!BIT(current, 2) && BIT(data, 2)) {
+		for(int i=0; i<4; i++)
+			st->m_memboard[i] &= 0xfb;
 		// enable read access
+		membank("bank10")->set_base(m_ram->pointer() + offset*0x80000);
 		program.install_read_bank(0, 0x7ffff, "bank10");
 		DBG_LOG(1,"ec1841_memboard_w",("map_read(%d)\n", offset));
 	}
 
 	if (!BIT(current, 3) && BIT(data, 3)) {
+		for(int i=0; i<4; i++)
+			st->m_memboard[i] &= 0xf7;
 		// enable write access
-		program.install_write_bank(0, 0x7ffff, "bank10");
+		membank("bank20")->set_base(m_ram->pointer() + offset*0x80000);
+		program.install_write_bank(0, 0x7ffff, "bank20");
 		DBG_LOG(1,"ec1841_memboard_w",("map_write(%d)\n", offset));
 	}
 
@@ -408,6 +423,31 @@ const struct pit8253_interface pcjr_pit8253_config =
 
 /* MC1502 uses single XTAL for everything -- incl. CGA? check */
 
+const i8251_interface mc1502_i8251_interface =
+{
+	DEVCB_NULL, /* XXX RxD data are accessible via PPI port C, bit 7 */
+	DEVCB_NULL,
+	DEVCB_NULL,
+	DEVCB_NULL,
+	DEVCB_NULL,
+	DEVCB_DEVICE_LINE_MEMBER("pic8259", pic8259_device, ir7_w), /* default handler does nothing */
+	DEVCB_DEVICE_LINE_MEMBER("pic8259", pic8259_device, ir7_w),
+	DEVCB_NULL,
+	DEVCB_NULL  /* XXX SYNDET triggers NMI */
+};
+
+WRITE_LINE_MEMBER(pc_state::mc1502_pit8253_out1_changed)
+{
+	machine().device<i8251_device>("upd8251")->txc_w(state);
+	machine().device<i8251_device>("upd8251")->rxc_w(state);
+}
+
+WRITE_LINE_MEMBER(pc_state::mc1502_pit8253_out2_changed)
+{
+	pc_speaker_set_input( state );
+	m_cassette->output(state ? 1 : -1);
+}
+
 const struct pit8253_interface mc1502_pit8253_config =
 {
 	{
@@ -418,11 +458,11 @@ const struct pit8253_interface mc1502_pit8253_config =
 		}, {
 			XTAL_16MHz/12,              /* serial port */
 			DEVCB_NULL,
-			DEVCB_NULL
+			DEVCB_DRIVER_LINE_MEMBER(pc_state,mc1502_pit8253_out1_changed)
 		}, {
 			XTAL_16MHz/12,              /* pio port c pin 4, and speaker polling enough */
 			DEVCB_NULL,
-			DEVCB_DRIVER_LINE_MEMBER(pc_state,ibm5150_pit8253_out2_changed)
+			DEVCB_DRIVER_LINE_MEMBER(pc_state,mc1502_pit8253_out2_changed)
 		}
 	}
 };
@@ -885,7 +925,6 @@ I8255_INTERFACE( pc_ppi8255_interface )
 
 static struct {
 	UINT8       pulsing;
-	UINT8       latch;      /* keyboard scan code */
 	UINT16      mask;       /* input lines */
 	emu_timer   *keyb_signal_timer;
 } mc1502_keyb;
@@ -929,19 +968,9 @@ TIMER_CALLBACK_MEMBER(pc_state::mc1502_keyb_signal_callback)
 	}
 }
 
-READ8_MEMBER(pc_state::mc1502_ppi_porta_r)
-{
-//  DBG_LOG(1,"mc1502_ppi_porta_r",("= %02X\n", mc1502_keyb.latch));
-	return mc1502_keyb.latch;
-}
-
 WRITE8_MEMBER(pc_state::mc1502_ppi_porta_w)
 {
-//  DBG_LOG(1,"mc1502_ppi_porta_w",("( %02X )\n", data));
-	mc1502_keyb.latch = data;
-	if (mc1502_keyb.pulsing)
-		mc1502_keyb.pulsing--;
-	m_pic8259->ir1_w(0);
+	m_centronics->write(space, 0, data);
 }
 
 WRITE8_MEMBER(pc_state::mc1502_ppi_portb_w)
@@ -949,7 +978,22 @@ WRITE8_MEMBER(pc_state::mc1502_ppi_portb_w)
 //  DBG_LOG(2,"mc1502_ppi_portb_w",("( %02X )\n", data));
 	m_ppi_portb = data;
 	machine().device<pit8253_device>("pit8253")->gate2_w(BIT(data, 0));
-	pc_speaker_set_spkrdata( data & 0x02 );
+	pc_speaker_set_spkrdata(BIT(data, 1));
+	m_centronics->strobe_w(BIT(data, 2));
+	m_centronics->autofeed_w(BIT(data, 3));
+	m_centronics->init_prime_w(BIT(data, 4));
+}
+
+READ8_MEMBER(pc_state::mc1502_kppi_portc_r)
+{
+	UINT8 data = 0;
+
+	data |= m_centronics->fault_r() << 4;
+	data |= m_centronics->pe_r() << 5;
+	data |= m_centronics->ack_r() << 6;
+	data |= m_centronics->busy_r() << 7;
+
+	return data;
 }
 
 READ8_MEMBER(pc_state::mc1502_ppi_portc_r)
@@ -1096,7 +1140,7 @@ I8255_INTERFACE( pcjr_ppi8255_interface )
 
 I8255_INTERFACE( mc1502_ppi8255_interface )
 {
-	DEVCB_DRIVER_MEMBER(pc_state,mc1502_ppi_porta_r),
+	DEVCB_NULL,
 	DEVCB_DRIVER_MEMBER(pc_state,mc1502_ppi_porta_w),
 	DEVCB_NULL,
 	DEVCB_DRIVER_MEMBER(pc_state,mc1502_ppi_portb_w),
@@ -1110,7 +1154,7 @@ I8255_INTERFACE( mc1502_ppi8255_interface_2 )
 	DEVCB_NULL,
 	DEVCB_NULL,
 	DEVCB_DRIVER_MEMBER(pc_state,mc1502_kppi_portb_w),
-	DEVCB_NULL,
+	DEVCB_DRIVER_MEMBER(pc_state,mc1502_kppi_portc_r),
 	DEVCB_DRIVER_MEMBER(pc_state,mc1502_kppi_portc_w)
 };
 
@@ -1258,7 +1302,7 @@ WRITE8_MEMBER(pc_state::mc1502_wd17xx_aux_w)
 	fdc->set_floppy(floppy);
 
 	// master reset
-	if(data & 1)
+	if((data & 1) == 0)
 		fdc->reset();
 
 	// SIDE ONE
@@ -1278,7 +1322,7 @@ READ8_MEMBER(pc_state::mc1502_wd17xx_drq_r)
 
 	if (!fdc->drq_r() && !fdc->intrq_r()) {
 		/* fake cpu wait by resetting PC one insn back */
-		m_maincpu->set_pc(m_maincpu->pc() - 1);
+		m_maincpu->set_state_int(I8086_IP, m_maincpu->state_int(I8086_IP) - 1);
 		m_maincpu->set_input_line(INPUT_LINE_HALT, ASSERT_LINE);
 	}
 
@@ -1439,6 +1483,18 @@ DRIVER_INIT_MEMBER(pc_state,mc1502)
 	mess_init_pc_common(NULL);
 }
 
+DRIVER_INIT_MEMBER(pc_state,ec1841)
+{
+	address_space &program = m_maincpu->space(AS_PROGRAM);
+
+	program.install_read_bank(0, 0x7ffff, "bank10");
+	program.install_write_bank(0, 0x7ffff, "bank20");
+	membank( "bank10" )->set_base( m_ram->pointer() );
+	membank( "bank20" )->set_base( m_ram->pointer() );
+
+	pc_rtc_init();
+}
+
 
 IRQ_CALLBACK_MEMBER(pc_state::pc_irq_callback)
 {
@@ -1476,6 +1532,14 @@ MACHINE_RESET_MEMBER(pc_state,pc)
 	m_ppi_shift_enable = 0;
 
 	m_speaker->level_w(0);
+
+	// ec1841-specific code
+	m_memboards = m_ram->size()/(512*1024) - 1;
+	if (m_memboards > 3)
+		m_memboards = 3;
+	memset(m_memboard,0,sizeof(m_memboard));
+	// mark 1st board enabled
+	m_memboard[0]=0xc;
 }
 
 
@@ -1517,7 +1581,6 @@ MACHINE_RESET_MEMBER(pc_state,pcjr)
 	m_pc_spkrdata = 0;
 	m_pc_input = 1;
 	m_dma_channel = -1;
-	memset(m_memboard,0xc,sizeof(m_memboard));  // check
 	memset(m_dma_offset,0,sizeof(m_dma_offset));
 	m_ppi_portc_switch_high = 0;
 	m_ppi_speaker = 0;

@@ -12,6 +12,7 @@
 #include "machine/scsicb.h"
 #include "machine/6522via.h"
 #include "machine/ram.h"
+#include "machine/er59256.h"
 #include "sound/ay8910.h"
 #include "sound/msm5205.h"
 
@@ -61,10 +62,6 @@ struct t_nimbus_brush
 	UINT16  boundary_colour;
 	UINT16  save_colour;
 };
-
-#define SCREEN_WIDTH_PIXELS     640
-#define SCREEN_HEIGHT_LINES     250
-#define SCREEN_NO_COLOURS       16
 
 
 /* 80186 internal stuff */
@@ -400,7 +397,8 @@ public:
 		m_msm(*this, MSM5205_TAG),
 		m_ay8910(*this, AY8910_TAG),
 		m_scsibus(*this, SCSIBUS_TAG ":host"),
-		m_ram(*this, RAM_TAG)
+		m_ram(*this, RAM_TAG),
+		m_eeprom(*this, ER59256_TAG)
 	{
 	}
 
@@ -409,6 +407,7 @@ public:
 	required_device<ay8910_device> m_ay8910;
 	required_device<scsicb_device> m_scsibus;
 	required_device<ram_device> m_ram;
+	required_device<er59256_device> m_eeprom;
 
 	UINT32 m_debug_machine;
 //  i186_state m_i186;

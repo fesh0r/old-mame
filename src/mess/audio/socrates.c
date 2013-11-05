@@ -1,9 +1,13 @@
+// license:MAME|LGPL-2.1+
+// copyright-holders:Jonathan Gevaryahu
 /***************************************************************************
 
     audio/socrates.c
+    Copyright (C) 2010-2011 Jonathan Gevaryahu AKA Lord Nightmare
 
     This handles the two squarewaves (plus the one weird wave) channels
     on the V-tech Socrates system 27-0769 ASIC.
+
 
 ****************************************************************************/
 

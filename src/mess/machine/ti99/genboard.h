@@ -1,3 +1,5 @@
+// license:MAME|LGPL-2.1+
+// copyright-holders:Michael Zapf
 /****************************************************************************
 
     Geneve main board components.
@@ -15,6 +17,7 @@
 #include "ti99defs.h"
 #include "machine/mm58274c.h"
 #include "video/v9938.h"
+#include "cpu/tms9900/tms9995.h"
 
 extern const device_type GENEVE_MOUSE;
 extern const device_type GENEVE_KEYBOARD;
@@ -131,14 +134,14 @@ public:
 	inline void set_video_waitstates(bool wait) { m_video_waitstates = wait; }
 	inline void set_extra_waitstates(bool wait) { m_extra_waitstates = wait; }
 
-	void do_wait(int min);
-
 	DECLARE_READ8_MEMBER( readm );
 	DECLARE_WRITE8_MEMBER( writem );
+	DECLARE_SETOFFSET_MEMBER( setoffset );
 
 	DECLARE_INPUT_CHANGED_MEMBER( gm_changed );
 
-	void clock_in(int state);
+	DECLARE_WRITE_LINE_MEMBER( clock_in );
+	DECLARE_WRITE_LINE_MEMBER( dbin_in );
 
 protected:
 	virtual void    device_start();
@@ -153,11 +156,24 @@ private:
 	DECLARE_WRITE8_MEMBER( write_grom );
 
 	// wait states
-	bool        m_video_waiting;
+	void        set_wait(int min);
+	void        set_ext_wait(int min);
 	bool        m_video_waitstates;
 	bool        m_extra_waitstates;
+	bool        m_ready_asserted;
+
+	bool        m_read_mode;
+
+	bool        m_debug_no_ws;
 
 	// Mapper function
+	typedef struct
+	{
+		int     function;
+		offs_t  offset;
+		offs_t  physaddr;
+	} decdata;
+
 	bool    m_geneve_mode;
 	bool    m_direct_mode;
 	int     m_cartridge_size;
@@ -165,6 +181,9 @@ private:
 	bool    m_cartridge6_writable;
 	bool    m_cartridge7_writable;
 	int     m_map[8];
+
+	void    decode(address_space& space, offs_t offset, bool read_mode, decdata* dec);
+	decdata m_decoded;
 
 	// Genmod modifications
 	bool    m_turbo;
@@ -179,9 +198,12 @@ private:
 
 	// Counter for the wait states.
 	int   m_waitcount;
+	int     m_ext_waitcount;
 
 	// Devices
 	mm58274c_device*        m_clock;
+	tms9995_device*         m_cpu;
+
 	geneve_keyboard_device* m_keyboard;
 	bus8z_device*           m_video;
 	bus8z_device*           m_peribox;

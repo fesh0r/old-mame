@@ -1,20 +1,22 @@
+// license:BSD-3-Clause
+// copyright-holders:Curt Coder
 #pragma once
 
 #ifndef __PLUS4__
 #define __PLUS4__
 
 #include "emu.h"
+#include "bus/cbmiec/cbmiec.h"
+#include "bus/pet/cass.h"
+#include "bus/plus4/exp.h"
+#include "bus/plus4/user.h"
+#include "bus/vcs/ctrl.h"
 #include "cpu/m6502/m7501.h"
 #include "machine/cbm_snqk.h"
-#include "machine/cbmiec.h"
-#include "machine/cbmipt.h"
 #include "machine/mos6529.h"
 #include "machine/mos6551.h"
 #include "machine/mos8706.h"
-#include "machine/petcass.h"
 #include "machine/pla.h"
-#include "machine/plus4exp.h"
-#include "machine/plus4user.h"
 #include "machine/ram.h"
 #include "sound/mos7360.h"
 #include "sound/t6721a.h"

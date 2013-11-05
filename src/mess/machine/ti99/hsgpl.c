@@ -1,3 +1,5 @@
+// license:MAME|LGPL-2.1+
+// copyright-holders:Michael Zapf
 /****************************************************************************
 
     SNUG HSGPL card emulation.
@@ -137,7 +139,7 @@ snug_high_speed_gpl_device::snug_high_speed_gpl_device(const machine_config &mco
 /*
    Read hsgpl CRU interface. None here.
 */
-void snug_high_speed_gpl_device::crureadz(offs_t offset, UINT8 *value)
+READ8Z_MEMBER(snug_high_speed_gpl_device::crureadz)
 {
 	return;
 }
@@ -145,7 +147,7 @@ void snug_high_speed_gpl_device::crureadz(offs_t offset, UINT8 *value)
 /*
     Write hsgpl CRU interface
 */
-void snug_high_speed_gpl_device::cruwrite(offs_t offset, UINT8 data)
+WRITE8_MEMBER(snug_high_speed_gpl_device::cruwrite)
 {
 	// SuperCart handling - see gromport.c
 	if (m_supercart_enabled && ((offset & 0xfff0)==SUPERCART_BASE))
@@ -315,6 +317,8 @@ void snug_high_speed_gpl_device::cartspace_readz(address_space& space, offs_t of
 void snug_high_speed_gpl_device::grom_readz(address_space& space, offs_t offset, UINT8* value, UINT8 mem_mask)
 {
 	int port;
+	if (space.debugger_access()) return;
+
 	//activedevice_adjust_icount(-4);
 
 	// 1001 10bb bbbb bba0
@@ -478,6 +482,7 @@ void snug_high_speed_gpl_device::cartspace_write(address_space& space, offs_t of
 void snug_high_speed_gpl_device::grom_write(address_space& space, offs_t offset, UINT8 data, UINT8 mem_mask)
 {
 	int port;
+	if (space.debugger_access()) return;
 
 	//activedevice_adjust_icount(-4);
 

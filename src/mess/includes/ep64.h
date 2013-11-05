@@ -1,3 +1,5 @@
+// license:BSD-3-Clause
+// copyright-holders:Curt Coder
 /**********************************************************************
 
     Enterprise Sixty Four / One Two Eight emulation
@@ -14,11 +16,11 @@
 
 #include "emu.h"
 #include "audio/dave.h"
+#include "bus/ep64/exp.h"
 #include "cpu/z80/z80.h"
 #include "imagedev/cartslot.h"
 #include "imagedev/cassette.h"
-#include "machine/ctronics.h"
-#include "machine/ep64exp.h"
+#include "bus/centronics/ctronics.h"
 #include "machine/ram.h"
 #include "machine/serial.h"
 #include "video/nick.h"

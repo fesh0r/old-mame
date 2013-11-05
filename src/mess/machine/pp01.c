@@ -7,10 +7,7 @@
 ****************************************************************************/
 
 
-#include "emu.h"
-#include "cpu/i8085/i8085.h"
 #include "includes/pp01.h"
-#include "machine/ram.h"
 
 
 WRITE8_MEMBER(pp01_state::pp01_video_write_mode_w)
@@ -209,7 +206,10 @@ WRITE8_MEMBER(pp01_state::pp01_8255_portb_w)
 
 WRITE8_MEMBER(pp01_state::pp01_8255_portc_w)
 {
-	m_key_line = data & 0x0f;
+	if BIT(data, 4)
+		m_key_line = data & 0x0f;
+	else
+		m_speaker->level_w(BIT(data, 0));
 }
 
 READ8_MEMBER(pp01_state::pp01_8255_portc_r)
@@ -227,4 +227,18 @@ I8255A_INTERFACE( pp01_ppi8255_interface )
 	DEVCB_DRIVER_MEMBER(pp01_state,pp01_8255_portb_w),
 	DEVCB_DRIVER_MEMBER(pp01_state,pp01_8255_portc_r),
 	DEVCB_DRIVER_MEMBER(pp01_state,pp01_8255_portc_w)
+};
+
+// when rts and dtr are both high, the uart is being used for cassette operations
+const i8251_interface pp01_uart_intf =
+{
+	DEVCB_NULL, // in rxd
+	DEVCB_NULL, // out txd
+	DEVCB_NULL, // in dsr
+	DEVCB_NULL, // out dtr
+	DEVCB_NULL, // out rts
+	DEVCB_NULL, // out rxrdy
+	DEVCB_NULL, // out txrdy
+	DEVCB_NULL, // out txempty
+	DEVCB_NULL  // out syndet
 };

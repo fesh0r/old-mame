@@ -1,3 +1,5 @@
+// license:BSD-3-Clause
+// copyright-holders:Michael Zapf
 /*
     Cycle-precise implementation of the TMS9980A.
     Subclassed from tms99xx_device in tms9900.c.
@@ -63,6 +65,22 @@ tms9980a_device::tms9980a_device(const machine_config &mconfig, const char *tag,
 {
 }
 
+/*
+    External connections
+*/
+void tms9980a_device::resolve_lines()
+{
+	const tms9980a_config *conf = reinterpret_cast<const tms9980a_config *>(static_config());
+	assert (conf != NULL);
+
+	// Resolve our external connections
+	m_external_operation.resolve(conf->external_callback, *this);
+	m_iaq_line.resolve(conf->instruction_acquisition, *this);
+	m_clock_out_line.resolve(conf->clock_out, *this);
+	m_holda_line.resolve(conf->holda_line, *this);
+	m_dbin_line.resolve(conf->dbin_line, *this);
+}
+
 UINT16 tms9980a_device::read_workspace_register_debug(int reg)
 {
 	int temp = m_icount;
@@ -89,9 +107,43 @@ void tms9980a_device::write_workspace_register_debug(int reg, UINT16 data)
 */
 void tms9980a_device::execute_set_input(int irqline, int state)
 {
-	m_irq_level = get_intlevel(state);
+	// We model the three lines IC0-IC2 as 8 separate input lines, although we
+	// cannot assert more than one at a time. The state value is not needed,
+	// as level 7 means to clean all interrupts, but we consider it for the
+	// sake of consistency.
 
-	if (m_irq_level != 7)
+	int level = irqline;
+
+	// Just to stay consistent.
+	if (state==CLEAR_LINE) level = INT_9980A_CLEAR;
+
+	switch (level)
+	{
+	case INT_9980A_RESET:
+	case 1:
+		level = RESET_INT;
+		m_reset = true;
+		break;
+	case INT_9980A_LOAD:
+		level = LOAD_INT;
+		break;
+	case INT_9980A_LEVEL1:
+	case INT_9980A_LEVEL2:
+	case INT_9980A_LEVEL3:
+	case INT_9980A_LEVEL4:
+		level = level - 2;
+		break;
+	case INT_9980A_CLEAR:
+		// Clear all interrupts
+		m_load_state = false;
+		m_irq_state = false;
+		if (VERBOSE>6) LOG("tms9980a: clear interrupts\n");
+		break;
+	}
+
+	m_irq_level = level;
+
+	if (m_irq_level != INT_9980A_CLEAR)
 	{
 		if (m_irq_level == LOAD_INT)
 		{
@@ -105,39 +157,6 @@ void tms9980a_device::execute_set_input(int irqline, int state)
 	}
 }
 
-int tms9980a_device::get_intlevel(int state)
-{
-	int level = m_get_intlevel(0) & 0x0007;
-
-	// Just to stay consistent.
-	if (state==CLEAR_LINE) level = 7;
-
-	switch (level)
-	{
-	case 0:
-	case 1:
-		level = RESET_INT;
-		m_reset = true;
-		break;
-	case 2:
-		level = LOAD_INT;
-		break;
-	case 3:
-	case 4:
-	case 5:
-	case 6:
-		level = level - 2;
-		break;
-	case 7:
-		// Clear all interrupts
-		m_load_state = false;
-		m_irq_state = false;
-		if (VERBOSE>6) LOG("tms9980a: clear interrupts\n");
-		break;
-	}
-	return level;
-}
-
 /*****************************************************************************/
 
 /*
@@ -147,56 +166,79 @@ int tms9980a_device::get_intlevel(int state)
 void tms9980a_device::mem_read()
 {
 	UINT8 value;
-	if (m_lowbyte)
+	switch (m_mem_phase)
 	{
+	case 1:
+		m_pass = 4;         // make the CPU visit this method more than once
+		m_dbin_line(ASSERT_LINE);
+		m_prgspace->set_address(m_address & m_prgaddr_mask & ~1);
+		if (VERBOSE>7) LOG("tms9980a: set address bus %04x\n", m_address & m_prgaddr_mask & ~1);
+		m_check_ready = true;
+		break;
+	case 2:
+		// Sample the value on the data bus (high byte)
+		value = m_prgspace->read_byte(m_address & m_prgaddr_mask & ~1);
+		if (VERBOSE>7) LOG("tms9980a: memory read high byte %04x -> %02x\n", m_address & m_prgaddr_mask & ~1, value);
+		m_current_value = (value << 8) & 0xff00;
+		break;
+	case 3:
+		m_prgspace->set_address((m_address & m_prgaddr_mask) | 1);
+		if (VERBOSE>7) LOG("tms9980a: set address bus %04x\n", (m_address & m_prgaddr_mask) | 1);
+		break;
+	case 4:
+		// Sample the value on the data bus (low byte)
 		value = m_prgspace->read_byte((m_address & m_prgaddr_mask) | 1);
 		m_current_value = m_current_value | (value & 0x00ff);
-		if (VERBOSE>7) LOG("tms9980a: memory read low byte %04x -> complete word %04x\n", (m_address & m_prgaddr_mask) | 1, m_current_value);
-		m_lowbyte = false;
+		if (VERBOSE>7) LOG("tms9980a: memory read low byte %04x -> %02x -> complete word %04x\n", (m_address & m_prgaddr_mask) | 1, value, m_current_value);
+		break;
 	}
-	else
-	{
-		value = m_prgspace->read_byte(m_address & 0x3ffe);
-		if (VERBOSE>7) LOG("tms9980a: memory read high byte %04x -> %02x\n", m_address & m_prgaddr_mask, value);
-		m_current_value = (value << 8) & 0xff00;
-		m_lowbyte = true;
-		m_pass = 2;         // make the CPU visit this method once more
-	}
-	pulse_clock(2);
-	m_check_ready = true;
+	pulse_clock(1);
+	m_mem_phase = (m_mem_phase % 4) +1;
 }
+
 
 void tms9980a_device::mem_write()
 {
-	if (m_lowbyte)
+	switch (m_mem_phase)
 	{
-		m_prgspace->write_byte((m_address & 0x3ffe) | 1, m_current_value & 0xff);
-		if (VERBOSE>7) LOG("tms9980a: memory write low byte %04x <- %02x\n", (m_address & m_prgaddr_mask) | 1, m_current_value & 0xff);
-		m_lowbyte = false;
+	case 1:
+		m_pass = 4;         // make the CPU visit this method once more
+		m_dbin_line(CLEAR_LINE);
+		m_prgspace->set_address(m_address & m_prgaddr_mask & ~1);
+		if (VERBOSE>7) LOG("tms9980a: set address bus %04x\n", m_address & m_prgaddr_mask & ~1);
+		m_prgspace->write_byte(m_address & 0x3ffe & ~1, (m_current_value >> 8)&0xff);
+		if (VERBOSE>7) LOG("tms9980a: memory write high byte %04x <- %02x\n", m_address & m_prgaddr_mask & ~1, (m_current_value >> 8)&0xff);
+		m_check_ready = true;
+		break;
+	case 2:
+		// no action here, just wait for READY
+		break;
+	case 3:
+		m_prgspace->set_address((m_address & m_prgaddr_mask) | 1);
+		if (VERBOSE>7) LOG("tms9980a: set address bus %04x\n", (m_address & m_prgaddr_mask) | 1);
+		m_prgspace->write_byte((m_address & m_prgaddr_mask) | 1, m_current_value & 0xff);
+		if (VERBOSE>7) LOG("tms9980a: memory write low byte %04x <- %02x\n", (m_address & m_prgaddr_mask) | 1,  m_current_value & 0xff);
+		break;
+	case 4:
+		// no action here, just wait for READY
+		break;
 	}
-	else
-	{
-		m_prgspace->write_byte(m_address & 0x3ffe, (m_current_value >> 8)&0xff);
-		if (VERBOSE>7) LOG("tms9980a: memory write high byte %04x <- %02x\n", m_address & m_prgaddr_mask, (m_current_value >> 8)&0xff);
-		m_lowbyte = true;
-		m_pass = 2;         // make the CPU visit this method once more
-	}
-	pulse_clock(2);
-	m_check_ready = true;
+	pulse_clock(1);
+	m_mem_phase = (m_mem_phase % 4) +1;
 }
 
 void tms9980a_device::acquire_instruction()
 {
-	if (!m_lowbyte)
+	if (m_mem_phase == 1)
 	{
 		m_iaq_line(ASSERT_LINE);
 		m_address = PC;
 		m_first_cycle = m_icount;
-		mem_read();
 	}
-	else
+	mem_read();
+
+	if (m_mem_phase == 1)  // changed by mem_read and wrapped
 	{
-		mem_read();
 		decode(m_current_value);
 		if (VERBOSE>3) LOG("tms9980a: ===== Next operation %04x (%s) at %04x =====\n", IR, opname[m_command], PC);
 		debugger_instruction_hook(this, PC);
@@ -204,6 +246,8 @@ void tms9980a_device::acquire_instruction()
 	}
 	// IAQ will be cleared in the main loop
 }
+
+
 
 /**************************************************************************/
 UINT32 tms9980a_device::execute_min_cycles() const
@@ -219,7 +263,7 @@ UINT32 tms9980a_device::execute_max_cycles() const
 
 UINT32 tms9980a_device::execute_input_lines() const
 {
-	return 1;
+	return 8;
 }
 
 // clocks to cycles, cycles to clocks = id

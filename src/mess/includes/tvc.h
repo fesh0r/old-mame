@@ -1,3 +1,5 @@
+// license:BSD-3-Clause
+// copyright-holders:Sandro Ronco
 /*****************************************************************************
  *
  *   includes/tvc.h
@@ -12,14 +14,14 @@
 #include "cpu/z80/z80.h"
 #include "video/mc6845.h"
 #include "machine/ram.h"
-#include "machine/ctronics.h"
+#include "bus/centronics/ctronics.h"
 #include "imagedev/cartslot.h"
 #include "imagedev/cassette.h"
 #include "imagedev/snapquik.h"
 #include "formats/tvc_cas.h"
 
-#include "machine/tvcexp.h"
-#include "machine/tvc_hbf.h"
+#include "bus/tvc/tvc.h"
+#include "bus/tvc/hbf.h"
 
 #define     TVC_RAM_BANK    1
 #define     TVC_ROM_BANK    2

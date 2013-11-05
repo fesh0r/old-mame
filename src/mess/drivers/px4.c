@@ -2,6 +2,9 @@
 
     Epson PX-4
 
+    license: MAME, GPL-2.0+
+    copyright-holders: Dirk Best
+
     Note: We are missing a dump of the slave 7508 CPU that controls
     the keyboard and some other things.
 
@@ -11,7 +14,7 @@
 #include "cpu/z80/z80.h"
 #include "machine/ram.h"
 #include "machine/epson_sio.h"
-#include "machine/ctronics.h"
+#include "bus/centronics/ctronics.h"
 #include "imagedev/cartslot.h"
 #include "imagedev/cassette.h"
 #include "machine/ram.h"
@@ -95,7 +98,7 @@ public:
 	required_device<epson_sio_device> m_sio;
 	required_device<rs232_port_device> m_rs232;
 
-	/* gapnit register */
+	// gapnit register
 	UINT8 m_ctrl1;
 	UINT16 m_icrb;
 	UINT8 m_bankr;
@@ -104,17 +107,17 @@ public:
 	UINT8 m_str;
 	UINT8 m_sior;
 
-	/* gapnit internal */
+	// gapnit internal
 	UINT16 m_frc_value;
 	UINT16 m_frc_latch;
 
-	/* gapndi register */
+	// gapndi register
 	UINT8 m_vadr;
 	UINT8 m_yoff;
 
 	void gapnit_interrupt();
 
-	/* gapnio */
+	// gapnio
 	emu_timer *m_receive_timer;
 	emu_timer *m_transmit_timer;
 	UINT8 m_artdir;
@@ -127,7 +130,7 @@ public:
 	int rxd_r();
 	void txd_w(int data);
 
-	/* 7508 internal */
+	// 7508 internal
 	bool m_one_sec_int_enabled;
 	bool m_alarm_int_enabled;
 	bool m_key_int_enabled;
@@ -135,11 +138,11 @@ public:
 	UINT8 m_key_status;
 	UINT8 m_interrupt_status;
 
-	/* external ramdisk */
+	// external ramdisk
 	offs_t m_ramdisk_address;
 	UINT8 *m_ramdisk;
 
-	/* external cassette/barcode reader */
+	// external cassette/barcode reader
 	emu_timer *m_ext_cas_timer;
 	int m_ear_last_state;
 

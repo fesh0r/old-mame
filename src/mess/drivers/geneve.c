@@ -1,4 +1,6 @@
-/*
+// license:MAME|LGPL-2.1+
+// copyright-holders:Michael Zapf
+/******************************************************************************
     MESS Driver for the Myarc Geneve 9640.
 
     The Geneve has two operation modes.  One is compatible with the TI-99/4a,
@@ -198,7 +200,7 @@
     Original version 2003 by Raphael Nabet
 
     Rewritten 2012 by Michael Zapf
-*/
+******************************************************************************/
 
 
 #include "emu.h"
@@ -240,6 +242,8 @@ public:
 	DECLARE_WRITE_LINE_MEMBER(video_wait_states);
 
 	DECLARE_WRITE_LINE_MEMBER(clock_out);
+	DECLARE_WRITE_LINE_MEMBER(dbin_line);
+
 	DECLARE_WRITE8_MEMBER(external_operation);
 
 	DECLARE_WRITE8_MEMBER(tms9901_interrupt);
@@ -284,7 +288,7 @@ private:
 */
 
 static ADDRESS_MAP_START(memmap, AS_PROGRAM, 8, geneve_state)
-	AM_RANGE(0x0000, 0xffff) AM_DEVREADWRITE(GMAPPER_TAG, geneve_mapper_device, readm, writem)
+	AM_RANGE(0x0000, 0xffff) AM_DEVREADWRITE(GMAPPER_TAG, geneve_mapper_device, readm, writem) AM_DEVSETOFFSET(GMAPPER_TAG, geneve_mapper_device, setoffset)
 ADDRESS_MAP_END
 
 /*
@@ -405,7 +409,7 @@ WRITE8_MEMBER ( geneve_state::cruwrite )
 	}
 	else
 	{
-		m_peribox->cruwrite(addroff, data);
+		m_peribox->cruwrite(space, addroff, data);
 	}
 }
 
@@ -427,7 +431,7 @@ READ8_MEMBER( geneve_state::cruread )
 	// so we just don't arrive here
 
 	// Propagate the CRU access to external devices
-	m_peribox->crureadz(addroff, &value);
+	m_peribox->crureadz(space, addroff, &value);
 	return value;
 }
 
@@ -546,7 +550,7 @@ WRITE_LINE_MEMBER( geneve_state::video_wait_states )
 WRITE8_MEMBER( geneve_state::tms9901_interrupt )
 {
 	/* INTREQ is connected to INT1. */
-	m_cpu->set_input_line(INPUT_LINE_99XX_INT1, data);
+	m_cpu->set_input_line(INT_9995_INT1, data);
 }
 
 /* tms9901 setup */
@@ -590,7 +594,7 @@ WRITE_LINE_MEMBER( geneve_state::inta )
 {
 	m_inta = (state!=0)? ASSERT_LINE : CLEAR_LINE;
 	m_tms9901->set_single_int(1, state);
-	m_cpu->set_input_line(INPUT_LINE_99XX_INT4, state);
+	m_cpu->set_input_line(INT_9995_INT4, state);
 }
 
 /*
@@ -604,7 +608,7 @@ WRITE_LINE_MEMBER( geneve_state::intb )
 
 WRITE_LINE_MEMBER( geneve_state::ext_ready )
 {
-	if (VERBOSE>6) LOG("ti99_8: READY level (ext) =%02x\n", state);
+	if (VERBOSE>6) LOG("geneve: READY level (ext) = %02x\n", state);
 	m_ready_line = state;
 	m_cpu->set_ready((m_ready_line == ASSERT_LINE && m_ready_line1 == ASSERT_LINE)? ASSERT_LINE : CLEAR_LINE);
 }
@@ -670,13 +674,21 @@ WRITE_LINE_MEMBER( geneve_state::clock_out )
 	m_mapper->clock_in(state);
 }
 
+/*
+    DBIN line from the CPU. Used to control wait state generation.
+*/
+WRITE_LINE_MEMBER( geneve_state::dbin_line )
+{
+	m_mapper->dbin_in(state);
+}
+
 static TMS9995_CONFIG( geneve_processor_config )
 {
 	DEVCB_DRIVER_MEMBER(geneve_state, external_operation),
 	DEVCB_NULL,         // Instruction acquisition
 	DEVCB_DRIVER_LINE_MEMBER(geneve_state, clock_out),
-	DEVCB_NULL,         // wait
 	DEVCB_NULL,         // HOLDA
+	DEVCB_DRIVER_LINE_MEMBER(geneve_state, dbin_line),      // DBIN
 	INTERNAL_RAM,       // use internal RAM
 	NO_OVERFLOW_INT     // The generally available versions of TMS9995 have a deactivated overflow interrupt
 };
@@ -755,8 +767,7 @@ void geneve_state::machine_reset()
 static MACHINE_CONFIG_START( geneve_60hz, geneve_state )
 	// basic machine hardware
 	// TMS9995 CPU @ 12.0 MHz
-	MCFG_TMS9995_ADD("maincpu", TMS9995, 12000000, memmap, crumap, geneve_processor_config)
-
+	MCFG_TMS99xx_ADD("maincpu", TMS9995, 12000000, memmap, crumap, geneve_processor_config)
 
 	// video hardware
 	// Although we should have a 60 Hz screen rate, we have to set it to 30 here.

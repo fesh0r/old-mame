@@ -2,8 +2,8 @@
 
     ISA cards
 
-    Copyright MESS Team.
-    Visit http://mamedev.org for licensing and usage restrictions.
+    license: MAME, GPL-2.0+
+    copyright-holders: Dirk Best
 
 **********************************************************************/
 
@@ -42,6 +42,7 @@
 #include "machine/isa_sblaster.h"
 #include "machine/isa_ssi2001.h"
 #include "machine/isa_stereo_fx.h"
+#include "machine/isa_dectalk.h"
 
 // network
 #include "machine/3c503.h"

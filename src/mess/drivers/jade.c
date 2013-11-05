@@ -1,3 +1,5 @@
+// license:MAME
+// copyright-holders:Robbbert
 /***************************************************************************
 
     Jade JGZ80 Single board computer on a S100 card.
@@ -5,6 +7,9 @@
     2013-09-12 Skeleton driver.
 
     No info found as yet.
+
+    It takes about 8 seconds to start up.
+    Type HE to get a list of commands.
 
 ****************************************************************************/
 

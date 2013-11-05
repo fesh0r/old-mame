@@ -1,3 +1,5 @@
+// license:MAME|LGPL-2.1+
+// copyright-holders:Michael Zapf
 /****************************************************************************
 
     The MESS TI-99/8 emulation driver
@@ -215,7 +217,7 @@ Known Issues (MZ, 2010-11-07)
 #include "machine/ti99/gromport.h"
 #include "machine/ti99/joyport.h"
 
-#define VERBOSE 0
+#define VERBOSE 1
 #define LOG logerror
 
 class ti99_8_state : public driver_device
@@ -492,9 +494,9 @@ READ8_MEMBER( ti99_8_state::cruread )
 	// Similar to the bus8z_devices, just let the mapper, the gromport, and the p-box
 	// decide whether they want to change the value at the CRU address
 	// Also, we translate the bit addresses to base addresses
-	m_mapper->crureadz(offset<<4, &value);
-	m_gromport->crureadz(offset<<4, &value);
-	m_peribox->crureadz(offset<<4, &value);
+	m_mapper->crureadz(space, offset<<4, &value);
+	m_gromport->crureadz(space, offset<<4, &value);
+	m_peribox->crureadz(space, offset<<4, &value);
 
 	if (VERBOSE>8) LOG("ti99_8: CRU %04x -> %02x\n", offset<<4, value);
 	return value;
@@ -503,9 +505,9 @@ READ8_MEMBER( ti99_8_state::cruread )
 WRITE8_MEMBER( ti99_8_state::cruwrite )
 {
 	if (VERBOSE>8) LOG("ti99_8: CRU %04x <- %x\n", offset<<1, data);
-	m_mapper->cruwrite(offset<<1, data);
-	m_gromport->cruwrite(offset<<1, data);
-	m_peribox->cruwrite(offset<<1, data);
+	m_mapper->cruwrite(space, offset<<1, data);
+	m_gromport->cruwrite(space, offset<<1, data);
+	m_peribox->cruwrite(space, offset<<1, data);
 }
 
 /***************************************************************************
@@ -630,6 +632,14 @@ WRITE_LINE_MEMBER( ti99_8_state::keyC3 )
 WRITE_LINE_MEMBER( ti99_8_state::CRUS )
 {
 	m_mapper->CRUS_set(state==ASSERT_LINE);
+	if (state==ASSERT_LINE)
+	{
+		m_gromport->set_grom_base(0x9800, 0xfbf1);
+	}
+	else
+	{
+		m_gromport->set_grom_base(0xf830, 0xfff1);
+	}
 }
 
 /*
@@ -670,7 +680,7 @@ WRITE_LINE_MEMBER( ti99_8_state::cassette_output )
 
 WRITE8_MEMBER( ti99_8_state::tms9901_interrupt )
 {
-	m_cpu->set_input_line(INPUT_LINE_99XX_INT1, data);
+	m_cpu->set_input_line(INT_9995_INT1, data);
 }
 
 const tms9901_interface tms9901_wiring_ti99_8 =
@@ -734,7 +744,7 @@ WRITE_LINE_MEMBER( ti99_8_state::console_reset )
 {
 	if (machine().phase() != MACHINE_PHASE_INIT)
 	{
-		m_cpu->set_input_line(INPUT_LINE_99XX_RESET, state);
+		m_cpu->set_input_line(INT_9995_RESET, state);
 		m_video->reset_vdp(state);
 	}
 }
@@ -795,8 +805,8 @@ static TMS9995_CONFIG( ti99_8_processor_config )
 	DEVCB_DRIVER_MEMBER(ti99_8_state, external_operation),
 	DEVCB_NULL,     // Instruction acquisition
 	DEVCB_DRIVER_LINE_MEMBER(ti99_8_state, clock_out),
-	DEVCB_NULL,     // wait
 	DEVCB_NULL,     // HOLDA
+	DEVCB_NULL,      // DBIN
 	NO_INTERNAL_RAM,
 	NO_OVERFLOW_INT
 };
@@ -962,13 +972,13 @@ void ti99_8_state::machine_reset()
 
 	// But we assert the line here so that the system starts running
 	m_ready_line = m_ready_line1 = ASSERT_LINE;
+	m_gromport->set_grom_base(0x9800, 0xfff1);
 }
 
 static MACHINE_CONFIG_START( ti99_8_60hz, ti99_8_state )
 	/* basic machine hardware */
 	/* TMS9995-MP9537 CPU @ 10.7 MHz */
-	MCFG_TMS9995_ADD("maincpu", TMS9995, 10738635, memmap, crumap, ti99_8_processor_config)
-
+	MCFG_TMS99xx_ADD("maincpu", TMS9995, 10738635, memmap, crumap, ti99_8_processor_config)
 
 	/* Video hardware */
 	MCFG_TI998_ADD_NTSC(VIDEO_SYSTEM_TAG, TMS9118, ti99_8_tms9118a_interface)
@@ -1011,7 +1021,7 @@ MACHINE_CONFIG_END
 static MACHINE_CONFIG_START( ti99_8_50hz, ti99_8_state )
 	/* basic machine hardware */
 	/* TMS9995-MP9537 CPU @ 10.7 MHz */
-	MCFG_TMS9995_ADD("maincpu", TMS9995, 10738635, memmap, crumap, ti99_8_processor_config)
+	MCFG_TMS99xx_ADD("maincpu", TMS9995, 10738635, memmap, crumap, ti99_8_processor_config)
 
 	/* Video hardware */
 	MCFG_TI998_ADD_PAL(VIDEO_SYSTEM_TAG, TMS9129, ti99_8_tms9118a_interface)

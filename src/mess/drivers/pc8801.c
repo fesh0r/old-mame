@@ -1,3 +1,5 @@
+// license:MAME
+// copyright-holders:Angelo Salese
 /*************************************************************************************************************************************
 
     PC-8801 (c) 1981 NEC
@@ -255,7 +257,7 @@
 #include "emu.h"
 #include "cpu/z80/z80.h"
 #include "imagedev/cassette.h"
-#include "machine/ctronics.h"
+#include "bus/centronics/ctronics.h"
 #include "machine/i8255.h"
 #include "machine/upd1990a.h"
 #include "machine/upd765.h"

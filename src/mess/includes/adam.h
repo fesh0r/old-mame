@@ -1,14 +1,16 @@
+// license:BSD-3-Clause
+// copyright-holders:Curt Coder
 #pragma once
 
 #ifndef ADAM_H_
 #define ADAM_H_
 
 #include "emu.h"
+#include "bus/adam/exp.h"
+#include "bus/adamnet/adamnet.h"
 #include "cpu/z80/z80.h"
 #include "cpu/m6800/m6800.h"
 #include "imagedev/cartslot.h"
-#include "machine/adamexp.h"
-#include "machine/adamnet.h"
 #include "machine/coleco.h"
 #include "machine/ram.h"
 #include "sound/sn76496.h"

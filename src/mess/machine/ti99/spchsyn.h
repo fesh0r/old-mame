@@ -1,3 +1,5 @@
+// license:MAME|LGPL-2.1+
+// copyright-holders:Michael Zapf
 /****************************************************************************
 
     TI-99 Speech Synthesizer
@@ -23,9 +25,10 @@ public:
 	ti_speech_synthesizer_device(const machine_config &mconfig, const char *tag, device_t *owner, UINT32 clock);
 	DECLARE_READ8Z_MEMBER(readz);
 	DECLARE_WRITE8_MEMBER(write);
+	DECLARE_SETADDRESS_DBIN_MEMBER(setaddress_dbin);
 
-	void crureadz(offs_t offset, UINT8 *value) { };
-	void cruwrite(offs_t offset, UINT8 value) { };
+	DECLARE_READ8Z_MEMBER(crureadz) { };
+	DECLARE_WRITE8_MEMBER(cruwrite) { };
 
 	DECLARE_WRITE_LINE_MEMBER( speech_ready );
 
@@ -42,6 +45,7 @@ protected:
 
 private:
 	cd2501e_device *m_vsp;
+	bool            m_read_mode;
 };
 
 #endif
